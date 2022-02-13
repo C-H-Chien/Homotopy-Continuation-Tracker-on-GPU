@@ -2,10 +2,15 @@ Path Traking for Homotopy Continuation in GPU for Benchmark Polynomial Problems
 
 # 1. Dependencies:
 (1) CMake 3.14 or higher
+
 (2) MAGMA 2.6.1 or higher
+
 (3) CUDA 9.0 or higher
+
 (4) cuBlas
+
 (5) openBlas
+
 (6) pthread
 
 # 2. How to build and compile the code
