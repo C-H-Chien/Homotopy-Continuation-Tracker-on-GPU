@@ -1,0 +1,566 @@
+#ifndef cpu_eval_HxHt_katsura11_h
+#define cpu_eval_HxHt_katsura11_h
+// ============================================================================
+// partial derivative evaluations of the katsura11 problem for cpu HC computation
+//
+// Modifications
+//    Chien  22-01-21:   Originally created
+//
+// ============================================================================
+#include <stdio.h>
+#include <stdlib.h>
+#include <cstdio>
+#include <iostream>
+#include <iomanip>
+#include <cstring>
+#include <chrono>
+
+// -- cuda --
+#include <cuda.h>
+#include <cuda_runtime.h>
+
+// -- magma --
+#include "flops.h"
+#include "magma_v2.h"
+#include "magma_lapack.h"
+#include "magma_internal.h"
+#undef max
+#undef min
+
+namespace magmaHCWrapper {
+
+  extern "C"
+  void cpu_eval_HxHt_katsura11(
+      magma_int_t s, float t, int N, magmaFloatComplex* s_track,
+      const magmaFloatComplex &C0, const magmaFloatComplex &C1,
+      magmaFloatComplex* s_startCoefs, magmaFloatComplex* s_targetCoefs,
+      magmaFloatComplex* r_cgesvA, magmaFloatComplex* r_cgesvB )
+  {
+    magmaFloatComplex G0 = C1 * t;
+magmaFloatComplex G1 = C0 + G0;
+magmaFloatComplex G2 = G1 * s_startCoefs[0];
+magmaFloatComplex G3 = t * s_targetCoefs[0];
+magmaFloatComplex G4 = G2 + G3;
+magmaFloatComplex G5 = s_track[0] + s_track[0];
+magmaFloatComplex G6 = G4 * G5;
+magmaFloatComplex G7 = G1 * s_startCoefs[1];
+magmaFloatComplex G8 = t * s_targetCoefs[1];
+magmaFloatComplex G9 = G7 + G8;
+magmaFloatComplex G10 = G6 + G9;
+magmaFloatComplex G11 = G1 * s_startCoefs[2];
+magmaFloatComplex G12 = t * s_targetCoefs[2];
+magmaFloatComplex G13 = G11 + G12;
+magmaFloatComplex G14 = s_track[1] * G13;
+magmaFloatComplex G15 = s_track[2] * G13;
+magmaFloatComplex G16 = s_track[3] * G13;
+magmaFloatComplex G17 = s_track[4] * G13;
+magmaFloatComplex G18 = s_track[5] * G13;
+magmaFloatComplex G19 = s_track[6] * G13;
+magmaFloatComplex G20 = s_track[7] * G13;
+magmaFloatComplex G21 = s_track[8] * G13;
+magmaFloatComplex G22 = s_track[9] * G13;
+magmaFloatComplex G23 = s_track[10] * G13;
+magmaFloatComplex G24 = s_track[1] + s_track[1];
+magmaFloatComplex G25 = G13 * G24;
+magmaFloatComplex G26 = G13 * s_track[0];
+magmaFloatComplex G27 = G26 + G15;
+magmaFloatComplex G28 = G27 + G9;
+magmaFloatComplex G29 = G4 * G24;
+magmaFloatComplex G30 = G29 + G16;
+magmaFloatComplex G31 = G15 + G17;
+magmaFloatComplex G32 = G16 + G18;
+magmaFloatComplex G33 = G17 + G19;
+magmaFloatComplex G34 = G18 + G20;
+magmaFloatComplex G35 = G19 + G21;
+magmaFloatComplex G36 = G20 + G22;
+magmaFloatComplex G37 = G21 + G23;
+magmaFloatComplex G38 = s_track[11] * G13;
+magmaFloatComplex G39 = G22 + G38;
+magmaFloatComplex G40 = s_track[2] + s_track[2];
+magmaFloatComplex G41 = G13 * G40;
+magmaFloatComplex G42 = G13 * s_track[1];
+magmaFloatComplex G43 = G42 + G16;
+magmaFloatComplex G44 = G26 + G17;
+magmaFloatComplex G45 = G44 + G9;
+magmaFloatComplex G46 = G42 + G18;
+magmaFloatComplex G47 = G4 * G40;
+magmaFloatComplex G48 = G47 + G19;
+magmaFloatComplex G49 = G16 + G20;
+magmaFloatComplex G50 = G17 + G21;
+magmaFloatComplex G51 = G18 + G22;
+magmaFloatComplex G52 = G19 + G23;
+magmaFloatComplex G53 = G20 + G38;
+magmaFloatComplex G54 = s_track[3] + s_track[3];
+magmaFloatComplex G55 = G13 * G54;
+magmaFloatComplex G56 = G13 * s_track[2];
+magmaFloatComplex G57 = G56 + G17;
+magmaFloatComplex G58 = G26 + G19;
+magmaFloatComplex G59 = G58 + G9;
+magmaFloatComplex G60 = G42 + G20;
+magmaFloatComplex G61 = G56 + G21;
+magmaFloatComplex G62 = G4 * G54;
+magmaFloatComplex G63 = G62 + G22;
+magmaFloatComplex G64 = G17 + G23;
+magmaFloatComplex G65 = G18 + G38;
+magmaFloatComplex G66 = s_track[4] + s_track[4];
+magmaFloatComplex G67 = G13 * G66;
+magmaFloatComplex G68 = G13 * s_track[3];
+magmaFloatComplex G69 = G68 + G18;
+magmaFloatComplex G70 = G56 + G19;
+magmaFloatComplex G71 = G26 + G21;
+magmaFloatComplex G72 = G71 + G9;
+magmaFloatComplex G73 = G42 + G22;
+magmaFloatComplex G74 = G56 + G23;
+magmaFloatComplex G75 = G68 + G38;
+magmaFloatComplex G76 = G4 * G66;
+magmaFloatComplex G77 = s_track[5] + s_track[5];
+magmaFloatComplex G78 = G13 * G77;
+magmaFloatComplex G79 = G13 * s_track[4];
+magmaFloatComplex G80 = G79 + G19;
+magmaFloatComplex G81 = G68 + G20;
+magmaFloatComplex G82 = G26 + G23;
+magmaFloatComplex G83 = G82 + G9;
+magmaFloatComplex G84 = G42 + G38;
+magmaFloatComplex G85 = G4 * G77;
+magmaFloatComplex G86 = s_track[6] + s_track[6];
+magmaFloatComplex G87 = G13 * G86;
+magmaFloatComplex G88 = G13 * s_track[5];
+magmaFloatComplex G89 = G88 + G20;
+magmaFloatComplex G90 = G79 + G21;
+magmaFloatComplex G91 = G68 + G22;
+magmaFloatComplex G92 = G26 + G9;
+magmaFloatComplex G93 = s_track[7] + s_track[7];
+magmaFloatComplex G94 = G13 * G93;
+magmaFloatComplex G95 = G13 * s_track[6];
+magmaFloatComplex G96 = G95 + G21;
+magmaFloatComplex G97 = G88 + G22;
+magmaFloatComplex G98 = G79 + G23;
+magmaFloatComplex G99 = s_track[8] + s_track[8];
+magmaFloatComplex G100 = G13 * G99;
+magmaFloatComplex G101 = G13 * s_track[7];
+magmaFloatComplex G102 = G101 + G22;
+magmaFloatComplex G103 = G95 + G23;
+magmaFloatComplex G104 = G88 + G38;
+magmaFloatComplex G105 = s_track[9] + s_track[9];
+magmaFloatComplex G106 = G13 * G105;
+magmaFloatComplex G107 = G13 * s_track[8];
+magmaFloatComplex G108 = G107 + G23;
+magmaFloatComplex G109 = G101 + G38;
+magmaFloatComplex G110 = s_track[10] + s_track[10];
+magmaFloatComplex G111 = G13 * G110;
+magmaFloatComplex G112 = G13 * s_track[9];
+magmaFloatComplex G113 = G112 + G38;
+magmaFloatComplex G114 = s_track[11] + s_track[11];
+magmaFloatComplex G115 = G13 * G114;
+magmaFloatComplex G116 = G13 * s_track[10];
+magmaFloatComplex G117 = s_track[0] * s_track[0];
+magmaFloatComplex G118 = C1 * s_startCoefs[0];
+magmaFloatComplex G119 = G118 + s_targetCoefs[0];
+magmaFloatComplex G120 = G117 * G119;
+magmaFloatComplex G121 = C1 * s_startCoefs[1];
+magmaFloatComplex G122 = G121 + s_targetCoefs[1];
+magmaFloatComplex G123 = s_track[0] * G122;
+magmaFloatComplex G124 = G120 + G123;
+magmaFloatComplex G125 = s_track[1] * s_track[1];
+magmaFloatComplex G126 = C1 * s_startCoefs[2];
+magmaFloatComplex G127 = G126 + s_targetCoefs[2];
+magmaFloatComplex G128 = G125 * G127;
+magmaFloatComplex G129 = G124 + G128;
+magmaFloatComplex G130 = s_track[2] * s_track[2];
+magmaFloatComplex G131 = G130 * G127;
+magmaFloatComplex G132 = G129 + G131;
+magmaFloatComplex G133 = s_track[3] * s_track[3];
+magmaFloatComplex G134 = G133 * G127;
+magmaFloatComplex G135 = G132 + G134;
+magmaFloatComplex G136 = s_track[4] * s_track[4];
+magmaFloatComplex G137 = G136 * G127;
+magmaFloatComplex G138 = G135 + G137;
+magmaFloatComplex G139 = s_track[5] * s_track[5];
+magmaFloatComplex G140 = G139 * G127;
+magmaFloatComplex G141 = G138 + G140;
+magmaFloatComplex G142 = s_track[6] * s_track[6];
+magmaFloatComplex G143 = G142 * G127;
+magmaFloatComplex G144 = G141 + G143;
+magmaFloatComplex G145 = s_track[7] * s_track[7];
+magmaFloatComplex G146 = G145 * G127;
+magmaFloatComplex G147 = G144 + G146;
+magmaFloatComplex G148 = s_track[8] * s_track[8];
+magmaFloatComplex G149 = G148 * G127;
+magmaFloatComplex G150 = G147 + G149;
+magmaFloatComplex G151 = s_track[9] * s_track[9];
+magmaFloatComplex G152 = G151 * G127;
+magmaFloatComplex G153 = G150 + G152;
+magmaFloatComplex G154 = s_track[10] * s_track[10];
+magmaFloatComplex G155 = G154 * G127;
+magmaFloatComplex G156 = G153 + G155;
+magmaFloatComplex G157 = s_track[11] * s_track[11];
+magmaFloatComplex G158 = G157 * G127;
+magmaFloatComplex G159 = G156 + G158;
+magmaFloatComplex G160 = s_track[0] * G127;
+magmaFloatComplex G161 = s_track[1] * G160;
+magmaFloatComplex G162 = s_track[1] * G127;
+magmaFloatComplex G163 = s_track[2] * G162;
+magmaFloatComplex G164 = G161 + G163;
+magmaFloatComplex G165 = s_track[1] * G122;
+magmaFloatComplex G166 = G164 + G165;
+magmaFloatComplex G167 = s_track[2] * G127;
+magmaFloatComplex G168 = s_track[3] * G167;
+magmaFloatComplex G169 = G166 + G168;
+magmaFloatComplex G170 = s_track[3] * G127;
+magmaFloatComplex G171 = s_track[4] * G170;
+magmaFloatComplex G172 = G169 + G171;
+magmaFloatComplex G173 = s_track[4] * G127;
+magmaFloatComplex G174 = s_track[5] * G173;
+magmaFloatComplex G175 = G172 + G174;
+magmaFloatComplex G176 = s_track[5] * G127;
+magmaFloatComplex G177 = s_track[6] * G176;
+magmaFloatComplex G178 = G175 + G177;
+magmaFloatComplex G179 = s_track[6] * G127;
+magmaFloatComplex G180 = s_track[7] * G179;
+magmaFloatComplex G181 = G178 + G180;
+magmaFloatComplex G182 = s_track[7] * G127;
+magmaFloatComplex G183 = s_track[8] * G182;
+magmaFloatComplex G184 = G181 + G183;
+magmaFloatComplex G185 = s_track[8] * G127;
+magmaFloatComplex G186 = s_track[9] * G185;
+magmaFloatComplex G187 = G184 + G186;
+magmaFloatComplex G188 = s_track[9] * G127;
+magmaFloatComplex G189 = s_track[10] * G188;
+magmaFloatComplex G190 = G187 + G189;
+magmaFloatComplex G191 = s_track[10] * G127;
+magmaFloatComplex G192 = s_track[11] * G191;
+magmaFloatComplex G193 = G190 + G192;
+magmaFloatComplex G194 = s_track[2] * G160;
+magmaFloatComplex G195 = G125 * G119;
+magmaFloatComplex G196 = G194 + G195;
+magmaFloatComplex G197 = s_track[3] * G162;
+magmaFloatComplex G198 = G196 + G197;
+magmaFloatComplex G199 = s_track[4] * G167;
+magmaFloatComplex G200 = G198 + G199;
+magmaFloatComplex G201 = s_track[2] * G122;
+magmaFloatComplex G202 = G200 + G201;
+magmaFloatComplex G203 = s_track[5] * G170;
+magmaFloatComplex G204 = G202 + G203;
+magmaFloatComplex G205 = s_track[6] * G173;
+magmaFloatComplex G206 = G204 + G205;
+magmaFloatComplex G207 = s_track[7] * G176;
+magmaFloatComplex G208 = G206 + G207;
+magmaFloatComplex G209 = s_track[8] * G179;
+magmaFloatComplex G210 = G208 + G209;
+magmaFloatComplex G211 = s_track[9] * G182;
+magmaFloatComplex G212 = G210 + G211;
+magmaFloatComplex G213 = s_track[10] * G185;
+magmaFloatComplex G214 = G212 + G213;
+magmaFloatComplex G215 = s_track[11] * G188;
+magmaFloatComplex G216 = G214 + G215;
+magmaFloatComplex G217 = s_track[3] * G160;
+magmaFloatComplex G218 = G217 + G163;
+magmaFloatComplex G219 = s_track[4] * G162;
+magmaFloatComplex G220 = G218 + G219;
+magmaFloatComplex G221 = s_track[5] * G167;
+magmaFloatComplex G222 = G220 + G221;
+magmaFloatComplex G223 = s_track[6] * G170;
+magmaFloatComplex G224 = G222 + G223;
+magmaFloatComplex G225 = s_track[3] * G122;
+magmaFloatComplex G226 = G224 + G225;
+magmaFloatComplex G227 = s_track[7] * G173;
+magmaFloatComplex G228 = G226 + G227;
+magmaFloatComplex G229 = s_track[8] * G176;
+magmaFloatComplex G230 = G228 + G229;
+magmaFloatComplex G231 = s_track[9] * G179;
+magmaFloatComplex G232 = G230 + G231;
+magmaFloatComplex G233 = s_track[10] * G182;
+magmaFloatComplex G234 = G232 + G233;
+magmaFloatComplex G235 = s_track[11] * G185;
+magmaFloatComplex G236 = G234 + G235;
+magmaFloatComplex G237 = s_track[4] * G160;
+magmaFloatComplex G238 = G237 + G197;
+magmaFloatComplex G239 = s_track[5] * G162;
+magmaFloatComplex G240 = G238 + G239;
+magmaFloatComplex G241 = G130 * G119;
+magmaFloatComplex G242 = G240 + G241;
+magmaFloatComplex G243 = s_track[6] * G167;
+magmaFloatComplex G244 = G242 + G243;
+magmaFloatComplex G245 = s_track[7] * G170;
+magmaFloatComplex G246 = G244 + G245;
+magmaFloatComplex G247 = s_track[8] * G173;
+magmaFloatComplex G248 = G246 + G247;
+magmaFloatComplex G249 = s_track[4] * G122;
+magmaFloatComplex G250 = G248 + G249;
+magmaFloatComplex G251 = s_track[9] * G176;
+magmaFloatComplex G252 = G250 + G251;
+magmaFloatComplex G253 = s_track[10] * G179;
+magmaFloatComplex G254 = G252 + G253;
+magmaFloatComplex G255 = s_track[11] * G182;
+magmaFloatComplex G256 = G254 + G255;
+magmaFloatComplex G257 = s_track[5] * G160;
+magmaFloatComplex G258 = G257 + G219;
+magmaFloatComplex G259 = s_track[6] * G162;
+magmaFloatComplex G260 = G258 + G259;
+magmaFloatComplex G261 = G260 + G168;
+magmaFloatComplex G262 = s_track[7] * G167;
+magmaFloatComplex G263 = G261 + G262;
+magmaFloatComplex G264 = s_track[8] * G170;
+magmaFloatComplex G265 = G263 + G264;
+magmaFloatComplex G266 = s_track[9] * G173;
+magmaFloatComplex G267 = G265 + G266;
+magmaFloatComplex G268 = s_track[10] * G176;
+magmaFloatComplex G269 = G267 + G268;
+magmaFloatComplex G270 = s_track[5] * G122;
+magmaFloatComplex G271 = G269 + G270;
+magmaFloatComplex G272 = s_track[11] * G179;
+magmaFloatComplex G273 = G271 + G272;
+magmaFloatComplex G274 = s_track[6] * G160;
+magmaFloatComplex G275 = G274 + G239;
+magmaFloatComplex G276 = s_track[7] * G162;
+magmaFloatComplex G277 = G275 + G276;
+magmaFloatComplex G278 = G277 + G199;
+magmaFloatComplex G279 = s_track[8] * G167;
+magmaFloatComplex G280 = G278 + G279;
+magmaFloatComplex G281 = G133 * G119;
+magmaFloatComplex G282 = G280 + G281;
+magmaFloatComplex G283 = s_track[9] * G170;
+magmaFloatComplex G284 = G282 + G283;
+magmaFloatComplex G285 = s_track[10] * G173;
+magmaFloatComplex G286 = G284 + G285;
+magmaFloatComplex G287 = s_track[11] * G176;
+magmaFloatComplex G288 = G286 + G287;
+magmaFloatComplex G289 = s_track[6] * G122;
+magmaFloatComplex G290 = G288 + G289;
+magmaFloatComplex G291 = s_track[7] * G160;
+magmaFloatComplex G292 = G291 + G259;
+magmaFloatComplex G293 = s_track[8] * G162;
+magmaFloatComplex G294 = G292 + G293;
+magmaFloatComplex G295 = G294 + G221;
+magmaFloatComplex G296 = s_track[9] * G167;
+magmaFloatComplex G297 = G295 + G296;
+magmaFloatComplex G298 = G297 + G171;
+magmaFloatComplex G299 = s_track[10] * G170;
+magmaFloatComplex G300 = G298 + G299;
+magmaFloatComplex G301 = s_track[11] * G173;
+magmaFloatComplex G302 = G300 + G301;
+magmaFloatComplex G303 = s_track[7] * G122;
+magmaFloatComplex G304 = G302 + G303;
+magmaFloatComplex G305 = s_track[8] * G160;
+magmaFloatComplex G306 = G305 + G276;
+magmaFloatComplex G307 = s_track[9] * G162;
+magmaFloatComplex G308 = G306 + G307;
+magmaFloatComplex G309 = G308 + G243;
+magmaFloatComplex G310 = s_track[10] * G167;
+magmaFloatComplex G311 = G309 + G310;
+magmaFloatComplex G312 = G311 + G203;
+magmaFloatComplex G313 = s_track[11] * G170;
+magmaFloatComplex G314 = G312 + G313;
+magmaFloatComplex G315 = G136 * G119;
+magmaFloatComplex G316 = G314 + G315;
+magmaFloatComplex G317 = s_track[8] * G122;
+magmaFloatComplex G318 = G316 + G317;
+magmaFloatComplex G319 = s_track[9] * G160;
+magmaFloatComplex G320 = G319 + G293;
+magmaFloatComplex G321 = s_track[10] * G162;
+magmaFloatComplex G322 = G320 + G321;
+magmaFloatComplex G323 = G322 + G262;
+magmaFloatComplex G324 = s_track[11] * G167;
+magmaFloatComplex G325 = G323 + G324;
+magmaFloatComplex G326 = G325 + G223;
+magmaFloatComplex G327 = G326 + G174;
+magmaFloatComplex G328 = s_track[9] * G122;
+magmaFloatComplex G329 = G327 + G328;
+magmaFloatComplex G330 = s_track[10] * G160;
+magmaFloatComplex G331 = G330 + G307;
+magmaFloatComplex G332 = s_track[11] * G162;
+magmaFloatComplex G333 = G331 + G332;
+magmaFloatComplex G334 = G333 + G279;
+magmaFloatComplex G335 = G334 + G245;
+magmaFloatComplex G336 = G335 + G205;
+magmaFloatComplex G337 = G139 * G119;
+magmaFloatComplex G338 = G336 + G337;
+magmaFloatComplex G339 = s_track[10] * G122;
+magmaFloatComplex G340 = G338 + G339;
+magmaFloatComplex G341 = s_track[0] * G119;
+magmaFloatComplex G342 = G341 + G162;
+magmaFloatComplex G343 = G342 + G167;
+magmaFloatComplex G344 = G343 + G170;
+magmaFloatComplex G345 = G344 + G173;
+magmaFloatComplex G346 = G345 + G176;
+magmaFloatComplex G347 = G346 + G179;
+magmaFloatComplex G348 = G347 + G182;
+magmaFloatComplex G349 = G348 + G185;
+magmaFloatComplex G350 = G349 + G188;
+magmaFloatComplex G351 = G350 + G191;
+magmaFloatComplex G352 = s_track[11] * G127;
+magmaFloatComplex G353 = G351 + G352;
+magmaFloatComplex G354 = G353 + G122;
+
+    r_cgesvA[0] = G10;
+r_cgesvA[1] = G14;
+r_cgesvA[2] = G15;
+r_cgesvA[3] = G16;
+r_cgesvA[4] = G17;
+r_cgesvA[5] = G18;
+r_cgesvA[6] = G19;
+r_cgesvA[7] = G20;
+r_cgesvA[8] = G21;
+r_cgesvA[9] = G22;
+r_cgesvA[10] = G23;
+r_cgesvA[11] = G4;
+r_cgesvB[0] = -G159;
+
+r_cgesvA[12] = G25;
+r_cgesvA[13] = G28;
+r_cgesvA[14] = G30;
+r_cgesvA[15] = G31;
+r_cgesvA[16] = G32;
+r_cgesvA[17] = G33;
+r_cgesvA[18] = G34;
+r_cgesvA[19] = G35;
+r_cgesvA[20] = G36;
+r_cgesvA[21] = G37;
+r_cgesvA[22] = G39;
+r_cgesvA[23] = G13;
+r_cgesvB[1] = -G193;
+
+r_cgesvA[24] = G41;
+r_cgesvA[25] = G43;
+r_cgesvA[26] = G45;
+r_cgesvA[27] = G46;
+r_cgesvA[28] = G48;
+r_cgesvA[29] = G49;
+r_cgesvA[30] = G50;
+r_cgesvA[31] = G51;
+r_cgesvA[32] = G52;
+r_cgesvA[33] = G53;
+r_cgesvA[34] = G21;
+r_cgesvA[35] = G13;
+r_cgesvB[2] = -G216;
+
+r_cgesvA[36] = G55;
+r_cgesvA[37] = G57;
+r_cgesvA[38] = G46;
+r_cgesvA[39] = G59;
+r_cgesvA[40] = G60;
+r_cgesvA[41] = G61;
+r_cgesvA[42] = G63;
+r_cgesvA[43] = G64;
+r_cgesvA[44] = G65;
+r_cgesvA[45] = G19;
+r_cgesvA[46] = G20;
+r_cgesvA[47] = G13;
+r_cgesvB[3] = -G236;
+
+r_cgesvA[48] = G67;
+r_cgesvA[49] = G69;
+r_cgesvA[50] = G70;
+r_cgesvA[51] = G60;
+r_cgesvA[52] = G72;
+r_cgesvA[53] = G73;
+r_cgesvA[54] = G74;
+r_cgesvA[55] = G75;
+r_cgesvA[56] = G76;
+r_cgesvA[57] = G18;
+r_cgesvA[58] = G19;
+r_cgesvA[59] = G13;
+r_cgesvB[4] = -G256;
+
+r_cgesvA[60] = G78;
+r_cgesvA[61] = G80;
+r_cgesvA[62] = G81;
+r_cgesvA[63] = G61;
+r_cgesvA[64] = G73;
+r_cgesvA[65] = G83;
+r_cgesvA[66] = G84;
+r_cgesvA[67] = G56;
+r_cgesvA[68] = G68;
+r_cgesvA[69] = G79;
+r_cgesvA[70] = G85;
+r_cgesvA[71] = G13;
+r_cgesvB[5] = -G273;
+
+r_cgesvA[72] = G87;
+r_cgesvA[73] = G89;
+r_cgesvA[74] = G90;
+r_cgesvA[75] = G91;
+r_cgesvA[76] = G74;
+r_cgesvA[77] = G84;
+r_cgesvA[78] = G92;
+r_cgesvA[79] = G42;
+r_cgesvA[80] = G56;
+r_cgesvA[81] = G68;
+r_cgesvA[82] = G79;
+r_cgesvA[83] = G13;
+r_cgesvB[6] = -G290;
+
+r_cgesvA[84] = G94;
+r_cgesvA[85] = G96;
+r_cgesvA[86] = G97;
+r_cgesvA[87] = G98;
+r_cgesvA[88] = G75;
+r_cgesvA[89] = G56;
+r_cgesvA[90] = G42;
+r_cgesvA[91] = G92;
+r_cgesvA[92] = G42;
+r_cgesvA[93] = G56;
+r_cgesvA[94] = G68;
+r_cgesvA[95] = G13;
+r_cgesvB[7] = -G304;
+
+r_cgesvA[96] = G100;
+r_cgesvA[97] = G102;
+r_cgesvA[98] = G103;
+r_cgesvA[99] = G104;
+r_cgesvA[100] = G79;
+r_cgesvA[101] = G68;
+r_cgesvA[102] = G56;
+r_cgesvA[103] = G42;
+r_cgesvA[104] = G92;
+r_cgesvA[105] = G42;
+r_cgesvA[106] = G56;
+r_cgesvA[107] = G13;
+r_cgesvB[8] = -G318;
+
+r_cgesvA[108] = G106;
+r_cgesvA[109] = G108;
+r_cgesvA[110] = G109;
+r_cgesvA[111] = G95;
+r_cgesvA[112] = G88;
+r_cgesvA[113] = G79;
+r_cgesvA[114] = G68;
+r_cgesvA[115] = G56;
+r_cgesvA[116] = G42;
+r_cgesvA[117] = G92;
+r_cgesvA[118] = G42;
+r_cgesvA[119] = G13;
+r_cgesvB[9] = -G329;
+
+r_cgesvA[120] = G111;
+r_cgesvA[121] = G113;
+r_cgesvA[122] = G107;
+r_cgesvA[123] = G101;
+r_cgesvA[124] = G95;
+r_cgesvA[125] = G88;
+r_cgesvA[126] = G79;
+r_cgesvA[127] = G68;
+r_cgesvA[128] = G56;
+r_cgesvA[129] = G42;
+r_cgesvA[130] = G92;
+r_cgesvA[131] = G13;
+r_cgesvB[10] = -G340;
+
+r_cgesvA[132] = G115;
+r_cgesvA[133] = G116;
+r_cgesvA[134] = G112;
+r_cgesvA[135] = G107;
+r_cgesvA[136] = G101;
+r_cgesvA[137] = G95;
+r_cgesvA[138] = G88;
+r_cgesvA[139] = G79;
+r_cgesvA[140] = G68;
+r_cgesvA[141] = G56;
+r_cgesvA[142] = G42;
+r_cgesvA[143] = G13;
+r_cgesvB[11] = -G354;
+
+  }
+}
+
+#endif
