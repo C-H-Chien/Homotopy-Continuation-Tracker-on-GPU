@@ -49,11 +49,9 @@ cd bin
 ./magmaHC-main <input-argument> <command>
 ```
 
-# 4. Reference
-This code is made by the work proposed in the following paper:
+# 4. How to use the code to run a new minimal problem
+This part will be updated soon.
 
-Chiang-Heng Chien, Hongyi Fan, Elias Tsigaridas, Ahmad Abdelfattah,
-Stanimire Tomov and Benjamin Kimia, "Parallel Path Tracking for Ho-
-motopy Continuation using GPU," submitted to International Symposium
-on Symbolic and Algebraic Computation (ISSAC’22), 2022.
+# 5. Reference
+The paper that uses this code will be released as the reference once it is accepted for publication.
 
