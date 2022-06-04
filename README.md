@@ -1,4 +1,9 @@
-Path Traking for Homotopy Continuation in GPU for Benchmark Polynomial Problems
+GPU-HC: Path Traking for Homotopy Continuation in GPU for Benchmark Polynomial Problems
+
+# 1. Contents
+This repository primarily contains two folders:
+``GPU-HC'': GPU implementation of both straight-line and parameter homotopy continuation algorithms
+``auto-gen-tools'': software tools used to automatically generate necessary data and code for GPU-HC to solve new problems
 
 # 1. Dependencies:
 (1) CMake 3.14 or higher
