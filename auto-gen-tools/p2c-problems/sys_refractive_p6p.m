@@ -1,0 +1,16 @@
+function [f, numOfVars] = sys_refractive_p6p()
+    % -- define systems --
+    % -- variables --
+    syms x1 x2 x3 x4 x5 x6
+    % -- parameters --
+    syms c1 c2 c3 c4 c5 c6 c7 c8 c9 c10 c11 c12 c13 c14 c15 c16 c17 c18 c19 c20 c21 c22 c23 c24 c25 c26 c27 c28 c29 c30 c31 c32 c33 c34 c35
+    
+    numOfVars = 6;
+
+    f(1) = -x1*x1*x4*c2 - x1*x1*x5*c1 + x1*x1*c1*c20 + x1*x1*c2*c19 + 2*x1*x2*x4*c1 - 2*x1*x2*x5*c2 - 2*x1*x2*c1*c19 + 2*x1*x2*c2*c20 - 2*x1*x3*x5*x6*c3 + 2*x1*x3*x6*c3*c20 + 2*x1*x4*x6*c3 - 2*x1*x6*c3*c19 + x2*x2*x4*c2 + x2*x2*x5*c1 - x2*x2*c1*c20 - x2*x2*c2*c19 + 2*x2*x3*x4*x6*c3 - 2*x2*x3*x6*c3*c19 + 2*x2*x5*x6*c3 - 2*x2*x6*c3*c20 - x3*x3*x4*c2 + x3*x3*x5*c1 - x3*x3*c1*c20 + x3*x3*c2*c19 - 2*x3*x4*c1 - 2*x3*x5*c2 + 2*x3*c1*c19 + 2*x3*c2*c20 + x4*c2 - x5*c1 +c1*c20 -c2*c19;
+    f(2) = -x1*x1*x4*c5 - x1*x1*x5*c4 + x1*x1*c4*c23 + x1*x1*c5*c22 + 2*x1*x2*x4*c4 - 2*x1*x2*x5*c5 - 2*x1*x2*c4*c22 + 2*x1*x2*c5*c23 - 2*x1*x3*x5*x6*c6 + 2*x1*x3*x6*c6*c23 + 2*x1*x4*x6*c6 - 2*x1*x6*c6*c22 + x2*x2*x4*c5 + x2*x2*x5*c4 - x2*x2*c4*c23 - x2*x2*c5*c22 + 2*x2*x3*x4*x6*c6 - 2*x2*x3*x6*c6*c22 + 2*x2*x5*x6*c6 - 2*x2*x6*c6*c23 - x3*x3*x4*c5 + x3*x3*x5*c4 - x3*x3*c4*c23 + x3*x3*c5*c22 - 2*x3*x4*c4 - 2*x3*x5*c5 + 2*x3*c4*c22 + 2*x3*c5*c23 + x4*c5 - x5*c4 +c4*c23 -c5*c22;
+    f(3) = -x1*x1*x4*c8 - x1*x1*x5*c7 + x1*x1*c7*c26 + x1*x1*c8*c25 + 2*x1*x2*x4*c7 - 2*x1*x2*x5*c8 - 2*x1*x2*c7*c25 + 2*x1*x2*c8*c26 - 2*x1*x3*x5*x6*c9 + 2*x1*x3*x6*c9*c26 + 2*x1*x4*x6*c9 - 2*x1*x6*c9*c25 + x2*x2*x4*c8 + x2*x2*x5*c7 - x2*x2*c7*c26 - x2*x2*c8*c25 + 2*x2*x3*x4*x6*c9 - 2*x2*x3*x6*c9*c25 + 2*x2*x5*x6*c9 - 2*x2*x6*c9*c26 - x3*x3*x4*c8 + x3*x3*x5*c7 - x3*x3*c7*c26 + x3*x3*c8*c25 - 2*x3*x4*c7 - 2*x3*x5*c8 + 2*x3*c7*c25 + 2*x3*c8*c26 + x4*c8 - x5*c7 +c7*c26 -c8*c25;
+    f(4) = -x1*x1*x4*c11 - x1*x1*x5*c10 + x1*x1*c10*c29 + x1*x1*c11*c28 + 2*x1*x2*x4*c10 - 2*x1*x2*x5*c11 - 2*x1*x2*c10*c28 + 2*x1*x2*c11*c29 - 2*x1*x3*x5*x6*c12 + 2*x1*x3*x6*c12*c29 + 2*x1*x4*x6*c12 - 2*x1*x6*c12*c28 + x2*x2*x4*c11 + x2*x2*x5*c10 - x2*x2*c10*c29 - x2*x2*c11*c28 + 2*x2*x3*x4*x6*c12 - 2*x2*x3*x6*c12*c28 + 2*x2*x5*x6*c12 - 2*x2*x6*c12*c29 - x3*x3*x4*c11 + x3*x3*x5*c10 - x3*x3*c10*c29 + x3*x3*c11*c28 - 2*x3*x4*c10 - 2*x3*x5*c11 + 2*x3*c10*c28 + 2*x3*c11*c29 + x4*c11 - x5*c10 +c10*c29 -c11*c28;
+    f(5) = -x1*x1*x4*c14 - x1*x1*x5*c13 + x1*x1*c13*c32 + x1*x1*c14*c31 + 2*x1*x2*x4*c13 - 2*x1*x2*x5*c14 - 2*x1*x2*c13*c31 + 2*x1*x2*c14*c32 - 2*x1*x3*x5*x6*c15 + 2*x1*x3*x6*c15*c32 + 2*x1*x4*x6*c15 - 2*x1*x6*c15*c31 + x2*x2*x4*c14 + x2*x2*x5*c13 - x2*x2*c13*c32 - x2*x2*c14*c31 + 2*x2*x3*x4*x6*c15 - 2*x2*x3*x6*c15*c31 + 2*x2*x5*x6*c15 - 2*x2*x6*c15*c32 - x3*x3*x4*c14 + x3*x3*x5*c13 - x3*x3*c13*c32 + x3*x3*c14*c31 - 2*x3*x4*c13 - 2*x3*x5*c14 + 2*x3*c13*c31 + 2*x3*c14*c32 + x4*c14 - x5*c13 +c13*c32 -c14*c31;
+    f(6) = -x1*x1*x4*c17 - x1*x1*x5*c16 + x1*x1*c16*c35 + x1*x1*c17*c34 + 2*x1*x2*x4*c16 - 2*x1*x2*x5*c17 - 2*x1*x2*c16*c34 + 2*x1*x2*c17*c35 - 2*x1*x3*x5*x6*c18 + 2*x1*x3*x6*c18*c35 + 2*x1*x4*x6*c18 - 2*x1*x6*c18*c34 + x2*x2*x4*c17 + x2*x2*x5*c16 - x2*x2*c16*c35 - x2*x2*c17*c34 + 2*x2*x3*x4*x6*c18 - 2*x2*x3*x6*c18*c34 + 2*x2*x5*x6*c18 - 2*x2*x6*c18*c35 - x3*x3*x4*c17 + x3*x3*x5*c16 - x3*x3*c16*c35 + x3*x3*c17*c34 - 2*x3*x4*c16 - 2*x3*x5*c17 + 2*x3*c16*c34 + 2*x3*c17*c35 + x4*c17 - x5*c16 +c16*c35 -c17*c34;
+end
