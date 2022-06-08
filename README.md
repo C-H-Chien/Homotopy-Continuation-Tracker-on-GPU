@@ -39,19 +39,19 @@ cd bin
 
 # 5. How to use software tools and edit the code to solve a new polynomial problem
 First, create a folder of your problem-name where all data can be placed. All scripts and materials mentioned below are given under the ``polynoamil-data-preparations`` folder. <br />
-**straight-line HC** <br />
-In this instruction, we take alea6 as an example. <br />
-**STEP 1: PREPARE TARGET SYSTEM**
+**STAIGHT-LINE HC** <br /> <br />
+In this instruction, we take alea6 as an example. <br /><br />
+**STEP 1: PREPARE TARGET SYSTEM**<br />
 (1) Once you have the formulation of the polynomial problem you need to solve (i.e., target system), create a matlab script of the system. See ``sys_alea6.m`` under ``auto-gen-tools/polynomial-problems/``.
 (2) Edit the problem name, directory names, etc. in ``poly_coeffs_rep.m`` and run the script in Matlab. Specify the directory as the problem folder you created, and you will see four output files: <br />
 ``rep_problem.txt``: the taget system where coefficients are replaced by variables *a_i*. Same coefficients will be replaced by the same variables. <br />
 ``target_coeffs.txt``: the target coefficients are represented by complex numbers. Each row is a coefficient, while the first and second columns are real and imaginary numbers, respecitvely. <br />
-``rep_coeffs.txt``: the target coefficients associated with the replaced variables *a_i*. This is provided for reference but might not be necessary used. <br />
-**STEP 2: PREPARE START SYSTEM**
+``rep_coeffs.txt``: the target coefficients associated with the replaced variables *a_i*. This is provided for reference but might not be necessary used. <br /><br />
+**STEP 2: PREPARE START SYSTEM**<br />
 (1) Because the start system has to have the same formate as the target system, we can use the target problem representation in ``rep_problem.txt`` to create a start system and generate start solutions. To do so, edit variables, start coefficients, start system formulation from the file ``jl_start_sols.jl`` under the ``polynomial-data-preparations``. <br />
 (2) Use julia to run ``jl_start_sols.jl``. In the end, the start solutions will be put in the ``julia-start-sols-raw`` file which Julia writes to.<br />
-(3) To reformate the start solutions Julia created, use ``reformateStartSolsFromJulia.m`` matlab script. Edit the input/output file directory and a file named ``start-sols.txtx`` will be generated.<br />
-**STEP 3: GENERATE SYMBOLIC EXPRESSIONS OF JACOBIANS**
+(3) To reformate the start solutions Julia created, use ``reformateStartSolsFromJulia.m`` matlab script. Edit the input/output file directory and a file named ``start-sols.txtx`` will be generated.<br /><br />
+**STEP 3: GENERATE SYMBOLIC EXPRESSIONS OF JACOBIANS**<br />
 This part will be updated soon.
 
 # 6. Reference
