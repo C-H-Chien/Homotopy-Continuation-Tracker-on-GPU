@@ -56,7 +56,7 @@ This part will be updated soon.
 
 # 6. Reference
 The straigh-line HC was proposed in the paper <br />
-``Chien, Chiang-Heng, Hongyi Fan, Ahmad Abdelfattah, Elias Tsigaridas, Stanimire Tomov, and Benjamin Kimia. "GPU-Based Homotopy Continuation for Minimal Problems in Computer Vision." arXiv preprint arXiv:2112.03444 (2021).`` <br />
-and the parameter HC was proposed in the paper submitted to ISSAC 2022 software presentation. The citation will be updated as the paper is finally accepted.
-
+``Chien, Chiang-Heng, Hongyi Fan, Ahmad Abdelfattah, Elias Tsigaridas, Stanimire Tomov, and Benjamin Kimia. "GPU-Based Homotopy Continuation for Minimal Problems in Computer Vision." In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 15765-15776. 2022.`` <br />
+and the parameter HC was proposed in the paper <br />
+``Chien, Chiang-Heng, Hongyi Fan, Ahmad Abdelfattah, Elias Tsigaridas, Stanimire Tomov, and Benjamin Kimia. "Parallel Path Tracking for Homotopy Continuation using GPU." In Proceedings of the International Symposium on Symbolic and Algebraic Computation. 2022.``
 
