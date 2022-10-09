@@ -1,4 +1,4 @@
-GPU-HC: Path Traking for Homotopy Continuation in GPU for Benchmark Polynomial Problems
+# GPU-HC: Path Traking for Homotopy Continuation in GPU for Benchmark Polynomial Problems
 
 # 1. Contents
 This repository primarily contains three folders: <br />
@@ -53,7 +53,7 @@ In this instruction, we take alea6 as an example. <br /><br />
 **STEP 2: PREPARE YOUR START SYSTEM**<br />
 **(1) Create your start system:** The start system has to have the same formulation as the target system. <br />
 **(2) Find start solutions and start parameters:** Use Julia's monodromy solver to find the start solutions and start parameters of your start system. Please refer to ``/example-polynomial-data/julia_monodromySolver.jl`` for more details. <br />
-**(3) Write to files:** After Julia's monodromy solver is done, write your start solutions into a file named ``julia-start-sols-raw``. For start coefficients, write to a file named ``start_coeffs.txt``. Examples are provided under ``/example-polynomial-data/alea6/``.
+**(3) Write to files:** After Julia's monodromy solver is done, write your start solutions into a file named ``julia-start-sols-raw``. For start coefficients, write to a file named ``start_coeffs.txt``. Examples are provided under ``/example-polynomial-data/alea6/``. <br />
 **(4) Reformation:** Use ``/auto-gen-tools/reformateStartSolsFromJulia.m`` matlab script to reformat start solutions. Edit the input/output file directory and the output file named ``start-sols.txt`` will be generated. For start coefficients, manually reformat them as they appear in the example. <br /><br />
 
 **STEP 3: GENERATE SYMBOLIC EXPRESSIONS OF JACOBIANS**<br />
