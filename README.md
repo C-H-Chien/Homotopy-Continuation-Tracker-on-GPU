@@ -22,7 +22,8 @@ This repository primarily contains three folders: <br />
 mkdir build && cd build
 ```
 (2) make sure to change routes in CMakeFiles according to your local machine. See README.md of either straight-line or parameter HC. <br />
-(3) create a make file and compile the entire code (there are a lot of problems run in this repo. It may be time consuming if all GPU kernels are compiled. To save your time, feel free to comment out the kernel in the CMakeLists.txt under ``/GPU-HC/straight-line-HC/magmaHC/`` or ``/GPU-HC/parameter-HC/magmaHC/``)
+(3) create a make file and compile the entire code <br />
+(There are a lot of problems run in this repo. It may be time consuming if all GPU kernels are compiled. To save your time, feel free to comment out the kernel in the CMakeLists.txt under ``/GPU-HC/straight-line-HC/magmaHC/`` or ``/GPU-HC/parameter-HC/magmaHC/``)
 ```bash
 cmake .. && make -j
 ```
@@ -58,11 +59,17 @@ In this instruction, we take alea6 as an example. <br /><br />
 
 **STEP 3: GENERATE SYMBOLIC EXPRESSIONS OF JACOBIANS**<br />
 **(1) Generate raw format from M2:** Use Macaulay2 to generate the C code of the symbolic Jacobian evaluations. An example is provided in ``/example-polynomial-data/alea6/M2-Jacobian-Evluation-Ccode``. <br />
-**(2) Copy M2 generated C code to files:** Copy the generated C code to files. TODO 
+**(2) Copy M2 generated C code to files:** Copy the generated C code to files (Please refer to the example files under ``/example-polynomial-data/alea6/``): <br /> 
+``M2-HxHt-only-G-raw``: Only the G's of the HxHt symbolic evaluations. <br />
+``M2-HxHt-only-y-raw``: Only the y's of the HxHt symbolic evaluations. <br />
+``M2-HxH-only-G-raw``: Only the G's of the HxH symbolic evaluations. <br />
+``M2-HxH-only-y-raw``: Only the y's of the HxH symbolic evaluations. <br />
+**(3) Reformations:** TODO
+
 
 # 6. Important Update Notice (Oct. 9th 2022)
 (1) In the published papers, start solutions are generated using Julia's homotopy continuation package. We found out that among all the generated start solutions, some of them are almost identical, creating redundant HC paths. Therefore, we have made a change on this where Julia's monodromy solver is used to generate start solutons. An example Julia script is given in ``/example-polynomial-data/``. <br />
-(2) Straight-line HC CUDA kernel code have been optimized a bit. The timings for each problem could be a bit different from what we published in the papers.
+(2) Straight-line HC CUDA kernel code have been optimized a bit. The timings for each problem could be a bit different from what we published in the papers. <br />
 (3) We have discovered some numerical instable issues in the parameter HC. We are now improving this and will update the repo as soon as possible.
 
 # 7. Reference
