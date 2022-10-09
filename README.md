@@ -45,11 +45,11 @@ First, create a folder of your problem-name where all data can be placed. All sc
 In this instruction, we take alea6 as an example. <br /><br />
 
 **STEP 1: PREPARE YOUR TARGET SYSTEM**<br />
-(1) Once you have the formulation of the polynomial problem you need to solve (i.e., target system), create a matlab script of the system. See ``sys_alea6.m`` under ``auto-gen-tools/polynomial-problems/``. <br />
-(2) Edit the problem name, directory names, etc. in ``poly_coeffs_rep.m`` and run the script in Matlab. Specify the directory as the problem folder you created, and you will see three output files: <br />
+**(1) Create the problem:** create a matlab script of your target system, see ``/auto-gen-tools/polynomial-problems/sys_alea6.m`` for an example. <br />
+**(2) Change symbols:** Edit your problem name, directory names, etc. in ``/auto-gen-tools/polynomial-problems/poly_coeffs_rep.m`` and run the script in Matlab. Specify the directory as the problem folder you created, and you will see three output files: <br />
 ``rep_problem.txt``: the taget system where coefficients are replaced by variables *a_i*. Same coefficients will be replaced by the same variables. <br />
 ``target_coeffs.txt``: the target coefficients are represented by complex numbers. Each row is a coefficient, while the first and second columns are real and imaginary numbers, respecitvely. <br />
-``rep_coeffs.txt``: the target coefficients associated with the replaced variables *a_i*. This is provided for reference but might not be necessary used. <br /><br />
+``rep_coeffs.txt``: the target coefficients associated with the replaced variables *a_i*. This is provided for reference but might not be necessarily used. <br /><br />
 
 **STEP 2: PREPARE YOUR START SYSTEM**<br />
 **(1) Create your start system:** The start system has to have the same formulation as the target system. <br />
@@ -64,7 +64,10 @@ In this instruction, we take alea6 as an example. <br /><br />
 ``M2-HxHt-only-y-raw``: Only the y's of the HxHt symbolic evaluations. <br />
 ``M2-HxH-only-G-raw``: Only the G's of the HxH symbolic evaluations. <br />
 ``M2-HxH-only-y-raw``: Only the y's of the HxH symbolic evaluations. <br />
-**(3) Reformations:** TODO
+**(3) Reformations:** Use ``/auto-gen-tools/reformatEval.m`` to generate files that change the Macaulay2 C code of ``M2-HxHt-only-G-raw`` and ``M2-HxH-only-G-raw`` into MAGMA data type so that we can use them directly in the c++ code. Be sure to remove the constants ``C0 = ...``, ``C1 = ...``, etc in ``M2-HxHt-only-G-raw`` and ``M2-HxH-only-G-raw``. Likewise, use ``/auto-gen-tools/reformat_y.m`` to generate files that change the Macaulay2 C code of ``M2-HxHt-only-y-raw`` and ``M2-HxH-only-y-raw``.
+
+**STEP 4: Make a CPU HC code (This is optional if you do not need a CPU version of HC)**
+**(1) **
 
 
 # 6. Important Update Notice (Oct. 9th 2022)
