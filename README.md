@@ -57,7 +57,7 @@ In this instruction, we take alea6 as an example. <br /><br />
 **(4) Reformation:** Use ``/auto-gen-tools/reformateStartSolsFromJulia.m`` matlab script to reformat start solutions. Edit the input/output file directory and the output file named ``start-sols.txt`` will be generated. For start coefficients, manually reformat them as they appear in the example. <br /><br />
 
 **STEP 3: GENERATE SYMBOLIC EXPRESSIONS OF JACOBIANS**<br />
-**(1) Generate raw format from M2:** Use Macaulay2 to generate the C code of the symbolic Jacobian evaluations. An example is provided in ``/example-polynomial-data/alea6/M2-Jacobian-Evluation-Ccode``.
+**(1) Generate raw format from M2:** Use Macaulay2 to generate the C code of the symbolic Jacobian evaluations. An example is provided in ``/example-polynomial-data/alea6/M2-Jacobian-Evluation-Ccode``. <br />
 **(2) Copy M2 generated C code to files:** Copy the generated C code to files. TODO 
 
 # 6. Important Update Notice (Oct. 9th 2022)
