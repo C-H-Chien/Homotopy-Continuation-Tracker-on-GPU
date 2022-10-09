@@ -1,0 +1,47 @@
+####################################################################################
+#> Code Description
+#    This code generates C-type code of polynomial symbolic Jacobian evaluations 
+#    from Macaulay2. The Jacobians include \partial H / \partial x (Hx) and 
+#    \partial H / \partial t (Ht), where H is the homotopy, x is the variables, 
+#    and t is the homotopy variable.
+#
+#> How to run this code
+#    1. In terminal, launch Macaulay2 (typically, type M2)
+#    2. Simply type the code one by one directly in terminal.
+#
+#> (c) LEMS, Brown University
+#> Chiang-Heng Chien (chiang-heng_chien@brown.edu)
+#> First appeared: Jun. 8th, 2022
+#> Polished:       Oct. 9th, 2022
+####################################################################################
+
+#> import necessary packages
+needsPackage "SLPexpressions"
+needsPackage "MonodromySolver"
+
+#> declare variables and parameters
+variables = declareVariable \ {x1, x2, x3, x4, x5, x6}
+params = declareVariable \ {a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23, a24, a25, a26, a27, a28, a29 }
+
+#> define polynomials
+f1 = a1*x1^2*x4 + a2*x2*x4*x5 + a3*x2*x4*x6 + a4*x4*x6 + a5*x5*x6
+f2 = a6*x1*x2*x6 + a7*x2^2*x5 + a8*x2*x3*x5 + a9*x2*x5^2 + a10*x3^2 + a11*x4*x5*x6
+f3 = a12*x1^2*x4 + a13*x1^2 + a14*x1*x4*x6 + a13*x2^2*x5 + a3*x2*x4^2 + a15*x6^3
+f4 = a16*x1*x4^2 + a14*x2*x4 + a17*x2*x5^2 + a18*x3*x4 + a19*x3*x5*x6 + a20*x4*x5^2
+f5 = a21*x1^2*x3 + a22*x1*x2*x3 + a23*x1*x4*x5 + a24*x1*x4 + a25*x2^2*x5
+f6 = a26*x1*x3*x4 + a19*x3^2*x4 + a27*x3^2*x6 + a28*x3 + a29*x4^3 + a25*x5
+
+#> create a system
+GS = gateSystem( matrix{params}, matrix{variables}, transpose matrix{ {f1, f2, f3, f4, f5, f6}} )
+Vars = flatten entries vars GS
+PH = parametricSegmentHomotopy GS
+
+#> Generate the Jacobian evaluation C code of Hx
+h=cCode(
+    transpose(PH.GateHomotopy#"Hx"|PH.GateHomotopy#"Ht"),
+    gateMatrix{Vars|{PH.GateHomotopy#"T"}|flatten entries PH#Parameters}
+    )
+
+#> Generate the Jacobian evaluation C code of Ht
+h=cCode(transpose(PH.GateHomotopy#"Hx"|PH.GateHomotopy#"H"),gateMatrix{Vars|{PH.GateHomotopy#"T"}|flatten entries PH#Parameters})
+

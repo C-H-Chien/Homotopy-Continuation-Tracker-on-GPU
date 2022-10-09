@@ -1,15 +1,19 @@
-#############################################################################
+####################################################################################
 #> Code Description
 #    This code generates solutions from a set of polynomials using Julia's 
 #    monodromy solver. It takes alea6 benchmark problem as an example.
 #    At the end of the code, it is optional for the user to write the start 
 #    solutions to a file in a user-defined directory.
 #
+#> How to run this code
+#    1. In terminal, launch Julia
+#    2. use the command $ include("/path/to/this/code/julia_monodromySolver.jl");
+#
 #> (c) LEMS, Brown University
 #> Chiang-Heng Chien (chiang-heng_chien@brown.edu)
 #> First appeared: Jun. 8th, 2022
-#> Polished:       Oct. 7th, 2022
-#############################################################################
+#> Polished:       Oct. 9th, 2022
+####################################################################################
 
 using Base
 using HomotopyContinuation
