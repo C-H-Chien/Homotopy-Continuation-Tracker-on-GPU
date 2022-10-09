@@ -3,7 +3,8 @@
 #    This code generates C-type code of polynomial symbolic Jacobian evaluations 
 #    from Macaulay2. The Jacobians include \partial H / \partial x (Hx) and 
 #    \partial H / \partial t (Ht), where H is the homotopy, x is the variables, 
-#    and t is the homotopy variable.
+#    and t is the homotopy variable. Macaulay2 generates Hx and Ht together, as well
+#    as Hx and H together.
 #
 #> How to run this code
 #    1. In terminal, launch Macaulay2 (typically, type M2)
@@ -36,12 +37,12 @@ GS = gateSystem( matrix{params}, matrix{variables}, transpose matrix{ {f1, f2, f
 Vars = flatten entries vars GS
 PH = parametricSegmentHomotopy GS
 
-#> Generate the Jacobian evaluation C code of Hx
+#> Generate the Jacobian evaluation C code of Hx and Ht (both are combined together)
 h=cCode(
     transpose(PH.GateHomotopy#"Hx"|PH.GateHomotopy#"Ht"),
     gateMatrix{Vars|{PH.GateHomotopy#"T"}|flatten entries PH#Parameters}
     )
 
-#> Generate the Jacobian evaluation C code of Ht
+#> Generate the Jacobian evaluation C code of Hx and H (both are combined together)
 h=cCode(transpose(PH.GateHomotopy#"Hx"|PH.GateHomotopy#"H"),gateMatrix{Vars|{PH.GateHomotopy#"T"}|flatten entries PH#Parameters})
 
