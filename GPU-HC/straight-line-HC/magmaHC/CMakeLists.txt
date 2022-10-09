@@ -25,14 +25,9 @@ set (control_sources
   gpu-kernels/kernel_HC_Solver_katsura13.cu
   gpu-kernels/kernel_HC_Solver_katsura14.cu
   gpu-kernels/kernel_HC_Solver_katsura15.cu
-  gpu-kernels/kernel_HC_Solver_katsura20.cu
-  gpu-kernels/kernel_HC_Solver_katsura21.cu
   gpu-kernels/kernel_HC_Solver_game6two.cu
   gpu-kernels/kernel_HC_Solver_game7two.cu
   #gpu-kernels/kernel_HC_Solver_pole28sys.cu
-  gpu-kernels/kernel_HC_Solver_katsura6_extractClkData.cu
-  gpu-kernels/kernel_HC_Solver_cyclic8_extractClkData.cu
-  gpu-kernels/kernel_HC_Solver_game7two_extractClkData.cu
   
   # -- device function --
   dev-cgesv-batched-small.cuh
@@ -55,8 +50,6 @@ set (control_sources
   gpu-idx-eval/dev-eval-indxing-katsura13.cuh
   gpu-idx-eval/dev-eval-indxing-katsura14.cuh
   gpu-idx-eval/dev-eval-indxing-katsura15.cuh
-  gpu-idx-eval/dev-eval-indxing-katsura20.cuh
-  gpu-idx-eval/dev-eval-indxing-katsura21.cuh
   #gpu-idx-eval/dev-eval-indxing-pole28sys.cuh
   
   # -- CPU-HC --
@@ -78,8 +71,6 @@ set (control_sources
   cpu-compute/cpu-hc-solver/cpu-hc-solver-katsura13.cpp
   cpu-compute/cpu-hc-solver/cpu-hc-solver-katsura14.cpp
   cpu-compute/cpu-hc-solver/cpu-hc-solver-katsura15.cpp
-  cpu-compute/cpu-hc-solver/cpu-hc-solver-katsura20.cpp
-  cpu-compute/cpu-hc-solver/cpu-hc-solver-katsura21.cpp
   cpu-compute/cpu-hc-solver/cpu-hc-solver-game6two.cpp
   cpu-compute/cpu-hc-solver/cpu-hc-solver-game7two.cpp
   cpu-compute/cpu-hc-solver/cpu-hc-solver-pole28sys.cpp
@@ -100,8 +91,6 @@ set (control_sources
   cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-katsura13.h
   cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-katsura14.h
   cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-katsura15.h
-  cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-katsura20.h
-  cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-katsura21.h
   cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-game6two.h
   cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-game7two.h
   cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-pole28sys.h
@@ -122,8 +111,6 @@ set (control_sources
   cpu-compute/cpu-eval-HxH/cpu-eval-HxH-katsura13.h
   cpu-compute/cpu-eval-HxH/cpu-eval-HxH-katsura14.h
   cpu-compute/cpu-eval-HxH/cpu-eval-HxH-katsura15.h
-  cpu-compute/cpu-eval-HxH/cpu-eval-HxH-katsura20.h
-  cpu-compute/cpu-eval-HxH/cpu-eval-HxH-katsura21.h
   cpu-compute/cpu-eval-HxH/cpu-eval-HxH-game6two.h
   cpu-compute/cpu-eval-HxH/cpu-eval-HxH-game7two.h
   cpu-compute/cpu-eval-HxH/cpu-eval-HxH-pole28sys.h
