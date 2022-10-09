@@ -1,11 +1,10 @@
-# GPU-HC: Path Traking for Homotopy Continuation in GPU for Benchmark Polynomial Problems
+# GPU-HC: Homotopy Continuation Path Tracking in GPU
 
 # 1. Contents
 This repository primarily contains three folders: <br />
 ``GPU-HC``: GPU implementation of both straight-line and parameter homotopy continuation algorithms <br />
 ``auto-gen-tools``: software tools used to automatically generate necessary data and code for GPU-HC to solve new problems <br />
-``polynomial-problems``: polynomial problems solved by our GPU-HC
-``polynomial-data-preparations``: example data files used for the software tools
+``example-polynomial-data``: polynomial problems solved by our GPU-HC <br />
 
 # 2. Dependencies:
 (1) CMake 3.14 or higher <br />
@@ -23,10 +22,11 @@ This repository primarily contains three folders: <br />
 mkdir build && cd build
 ```
 (2) make sure to change routes in CMakeFiles according to your local machine. See README.md of either straight-line or parameter HC. <br />
-(3) create a make file and compile the entire code
+(3) create a make file and compile the entire code (there are a lot of problems run in this repo. It may be time consuming if all GPU kernels are compiled. To save your time, feel free to comment out the kernel in the CMakeLists.txt under ``/GPU-HC/straight-line-HC/magmaHC/`` or ``/GPU-HC/parameter-HC/magmaHC/``)
 ```bash
 cmake .. && make -j
 ```
+
 
 # 4. How to run the execution file after successful compilation
 (1) enter the bin foler under build folder of the repo dorectory
