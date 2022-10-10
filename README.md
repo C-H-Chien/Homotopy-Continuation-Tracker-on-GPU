@@ -64,13 +64,13 @@ In this instruction, we take alea6 as an example. <br /><br />
 ``M2-HxHt-only-y-raw``: Only the y's of the HxHt symbolic evaluations. <br />
 ``M2-HxH-only-G-raw``: Only the G's of the HxH symbolic evaluations. <br />
 ``M2-HxH-only-y-raw``: Only the y's of the HxH symbolic evaluations. <br />
-**(3) Reformations:** Use ``/auto-gen-tools/reformatEval.m`` to generate files that change the Macaulay2 C code of ``M2-HxHt-only-G-raw`` and ``M2-HxH-only-G-raw`` into MAGMA data type so that we can use them directly in the c++ code. Be sure to remove the constants ``C0 = ...``, ``C1 = ...``, etc in ``M2-HxHt-only-G-raw`` and ``M2-HxH-only-G-raw``. Likewise, use ``/auto-gen-tools/reformat_y.m`` to generate files that change the Macaulay2 C code of ``M2-HxHt-only-y-raw`` and ``M2-HxH-only-y-raw``. <br />
+**(3) Reformations:** Use ``/auto-gen-tools/reformatEval.m`` to generate files that change the Macaulay2 C code of ``M2-HxHt-only-G-raw`` and ``M2-HxH-only-G-raw`` into MAGMA data type so that we can use them directly in the c++ code. Be sure to remove the constants ``C0 = ...``, ``C1 = ...``, etc in ``M2-HxHt-only-G-raw`` and ``M2-HxH-only-G-raw``. Likewise, use ``/auto-gen-tools/reformat_y.m`` to generate files that change the Macaulay2 C code of ``M2-HxHt-only-y-raw`` and ``M2-HxH-only-y-raw``. <br /><br />
 
-**STEP 4: Generate Jacobian evaluation indices for GPU-HC**<br />
+**STEP 4: GENERATE JACOBIAN EVALUATION INDICES FOR GPU-HC**<br />
 **(1) Create your problem for index generator:** under ``/auto-gen-tools/idx-matrices-generator/``, create your problem matlab script. Add your problem in ``/auto-gen-tools/idx-matrices-generator/const_matrix_generator.m``. Make sure that the indices start from 0. <br />
-**(2) Run index generator:** Run ``/auto-gen-tools/idx-matrices-generator/const_matrix_generator.m``. Change the file write directory if necessary. Two files, ``Hx.txt`` and ``Ht.txt`` will be created. <br />
+**(2) Run index generator:** Run ``/auto-gen-tools/idx-matrices-generator/const_matrix_generator.m``. Change the file write directory if necessary. Two files, ``Hx.txt`` and ``Ht.txt`` will be created. <br /><br />
 
-**STEP 5: Make your HC solver in C++** <br />
+**STEP 5: CONSTRUCT YOUR HC SOLVER** <br />
 **(1) Create a problem folder:** Under ``/GPU-HC/straight-line-HC/problems/``, create a problem folder containing ``Hx.txt``, ``Ht.txt``, your start coefficients ``start_coefs.txt``, your start solutions ``start_sols.txt``, and your target coefficients ``target_coefs.txt``. <br />
 **(2) Define your problem parameters:** Go to ``/GPU-HC/straight-line-HC/define_params_and_read_files.cu`` and add your problem. <br />
 **(3) Direct the solver to your problem:** Go to ``/GPU-HC/straight-line-HC/homotopy_continuation_solver.cu`` and put in your problem. Make sure to include your problem function in ``/GPU-HC/straight-line-HC/magmaHC/cpu-compute/cpu-compute.h`` for a CPU-HC solver, and ``/GPU-HC/straight-line-HC/magmaHC/gpu-kernels/magmaHC-kernels.h`` for GPU-HC solver. <br />
@@ -80,12 +80,12 @@ In this instruction, we take alea6 as an example. <br /><br />
 ``eval_Hx_<problem_name>``: the evaluation of the Jacobian Hx. <br />
 ``eval_Ht_<problem_name>``: the evaluation of the Jacobian Ht. <br />
 ``eval_H_<problem_name>``: the evaluation of the Homotopy H. <br />
-Change the number of unknowns in each term of your problem for the above three device functions if necessary. <br />
+Change the number of unknowns in each term of your problem for the above three device functions if necessary. <br /><br />
 
-**STEP 6: Include newly created code files in CMakeLists.txt** <br />
-Finally, add the code files you just created in the ``CMakeLists.txt`` under ``/GPU-HC/straight-line-HC/magmaHC/``. <br />
+**STEP 6: INCLUDE NEWLY CREATED CODE FILES IN CMAKELISTS** <br />
+Finally, add the code files you just created in the ``CMakeLists.txt`` under ``/GPU-HC/straight-line-HC/magmaHC/``. <br /><BR />
 
-**STEP 7: Now you should be able to run your HC solver!** <br />
+**STEP 7: NOW YOU SHOULD BE ABLE TO RUN YOUR HC SOLVER!** <br />
 
 # 6. Important Update Notice (Oct. 9th 2022)
 (1) In the published papers, start solutions are generated using Julia's homotopy continuation package. We found out that among all the generated start solutions, some of them are almost identical, creating redundant HC paths. Therefore, we have made a change on this where Julia's monodromy solver is used to generate start solutons. An example Julia script is given in ``/example-polynomial-data/``. <br />
