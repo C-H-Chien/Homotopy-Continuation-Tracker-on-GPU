@@ -135,9 +135,25 @@ namespace magmaHCWrapper {
 
     float one_half_delta_t;   // -- 1/2 \Delta t --
 
-    #pragma unroll
+    //#pragma unroll
     for (int step = 0; step <= max_steps; step++) {
-      if (t0 < 1.0 && (1.0-t0 > 0.00001)) {
+      if (t0 < 1.0 && (1.0-t0 > 0.0000001)) {
+
+        // ===================================================================
+        // Decide delta t at end zone
+        // ===================================================================
+        if (!end_zone && fabs(1 - t0) <= (0.0500001)) {
+          end_zone = true;
+        }
+
+        if (end_zone) {
+          if (delta_t > fabs(1 - t0))
+            delta_t = fabs(1 - t0);
+        }
+        else if (delta_t > fabs(0.95 - t0)) {
+          delta_t = fabs(0.95 - t0);
+        }
+
         t_step = t0;
         one_half_delta_t = 0.5 * delta_t;
         // ===================================================================
@@ -145,8 +161,8 @@ namespace magmaHCWrapper {
         // ===================================================================
         // -- get HxHt for k1 --
         eval_cdt_alea6<N, coefsCount>( tx, t0, s_cdt, s_startCoefs, s_targetCoefs );
-        eval_Jacobian_alea6_improve<N, coefsCount, size_Hx, Hx_max_terms, Hx_max_parts>(s_track, r_cgesvA, s_cdt, r_Hx_idx);
-        eval_Ht_alea6_improve<N, size_Ht, Ht_max_terms, Ht_max_parts>(s_track, r_cgesvB, d_const_vec_cd, r_Ht_idx);
+        eval_Hx_alea6<N, coefsCount, size_Hx, Hx_max_terms, Hx_max_parts>(s_track, r_cgesvA, s_cdt, r_Hx_idx);
+        eval_Ht_alea6<N, size_Ht, Ht_max_terms, Ht_max_parts>(s_track, r_cgesvB, d_const_vec_cd, r_Ht_idx);
 
         // -- solve k1 --
         cgesv_batched_small_device<N>( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
@@ -158,8 +174,8 @@ namespace magmaHCWrapper {
 
         // -- get HxHt for k2 --
         eval_cdt_alea6<N, coefsCount>( tx, t0, s_cdt, s_startCoefs, s_targetCoefs );
-        eval_Jacobian_alea6_improve<N, coefsCount, size_Hx, Hx_max_terms, Hx_max_parts>(s_track, r_cgesvA, s_cdt, r_Hx_idx);
-        eval_Ht_alea6_improve<N, size_Ht, Ht_max_terms, Ht_max_parts>(s_track, r_cgesvB, d_const_vec_cd, r_Ht_idx);
+        eval_Hx_alea6<N, coefsCount, size_Hx, Hx_max_terms, Hx_max_parts>(s_track, r_cgesvA, s_cdt, r_Hx_idx);
+        eval_Ht_alea6<N, size_Ht, Ht_max_terms, Ht_max_parts>(s_track, r_cgesvB, d_const_vec_cd, r_Ht_idx);
 
         // -- solve k2 --
         cgesv_batched_small_device<N>( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
@@ -170,9 +186,9 @@ namespace magmaHCWrapper {
         magmablas_syncwarp();
 
         // -- get HxHt for k3 --
-        eval_cdt_alea6<N, coefsCount>( tx, t0, s_cdt, s_startCoefs, s_targetCoefs );
-        eval_Jacobian_alea6_improve<N, coefsCount, size_Hx, Hx_max_terms, Hx_max_parts>(s_track, r_cgesvA, s_cdt, r_Hx_idx);
-        eval_Ht_alea6_improve<N, size_Ht, Ht_max_terms, Ht_max_parts>(s_track, r_cgesvB, d_const_vec_cd, r_Ht_idx);
+        //eval_cdt_alea6<N, coefsCount>( tx, t0, s_cdt, s_startCoefs, s_targetCoefs );
+        eval_Hx_alea6<N, coefsCount, size_Hx, Hx_max_terms, Hx_max_parts>(s_track, r_cgesvA, s_cdt, r_Hx_idx);
+        eval_Ht_alea6<N, size_Ht, Ht_max_terms, Ht_max_parts>(s_track, r_cgesvB, d_const_vec_cd, r_Ht_idx);
 
         // -- solve k3 --
         cgesv_batched_small_device<N>( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
@@ -184,8 +200,8 @@ namespace magmaHCWrapper {
 
         // -- get HxHt for k4 --
         eval_cdt_alea6<N, coefsCount>( tx, t0, s_cdt, s_startCoefs, s_targetCoefs );
-        eval_Jacobian_alea6_improve<N, coefsCount, size_Hx, Hx_max_terms, Hx_max_parts>(s_track, r_cgesvA, s_cdt, r_Hx_idx);
-        eval_Ht_alea6_improve<N, size_Ht, Ht_max_terms, Ht_max_parts>(s_track, r_cgesvB, d_const_vec_cd, r_Ht_idx);
+        eval_Hx_alea6<N, coefsCount, size_Hx, Hx_max_terms, Hx_max_parts>(s_track, r_cgesvA, s_cdt, r_Hx_idx);
+        eval_Ht_alea6<N, size_Ht, Ht_max_terms, Ht_max_parts>(s_track, r_cgesvB, d_const_vec_cd, r_Ht_idx);
 
         // -- solve k4 --
         cgesv_batched_small_device<N>( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
@@ -199,10 +215,10 @@ namespace magmaHCWrapper {
         // ===================================================================
         // -- Gauss-Newton Corrector --
         // ===================================================================
-        #pragma unroll
+        //#pragma unroll
         for(int i = 0; i < max_corr_steps; i++) {
-          eval_Jacobian_alea6_improve<N, coefsCount, size_Hx, Hx_max_terms, Hx_max_parts>(s_track, r_cgesvA, s_cdt, r_Hx_idx);
-          eval_H_alea6_improve<N, coefsCount, size_Ht, Ht_max_terms, Ht_max_parts>(s_track, r_cgesvB, s_cdt, r_Ht_idx);
+          eval_Hx_alea6<N, coefsCount, size_Hx, Hx_max_terms, Hx_max_parts>(s_track, r_cgesvA, s_cdt, r_Hx_idx);
+          eval_H_alea6<N, coefsCount, size_Ht, Ht_max_terms, Ht_max_parts>(s_track, r_cgesvB, s_cdt, r_Ht_idx);
 
           // -- G-N corrector first solve --
           cgesv_batched_small_device<N>( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
@@ -249,7 +265,7 @@ namespace magmaHCWrapper {
           }
         }
 
-        // ===================================================================
+/*        // ===================================================================
         // -- Decide delta t at end zone --
         // ===================================================================
         end_zone = (!end_zone && fabs(1 - t0) <= 0.0500001);
@@ -258,7 +274,7 @@ namespace magmaHCWrapper {
                 delta_t = fabs(1 - t0);
         else if (delta_t > fabs(1 - 0.05 - t0))
             delta_t = fabs(1 - 0.05 - t0);
-
+*/
       }
       else {
         break;
@@ -272,8 +288,7 @@ namespace magmaHCWrapper {
     }*/
 
     // -- d_cgesvB tells whether the track is finished, if not, stores t0 and delta_t --
-    //d_cgesvB[tx] = (t0 >= 1.0 || (1.0-t0 < 0.001)) ? MAGMA_C_ONE : MAGMA_C_MAKE(t0, delta_t);
-    d_cgesvB[tx] = (t0 >= 1.0 || (1.0-t0 < 0.001)) ? MAGMA_C_ONE : MAGMA_C_ZERO;
+    d_cgesvB[tx] = (t0 >= 1.0 || (1.0-t0 < 0.0000001)) ? MAGMA_C_ONE : MAGMA_C_ZERO;
     //d_cgesvB[tx] = r_cgesvB;
 
     // -- d_startSols tells the pred_success_count and inf_failed for unfinished tracks --
@@ -326,7 +341,7 @@ namespace magmaHCWrapper {
     // -- <N, numOfCoeffs, max_steps, max_corr_steps, successes_to_incremental_factor, N*Hx_max_terms*Hx_max_parts, Ht_max_terms*Ht_max_parts, Hx_max_terms, Hx_max_parts, Ht_max_terms, Ht_max_parts> --
     // -- N*Hx_max_terms*Hx_max_parts = 6*4*4=96 --
     // -- Ht_max_terms*Ht_max_parts = 6*5 = 30 --
-    e = cudaLaunchKernel((void*)homotopy_continuation_solver_alea6< 6, 29, 31, 5, 10, 96, 30, 4, 4, 6, 5>, grid, threads, kernel_args, shmem, my_queue->cuda_stream());
+    e = cudaLaunchKernel((void*)homotopy_continuation_solver_alea6< 6, 29, 100, 5, 10, 96, 30, 4, 4, 6, 5>, grid, threads, kernel_args, shmem, my_queue->cuda_stream());
 
     gpu_time = magma_sync_wtime( my_queue ) - gpu_time;
     if( e != cudaSuccess ) {

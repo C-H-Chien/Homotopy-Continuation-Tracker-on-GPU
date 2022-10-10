@@ -115,7 +115,23 @@ namespace magmaHCWrapper {
 
       // -- proceed the homotopy continuation algorithm --
       for(int step = 0; step <= max_steps; step++) {
-        if (t0 < 1.0 && (1.0-t0 > 0.000001)) {
+        if (t0 < 1.0 && (1.0-t0 > 0.0000001)) {
+
+          // ===================================================================
+          // Decide delta t at end zone
+          // ===================================================================
+          if (!end_zone && fabs(1 - t0) <= (end_zone_factor + 0.000000001)) {
+            end_zone = true;
+          }
+
+          if (end_zone) {
+            if (delta_t > fabs(1 - t0))
+              delta_t = fabs(1 - t0);
+          }
+          else if (delta_t > fabs(1 - end_zone_factor - t0)) {
+            delta_t = fabs(1 - end_zone_factor - t0);
+          }
+
           t_step = t0;
           one_half_delta_t = 0.5 * delta_t;
 
@@ -251,16 +267,6 @@ namespace magmaHCWrapper {
               delta_t *= 2;
             }
           }
-
-          // ===================================================================
-          // -- Decide delta t at end zone --
-          // ===================================================================
-          end_zone = (!end_zone && fabs(1 - t0) <= (end_zone_factor + 0.000000001));
-          if (end_zone)
-              if (delta_t > fabs(1 - t0))
-                  delta_t = fabs(1 - t0);
-          else if (delta_t > fabs(1 - end_zone_factor - t0))
-              delta_t = fabs(1 - end_zone_factor - t0);
 
           track_steps++;
         }

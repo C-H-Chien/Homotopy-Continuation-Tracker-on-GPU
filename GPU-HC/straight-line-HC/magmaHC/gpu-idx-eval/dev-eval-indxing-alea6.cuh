@@ -52,7 +52,7 @@ namespace magmaHCWrapper {
     // -- Improved Hx parallel indexing --
     template<int N, int coefsCount, int size_Hx, int max_terms, int max_parts>
     __device__ __inline__ void
-    eval_Jacobian_alea6_improve(
+    eval_Hx_alea6(
         magmaFloatComplex *s_track, magmaFloatComplex r_cgesvA[N], 
         magmaFloatComplex s_cdt[coefsCount], magma_int_t r_Hx_idx[size_Hx])
     {
@@ -68,22 +68,12 @@ namespace magmaHCWrapper {
                        * s_cdt[ r_Hx_idx[j*max_parts + 3 + i*max_terms*max_parts] ];
         }
       }
-
-      /*#pragma unroll
-      for(int i = 0; i < N; i++) {
-        r_cgesvA[i] = MAGMA_C_ZERO;
-
-        #pragma unroll
-        for(int j = 0; j < 6; j++) {
-          r_cgesvA[i] += d_const_Hx_idx[j*4+i*24+tx*192] * s_track[ d_const_Hx_idx[j*4+1+i*24+tx*192] ] * s_track[ d_const_Hx_idx[j*4+2+i*24+tx*192] ] * s_cdt[ d_const_Hx_idx[j*4+3+i*24+tx*192] ];
-        }
-      }*/
     }
 
     // -- Improved Ht parallel indexing --
     template<int N, int size_Ht, int max_terms, int max_parts>
     __device__ __inline__ void
-    eval_Ht_alea6_improve(
+    eval_Ht_alea6(
         magmaFloatComplex *s_track, magmaFloatComplex &r_cgesvB,
         const magmaFloatComplex* __restrict__ d_const_cd, magma_int_t r_Ht_idx[size_Ht])
     {
@@ -92,18 +82,12 @@ namespace magmaHCWrapper {
       for (int i = 0; i < max_terms; i++) {
         r_cgesvB += r_Ht_idx[i*max_parts] * s_track[ r_Ht_idx[i*max_parts+1] ] * s_track[ r_Ht_idx[i*max_parts+2] ] * s_track[ r_Ht_idx[i*max_parts+3] ] * d_const_cd[ r_Ht_idx[i*max_parts+4] ];
       }
-
-      /*r_cgesvB = MAGMA_C_ZERO;
-      #pragma unroll
-      for (int i = 0; i < 9; i++) {
-        r_cgesvB += d_const_Ht_idx[i*5+tx*45] * s_track[ d_const_Ht_idx[i*5+1+tx*45] ] * s_track[ d_const_Ht_idx[i*5+2+tx*45] ] * s_track[ d_const_Ht_idx[i*5+3+tx*45] ] * d_const_vec_cd[ d_const_Ht_idx[i*5+4+tx*45] ];
-      }*/
     }
 
     // -- Improved H parallel indexing --
     template<int N, int coefsCount, int size_Ht, int max_terms, int max_parts>
     __device__ __inline__ void
-    eval_H_alea6_improve(
+    eval_H_alea6(
         magmaFloatComplex *s_track, magmaFloatComplex &r_cgesvB,
         magmaFloatComplex s_cdt[coefsCount], magma_int_t r_Ht_idx[size_Ht])
     {
@@ -112,12 +96,6 @@ namespace magmaHCWrapper {
       for (int i = 0; i < max_terms; i++) {
         r_cgesvB += r_Ht_idx[i*max_parts] * s_track[ r_Ht_idx[i*max_parts+1] ] * s_track[ r_Ht_idx[i*max_parts+2] ] * s_track[ r_Ht_idx[i*max_parts+3] ] * s_cdt[ r_Ht_idx[i*max_parts+4] ];
       }
-
-      /*r_cgesvB = MAGMA_C_ZERO;
-      #pragma unroll
-      for (int i = 0; i < 9; i++) {
-        r_cgesvB += d_const_Ht_idx[i*5+tx*45] * s_track[ d_const_Ht_idx[i*5+1+tx*45] ] * s_track[ d_const_Ht_idx[i*5+2+tx*45] ] * s_track[ d_const_Ht_idx[i*5+3+tx*45] ] * s_cdt[ d_const_Ht_idx[i*5+4+tx*45] ];
-      }*/
     }
 }
 
