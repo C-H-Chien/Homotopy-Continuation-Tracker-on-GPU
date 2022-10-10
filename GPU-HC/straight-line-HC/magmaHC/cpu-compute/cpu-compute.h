@@ -54,36 +54,6 @@ namespace magmaHCWrapper {
     magma_queue_t my_queue, int max_steps, std::ofstream &tracks_success_file
   );
 
-  // -- cpu computation of homotopy continuation for cyclic7 problem --
-  real_Double_t cpu_hc_solver_cyclic7(
-    magmaFloatComplex *h_Track_cpu, magma_int_t *h_Track_Success,
-    magmaFloatComplex *h_Sols_cpu, magmaFloatComplex *h_Track_gpu,
-    magmaFloatComplex *h_startCoefs, magmaFloatComplex *h_targetCoefs,
-    magmaFloatComplex *h_cgesvA, magmaFloatComplex *h_cgesvB,
-    magma_int_t batchCount, magma_int_t coefsCount, magma_int_t N,
-    magma_queue_t my_queue, int max_steps, std::ofstream &tracks_success_file
-  );
-
-  // -- cpu computation of homotopy continuation for cyclic8 problem --
-  real_Double_t cpu_hc_solver_cyclic8(
-    magmaFloatComplex *h_Track_cpu, magma_int_t *h_Track_Success,
-    magmaFloatComplex *h_Sols_cpu, magmaFloatComplex *h_Track_gpu,
-    magmaFloatComplex *h_startCoefs, magmaFloatComplex *h_targetCoefs,
-    magmaFloatComplex *h_cgesvA, magmaFloatComplex *h_cgesvB,
-    magma_int_t batchCount, magma_int_t coefsCount, magma_int_t N,
-    magma_queue_t my_queue, int max_steps, std::ofstream &tracks_success_file
-  );
-
-  // -- cpu computation of homotopy continuation for cyclic9 problem --
-  real_Double_t cpu_hc_solver_cyclic9(
-    magmaFloatComplex *h_Track_cpu, magma_int_t *h_Track_Success,
-    magmaFloatComplex *h_Sols_cpu, magmaFloatComplex *h_Track_gpu,
-    magmaFloatComplex *h_startCoefs, magmaFloatComplex *h_targetCoefs,
-    magmaFloatComplex *h_cgesvA, magmaFloatComplex *h_cgesvB,
-    magma_int_t batchCount, magma_int_t coefsCount, magma_int_t N,
-    magma_queue_t my_queue, int max_steps, std::ofstream &tracks_success_file
-  );
-
   // -- cpu computation of homotopy continuation for katsura6 problem --
   real_Double_t cpu_hc_solver_katsura6(
     magmaFloatComplex *h_Track_cpu, magma_int_t *h_Track_Success,
@@ -183,9 +153,9 @@ namespace magmaHCWrapper {
     magma_int_t batchCount, magma_int_t coefsCount, magma_int_t N,
     magma_queue_t my_queue, int max_steps, std::ofstream &tracks_success_file
   );
-
-  // -- cpu computation of homotopy continuation for katsura20 problem --
-  real_Double_t cpu_hc_solver_katsura20(
+/*
+  // -- cpu computation of homotopy continuation for cyclic7 problem --
+  real_Double_t cpu_hc_solver_cyclic7(
     magmaFloatComplex *h_Track_cpu, magma_int_t *h_Track_Success,
     magmaFloatComplex *h_Sols_cpu, magmaFloatComplex *h_Track_gpu,
     magmaFloatComplex *h_startCoefs, magmaFloatComplex *h_targetCoefs,
@@ -194,8 +164,18 @@ namespace magmaHCWrapper {
     magma_queue_t my_queue, int max_steps, std::ofstream &tracks_success_file
   );
 
-  // -- cpu computation of homotopy continuation for katsura21 problem --
-  real_Double_t cpu_hc_solver_katsura21(
+  // -- cpu computation of homotopy continuation for cyclic8 problem --
+  real_Double_t cpu_hc_solver_cyclic8(
+    magmaFloatComplex *h_Track_cpu, magma_int_t *h_Track_Success,
+    magmaFloatComplex *h_Sols_cpu, magmaFloatComplex *h_Track_gpu,
+    magmaFloatComplex *h_startCoefs, magmaFloatComplex *h_targetCoefs,
+    magmaFloatComplex *h_cgesvA, magmaFloatComplex *h_cgesvB,
+    magma_int_t batchCount, magma_int_t coefsCount, magma_int_t N,
+    magma_queue_t my_queue, int max_steps, std::ofstream &tracks_success_file
+  );
+
+  // -- cpu computation of homotopy continuation for cyclic9 problem --
+  real_Double_t cpu_hc_solver_cyclic9(
     magmaFloatComplex *h_Track_cpu, magma_int_t *h_Track_Success,
     magmaFloatComplex *h_Sols_cpu, magmaFloatComplex *h_Track_gpu,
     magmaFloatComplex *h_startCoefs, magmaFloatComplex *h_targetCoefs,
@@ -233,6 +213,7 @@ namespace magmaHCWrapper {
     magma_int_t batchCount, magma_int_t coefsCount, magma_int_t N,
     magma_queue_t my_queue, int max_steps, std::ofstream &tracks_success_file
   );
+*/
 }
 }
 

@@ -12,9 +12,9 @@ set (control_sources
   gpu-kernels/kernel_HC_Solver_alea6.cu
   gpu-kernels/kernel_HC_Solver_eco12.cu
   gpu-kernels/kernel_HC_Solver_d1.cu
-  gpu-kernels/kernel_HC_Solver_cyclic7.cu
-  gpu-kernels/kernel_HC_Solver_cyclic8.cu
-  gpu-kernels/kernel_HC_Solver_cyclic9.cu
+  #gpu-kernels/kernel_HC_Solver_cyclic7.cu
+  #gpu-kernels/kernel_HC_Solver_cyclic8.cu
+  #gpu-kernels/kernel_HC_Solver_cyclic9.cu
   gpu-kernels/kernel_HC_Solver_katsura6.cu
   gpu-kernels/kernel_HC_Solver_katsura8.cu
   gpu-kernels/kernel_HC_Solver_katsura7.cu
@@ -25,8 +25,8 @@ set (control_sources
   gpu-kernels/kernel_HC_Solver_katsura13.cu
   gpu-kernels/kernel_HC_Solver_katsura14.cu
   gpu-kernels/kernel_HC_Solver_katsura15.cu
-  gpu-kernels/kernel_HC_Solver_game6two.cu
-  gpu-kernels/kernel_HC_Solver_game7two.cu
+  #gpu-kernels/kernel_HC_Solver_game6two.cu
+  #gpu-kernels/kernel_HC_Solver_game7two.cu
   #gpu-kernels/kernel_HC_Solver_pole28sys.cu
   
   # -- device function --
@@ -35,11 +35,11 @@ set (control_sources
   gpu-idx-eval/dev-eval-indxing-alea6.cuh
   gpu-idx-eval/dev-eval-indxing-eco12.cuh
   gpu-idx-eval/dev-eval-indxing-d1.cuh
-  gpu-idx-eval/dev-eval-indxing-cyclic7.cuh
-  gpu-idx-eval/dev-eval-indxing-cyclic8.cuh
-  gpu-idx-eval/dev-eval-indxing-cyclic9.cuh
-  gpu-idx-eval/dev-eval-indxing-game6two.cuh
-  gpu-idx-eval/dev-eval-indxing-game7two.cuh
+  #gpu-idx-eval/dev-eval-indxing-cyclic7.cuh
+  #gpu-idx-eval/dev-eval-indxing-cyclic8.cuh
+  #gpu-idx-eval/dev-eval-indxing-cyclic9.cuh
+  #gpu-idx-eval/dev-eval-indxing-game6two.cuh
+  #gpu-idx-eval/dev-eval-indxing-game7two.cuh
   gpu-idx-eval/dev-eval-indxing-katsura6.cuh
   gpu-idx-eval/dev-eval-indxing-katsura7.cuh
   gpu-idx-eval/dev-eval-indxing-katsura8.cuh
@@ -57,9 +57,9 @@ set (control_sources
   cpu-compute/cpu-compute.h
   cpu-compute/cpu-hc-solver/cpu-hc-solver-alea6.cpp
   cpu-compute/cpu-hc-solver/cpu-hc-solver-eco12.cpp
-  cpu-compute/cpu-hc-solver/cpu-hc-solver-cyclic7.cpp
-  cpu-compute/cpu-hc-solver/cpu-hc-solver-cyclic8.cpp
-  cpu-compute/cpu-hc-solver/cpu-hc-solver-cyclic9.cpp
+  #cpu-compute/cpu-hc-solver/cpu-hc-solver-cyclic7.cpp
+  #cpu-compute/cpu-hc-solver/cpu-hc-solver-cyclic8.cpp
+  #cpu-compute/cpu-hc-solver/cpu-hc-solver-cyclic9.cpp
   cpu-compute/cpu-hc-solver/cpu-hc-solver-d1.cpp
   cpu-compute/cpu-hc-solver/cpu-hc-solver-katsura6.cpp
   cpu-compute/cpu-hc-solver/cpu-hc-solver-katsura7.cpp
@@ -71,14 +71,14 @@ set (control_sources
   cpu-compute/cpu-hc-solver/cpu-hc-solver-katsura13.cpp
   cpu-compute/cpu-hc-solver/cpu-hc-solver-katsura14.cpp
   cpu-compute/cpu-hc-solver/cpu-hc-solver-katsura15.cpp
-  cpu-compute/cpu-hc-solver/cpu-hc-solver-game6two.cpp
-  cpu-compute/cpu-hc-solver/cpu-hc-solver-game7two.cpp
-  cpu-compute/cpu-hc-solver/cpu-hc-solver-pole28sys.cpp
+  #cpu-compute/cpu-hc-solver/cpu-hc-solver-game6two.cpp
+  #cpu-compute/cpu-hc-solver/cpu-hc-solver-game7two.cpp
+  #cpu-compute/cpu-hc-solver/cpu-hc-solver-pole28sys.cpp
   # -- 2) HxHt evaluations --
   cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-alea6.h
-  cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-cyclic7.h
-  cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-cyclic8.h
-  cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-cyclic9.h
+  #cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-cyclic7.h
+  #cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-cyclic8.h
+  #cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-cyclic9.h
   cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-d1.h
   cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-eco12.h
   cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-katsura6.h
@@ -91,16 +91,16 @@ set (control_sources
   cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-katsura13.h
   cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-katsura14.h
   cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-katsura15.h
-  cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-game6two.h
-  cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-game7two.h
-  cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-pole28sys.h
+  #cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-game6two.h
+  #cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-game7two.h
+  #cpu-compute/cpu-eval-HxHt/cpu-eval-HxHt-pole28sys.h
   # -- 3) HxH evaluations --
   cpu-compute/cpu-eval-HxH/cpu-eval-HxH-alea6.h
   cpu-compute/cpu-eval-HxH/cpu-eval-HxH-d1.h
   cpu-compute/cpu-eval-HxH/cpu-eval-HxH-eco12.h 
-  cpu-compute/cpu-eval-HxH/cpu-eval-HxH-cyclic7.h
-  cpu-compute/cpu-eval-HxH/cpu-eval-HxH-cyclic8.h
-  cpu-compute/cpu-eval-HxH/cpu-eval-HxH-cyclic9.h
+  #cpu-compute/cpu-eval-HxH/cpu-eval-HxH-cyclic7.h
+  #cpu-compute/cpu-eval-HxH/cpu-eval-HxH-cyclic8.h
+  #cpu-compute/cpu-eval-HxH/cpu-eval-HxH-cyclic9.h
   cpu-compute/cpu-eval-HxH/cpu-eval-HxH-katsura6.h
   cpu-compute/cpu-eval-HxH/cpu-eval-HxH-katsura7.h
   cpu-compute/cpu-eval-HxH/cpu-eval-HxH-katsura8.h
@@ -111,9 +111,9 @@ set (control_sources
   cpu-compute/cpu-eval-HxH/cpu-eval-HxH-katsura13.h
   cpu-compute/cpu-eval-HxH/cpu-eval-HxH-katsura14.h
   cpu-compute/cpu-eval-HxH/cpu-eval-HxH-katsura15.h
-  cpu-compute/cpu-eval-HxH/cpu-eval-HxH-game6two.h
-  cpu-compute/cpu-eval-HxH/cpu-eval-HxH-game7two.h
-  cpu-compute/cpu-eval-HxH/cpu-eval-HxH-pole28sys.h
+  #cpu-compute/cpu-eval-HxH/cpu-eval-HxH-game6two.h
+  #cpu-compute/cpu-eval-HxH/cpu-eval-HxH-game7two.h
+  #cpu-compute/cpu-eval-HxH/cpu-eval-HxH-pole28sys.h
   
   # -- const matrices definition --
   const-matrices/define-const-matrices.h

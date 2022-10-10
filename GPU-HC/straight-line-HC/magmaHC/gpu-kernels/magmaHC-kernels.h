@@ -54,45 +54,6 @@ namespace magmaHCWrapper {
     magma_int_t** d_Hx_idx_array, magma_int_t** d_Ht_idx_array
   );
 
-  // -- homotopy continuation solver - cyclic7 kernel --
-  real_Double_t kernel_HC_Solver_cyclic7(
-    magma_int_t N, magma_int_t batchCount, magma_int_t coefsCount, magma_int_t ldda,
-    magma_queue_t my_queue,
-    magmaFloatComplex** d_startSols_array, magmaFloatComplex** d_Track_array,
-    magmaFloatComplex** d_startCoefs_array, magmaFloatComplex** d_targetCoefs_array,
-    magmaFloatComplex** d_cgesvA_array, magmaFloatComplex** d_cgesvB_array, const_mats *cm,
-    magma_int_t** d_Hx_idx_array, magma_int_t** d_Ht_idx_array
-  );
-
-  // -- homotopy continuation solver - cyclic8 kernel --
-  real_Double_t kernel_HC_Solver_cyclic8(
-    magma_int_t N, magma_int_t batchCount, magma_int_t coefsCount, magma_int_t ldda,
-    magma_queue_t my_queue,
-    magmaFloatComplex** d_startSols_array, magmaFloatComplex** d_Track_array,
-    magmaFloatComplex** d_startCoefs_array, magmaFloatComplex** d_targetCoefs_array,
-    magmaFloatComplex** d_cgesvA_array, magmaFloatComplex** d_cgesvB_array, const_mats *cm,
-    magma_int_t** d_Hx_idx_array, magma_int_t** d_Ht_idx_array
-  );
-
-  // -- homotopy continuation solver - cyclic9 kernel --
-  real_Double_t kernel_HC_Solver_cyclic9(
-    magma_int_t N, magma_int_t batchCount, magma_int_t coefsCount, magma_int_t ldda,
-    magma_queue_t my_queue,
-    magmaFloatComplex** d_startSols_array, magmaFloatComplex** d_Track_array,
-    magmaFloatComplex** d_startCoefs_array, magmaFloatComplex** d_targetCoefs_array,
-    magmaFloatComplex** d_cgesvA_array, magmaFloatComplex** d_cgesvB_array, const_mats *cm,
-    magma_int_t** d_Hx_idx_array, magma_int_t** d_Ht_idx_array
-  );
-
-  real_Double_t kernel_HC_Solver_cyclic8_extractClkData(
-    magma_int_t N, magma_int_t batchCount, magma_int_t coefsCount, magma_int_t ldda,
-    magma_queue_t my_queue,
-    magmaFloatComplex** d_startSols_array, magmaFloatComplex** d_Track_array,
-    magmaFloatComplex** d_startCoefs_array, magmaFloatComplex** d_targetCoefs_array,
-    magmaFloatComplex** d_cgesvA_array, magmaFloatComplex** d_cgesvB_array, const_mats *cm,
-    magma_int_t** d_Hx_idx_array, magma_int_t** d_Ht_idx_array, long long *clocks
-  );
-
   // -- homotopy continuation solver - katsura6 kernel --
   real_Double_t kernel_HC_Solver_katsura6(
     magma_int_t N, magma_int_t batchCount, magma_int_t coefsCount, magma_int_t ldda,
@@ -192,9 +153,9 @@ namespace magmaHCWrapper {
     magmaFloatComplex** d_cgesvA_array, magmaFloatComplex** d_cgesvB_array, const_mats *cm,
     magma_int_t** d_Hx_idx_array, magma_int_t** d_Ht_idx_array
   );
-
-  // -- homotopy continuation solver - katsura20 kernel --
-  real_Double_t kernel_HC_Solver_katsura20(
+/*
+  // -- homotopy continuation solver - cyclic7 kernel --
+  real_Double_t kernel_HC_Solver_cyclic7(
     magma_int_t N, magma_int_t batchCount, magma_int_t coefsCount, magma_int_t ldda,
     magma_queue_t my_queue,
     magmaFloatComplex** d_startSols_array, magmaFloatComplex** d_Track_array,
@@ -203,8 +164,8 @@ namespace magmaHCWrapper {
     magma_int_t** d_Hx_idx_array, magma_int_t** d_Ht_idx_array
   );
 
-  // -- homotopy continuation solver - katsura20 kernel --
-  real_Double_t kernel_HC_Solver_katsura21(
+  // -- homotopy continuation solver - cyclic8 kernel --
+  real_Double_t kernel_HC_Solver_cyclic8(
     magma_int_t N, magma_int_t batchCount, magma_int_t coefsCount, magma_int_t ldda,
     magma_queue_t my_queue,
     magmaFloatComplex** d_startSols_array, magmaFloatComplex** d_Track_array,
@@ -213,15 +174,14 @@ namespace magmaHCWrapper {
     magma_int_t** d_Hx_idx_array, magma_int_t** d_Ht_idx_array
   );
 
-  // -- extracting clocks within a kernel to measure partial time --
-  // -- homotopy continuation solver - katsura6 kernel --
-  real_Double_t kernel_HC_Solver_katsura6_extractClkData(
+  // -- homotopy continuation solver - cyclic9 kernel --
+  real_Double_t kernel_HC_Solver_cyclic9(
     magma_int_t N, magma_int_t batchCount, magma_int_t coefsCount, magma_int_t ldda,
     magma_queue_t my_queue,
     magmaFloatComplex** d_startSols_array, magmaFloatComplex** d_Track_array,
     magmaFloatComplex** d_startCoefs_array, magmaFloatComplex** d_targetCoefs_array,
     magmaFloatComplex** d_cgesvA_array, magmaFloatComplex** d_cgesvB_array, const_mats *cm,
-    magma_int_t** d_Hx_idx_array, magma_int_t** d_Ht_idx_array, long long *clocks
+    magma_int_t** d_Hx_idx_array, magma_int_t** d_Ht_idx_array
   );
 
   // -- homotopy continuation solver - game6two kernel --
@@ -232,15 +192,6 @@ namespace magmaHCWrapper {
     magmaFloatComplex** d_startCoefs_array, magmaFloatComplex** d_targetCoefs_array,
     magmaFloatComplex** d_cgesvA_array, magmaFloatComplex** d_cgesvB_array, const_mats *cm,
     magma_int_t** d_Hx_idx_array, magma_int_t** d_Ht_idx_array
-  );
-
-  real_Double_t kernel_HC_Solver_game7two_extractClkData(
-    magma_int_t N, magma_int_t batchCount, magma_int_t coefsCount, magma_int_t ldda,
-    magma_queue_t my_queue,
-    magmaFloatComplex** d_startSols_array, magmaFloatComplex** d_Track_array,
-    magmaFloatComplex** d_startCoefs_array, magmaFloatComplex** d_targetCoefs_array,
-    magmaFloatComplex** d_cgesvA_array, magmaFloatComplex** d_cgesvB_array, const_mats *cm,
-    magma_int_t** d_Hx_idx_array, magma_int_t** d_Ht_idx_array, long long *clocks
   );
 
   // -- homotopy continuation solver - game7two kernel --
@@ -262,6 +213,7 @@ namespace magmaHCWrapper {
     magmaFloatComplex** d_cgesvA_array, magmaFloatComplex** d_cgesvB_array, const_mats *cm,
     magma_int_t** d_Hx_idx_array, magma_int_t** d_Ht_idx_array
   );
+  */
 }
 }
 

@@ -130,8 +130,6 @@ namespace magmaHCWrapper {
     // -- allocate constant matrcies in CPU and GPU memories and define values of constant matrices --
     cm->const_matrices_allocations(pp, ldd_const_matrices_Hx_collection, ldd_const_matrices_Ht_collection, ldd_const_matrices_Hx, ldd_const_matrices_Ht, h_startCoefs, h_targetCoefs, ldd_coefs, my_queue, hc_problem);
 
-    std::cout<<"check point 0"<<std::endl;
-
     // -- allocate GPU gm --
     magma_cmalloc( &d_startSols, (N+1)*batchCount );
     magma_cmalloc( &d_Track, (N+1)*batchCount );
@@ -139,8 +137,6 @@ namespace magmaHCWrapper {
     magma_cmalloc( &d_targetCoefs, ldd_coefs );
     magma_cmalloc( &d_cgesvA, ldda*N*batchCount );
     magma_cmalloc( &d_cgesvB, ldda*batchCount );
-
-    std::cout<<"check point 1"<<std::endl;
 
     // -- allocate 2d arrays in GPU gm --
     magma_malloc( (void**) &d_startSols_array,  batchCount * sizeof(magmaFloatComplex*) );
@@ -150,14 +146,6 @@ namespace magmaHCWrapper {
     magma_malloc( (void**) &d_cgesvA_array,    batchCount * sizeof(magmaFloatComplex*) );
     magma_malloc( (void**) &d_cgesvB_array,    batchCount * sizeof(magmaFloatComplex*) );
 
-    std::cout<<"check point 2"<<std::endl;
-
-    // -- random initialization for h_cgesvA and h_cgesvB (doesn't matter the value) --
-    //lapackf77_clarnv( &ione, ISEED, &sizeA, h_cgesvA );
-    //lapackf77_clarnv( &ione, ISEED, &sizeB, h_cgesvB );
-
-    std::cout<<"check point 2-1"<<std::endl;
-
     // -- transfer data from CPU memory to GPU memory --
     magma_csetmatrix( N+1, batchCount, h_startSols, (N+1), d_startSols, (N+1), my_queue );
     magma_csetmatrix( N+1, batchCount, h_Track, (N+1), d_Track, (N+1), my_queue );
@@ -165,8 +153,6 @@ namespace magmaHCWrapper {
     magma_csetmatrix( coefsCount, 1, h_targetCoefs, coefsCount, d_targetCoefs, ldd_coefs, my_queue );
     magma_csetmatrix( N, N*batchCount, h_cgesvA, lda, d_cgesvA, ldda, my_queue );
     magma_csetmatrix( N, batchCount,   h_cgesvB, ldb, d_cgesvB, lddb, my_queue );
-
-    std::cout<<"check point 3"<<std::endl;
 
     // -- connect pointer to 2d arrays --
     magma_cset_pointer( d_startSols_array, d_startSols, (N+1), 0, 0, (N+1), batchCount, my_queue );
@@ -184,23 +170,6 @@ namespace magmaHCWrapper {
     //magma_cprint(coefsCount, 1, h_startCoefs, ldd_coefs);
     //magma_cprint(N, 1, h_cgesvB + s * ldb, ldb);
 
-    // -------------- clock data -------------
-    // -- 1) declarations --
-    int peak_clk = 1;	       // measure clock time
-    int device = 0;	         // device id used in get attribute instruction
-    long long *clk_data;
-    long long *host_clk_data;
-    // -- 2) clock and gpu clock peak frequency --
-    host_clk_data = (long long *)malloc(batchCount*sizeof(long long));
-    cudaError_t err = cudaDeviceGetAttribute(&peak_clk, cudaDevAttrClockRate, device);
-    err = cudaMalloc(&clk_data, batchCount*sizeof(long long));
-    // -- 3) write required clock-cycle time of each block --
-    std::ofstream sm_time_file;
-    sm_time_file.open("/users/cchien3/data/cchien3/MyBitBucket/magmahc-benchmarks/block_clkcyc_time.txt");
-    if (!sm_time_file.is_open())
-       std::cout<<"sm time file cannot be opened!"<<std::endl;
-    //----------------------------------------
-
     // ===================================================================
     // magma GPU cgesv batched solver for Homotopy Continuation
     // ===================================================================
@@ -216,45 +185,15 @@ namespace magmaHCWrapper {
       gpu_time = kernel_HC_Solver_eco12(N, batchCount, coefsCount, ldda, my_queue, d_startSols_array, d_Track_array,
                                         d_startCoefs_array, d_targetCoefs_array, d_cgesvA_array, d_cgesvB_array, cm, d_Hx_idx_array, d_Ht_idx_array);
     }
-    //else if (hc_problem == "eco12") {
-    //  std::cout<<"Solving eco12 problem ..."<<std::endl<<std::endl;
-    //  gpu_time = kernel_HC_Solver_eco12_extractClkData
-    //  (N, batchCount, coefsCount, ldda, my_queue, d_startSols_array, d_Track_array, d_startCoefs_array, d_targetCoefs_array, d_cgesvA_array, d_cgesvB_array, cm, d_Hx_idx_array, d_Ht_idx_array, clk_data);
-    //}
     else if (hc_problem == "d1") {
       std::cout<<"Solving d1 problem ..."<<std::endl<<std::endl;
       gpu_time = kernel_HC_Solver_d1(N, batchCount, coefsCount, ldda, my_queue, d_startSols_array, d_Track_array,
                                      d_startCoefs_array, d_targetCoefs_array, d_cgesvA_array, d_cgesvB_array, cm, d_Hx_idx_array, d_Ht_idx_array);
     }
-    else if (hc_problem == "cyclic7") {
-      std::cout<<"Solving cyclic7 problem ..."<<std::endl<<std::endl;
-      gpu_time = kernel_HC_Solver_cyclic7(N, batchCount, coefsCount, ldda, my_queue, d_startSols_array, d_Track_array,
-                                          d_startCoefs_array, d_targetCoefs_array, d_cgesvA_array, d_cgesvB_array, cm, d_Hx_idx_array, d_Ht_idx_array);
-    }
-    //else if (hc_problem == "cyclic8") {
-    //  std::cout<<"Solving cyclic8 problem ..."<<std::endl<<std::endl;
-    //  gpu_time = kernel_HC_Solver_cyclic8(N, batchCount, coefsCount, ldda, my_queue, d_startSols_array, d_Track_array,
-    //                                      d_startCoefs_array, d_targetCoefs_array, d_cgesvA_array, d_cgesvB_array, cm, d_Hx_idx_array, d_Ht_idx_array);
-    //}
-    else if (hc_problem == "cyclic8") {
-      std::cout<<"Solving cyclic8 problem ..."<<std::endl<<std::endl;
-      gpu_time = kernel_HC_Solver_cyclic8_extractClkData
-      (N, batchCount, coefsCount, ldda, my_queue, d_startSols_array, d_Track_array, d_startCoefs_array, d_targetCoefs_array, d_cgesvA_array, d_cgesvB_array, cm, d_Hx_idx_array, d_Ht_idx_array, clk_data);
-    }
-    else if (hc_problem == "cyclic9") {
-      std::cout<<"Solving cyclic9 problem ..."<<std::endl<<std::endl;
-      gpu_time = kernel_HC_Solver_cyclic9(N, batchCount, coefsCount, ldda, my_queue, d_startSols_array, d_Track_array,
-                                          d_startCoefs_array, d_targetCoefs_array, d_cgesvA_array, d_cgesvB_array, cm, d_Hx_idx_array, d_Ht_idx_array);
-    }
-    //else if (hc_problem == "katsura6") {
-    //  std::cout<<"Solving katsura6 problem ..."<<std::endl<<std::endl;
-    //  gpu_time = kernel_HC_Solver_katsura6(N, batchCount, coefsCount, ldda, my_queue, d_startSols_array, d_Track_array,
-    //                                      d_startCoefs_array, d_targetCoefs_array, d_cgesvA_array, d_cgesvB_array, cm, d_Hx_idx_array, d_Ht_idx_array);
-    //}
     else if (hc_problem == "katsura6") {
-      std::cout<<"Solving katsura6 extract clks problem ..."<<std::endl<<std::endl;
-      gpu_time = kernel_HC_Solver_katsura6_extractClkData
-      (N, batchCount, coefsCount, ldda, my_queue, d_startSols_array, d_Track_array, d_startCoefs_array, d_targetCoefs_array, d_cgesvA_array, d_cgesvB_array, cm, d_Hx_idx_array, d_Ht_idx_array, clk_data);
+      std::cout<<"Solving katsura6 problem ..."<<std::endl<<std::endl;
+      gpu_time = kernel_HC_Solver_katsura6(N, batchCount, coefsCount, ldda, my_queue, d_startSols_array, d_Track_array,
+                                          d_startCoefs_array, d_targetCoefs_array, d_cgesvA_array, d_cgesvB_array, cm, d_Hx_idx_array, d_Ht_idx_array);
     }
     else if (hc_problem == "katsura7") {
       std::cout<<"Solving katsura7 problem ..."<<std::endl<<std::endl;
@@ -301,14 +240,19 @@ namespace magmaHCWrapper {
       gpu_time = kernel_HC_Solver_katsura15(N, batchCount, coefsCount, ldda, my_queue, d_startSols_array, d_Track_array,
                                           d_startCoefs_array, d_targetCoefs_array, d_cgesvA_array, d_cgesvB_array, cm, d_Hx_idx_array, d_Ht_idx_array);
     }
-    else if (hc_problem == "katsura20") {
-      std::cout<<"Solving katsura20 problem ..."<<std::endl<<std::endl;
-      gpu_time = kernel_HC_Solver_katsura20(N, batchCount, coefsCount, ldda, my_queue, d_startSols_array, d_Track_array,
+    /*else if (hc_problem == "cyclic7") {
+      std::cout<<"Solving cyclic7 problem ..."<<std::endl<<std::endl;
+      gpu_time = kernel_HC_Solver_cyclic7(N, batchCount, coefsCount, ldda, my_queue, d_startSols_array, d_Track_array,
                                           d_startCoefs_array, d_targetCoefs_array, d_cgesvA_array, d_cgesvB_array, cm, d_Hx_idx_array, d_Ht_idx_array);
     }
-    else if (hc_problem == "katsura21") {
-      std::cout<<"Solving katsura21 problem ..."<<std::endl<<std::endl;
-      gpu_time = kernel_HC_Solver_katsura21(N, batchCount, coefsCount, ldda, my_queue, d_startSols_array, d_Track_array,
+    else if (hc_problem == "cyclic8") {
+      std::cout<<"Solving cyclic8 problem ..."<<std::endl<<std::endl;
+      gpu_time = kernel_HC_Solver_cyclic8(N, batchCount, coefsCount, ldda, my_queue, d_startSols_array, d_Track_array,
+                                          d_startCoefs_array, d_targetCoefs_array, d_cgesvA_array, d_cgesvB_array, cm, d_Hx_idx_array, d_Ht_idx_array);
+    }
+    else if (hc_problem == "cyclic9") {
+      std::cout<<"Solving cyclic9 problem ..."<<std::endl<<std::endl;
+      gpu_time = kernel_HC_Solver_cyclic9(N, batchCount, coefsCount, ldda, my_queue, d_startSols_array, d_Track_array,
                                           d_startCoefs_array, d_targetCoefs_array, d_cgesvA_array, d_cgesvB_array, cm, d_Hx_idx_array, d_Ht_idx_array);
     }
     else if (hc_problem == "game6two") {
@@ -316,17 +260,12 @@ namespace magmaHCWrapper {
       gpu_time = kernel_HC_Solver_game6two(N, batchCount, coefsCount, ldda, my_queue, d_startSols_array, d_Track_array,
                                           d_startCoefs_array, d_targetCoefs_array, d_cgesvA_array, d_cgesvB_array, cm, d_Hx_idx_array, d_Ht_idx_array);
     }
-    //else if (hc_problem == "game7two") {
-    //  std::cout<<"Solving game7two clkc extract ..."<<std::endl<<std::endl;
-    //  gpu_time = kernel_HC_Solver_game7two_extractClkData(N, batchCount, coefsCount, ldda, my_queue, d_startSols_array, d_Track_array,
-    //                                                      d_startCoefs_array, d_targetCoefs_array, d_cgesvA_array, d_cgesvB_array, cm, d_Hx_idx_array, d_Ht_idx_array, clk_data);
-    //}
     else if (hc_problem == "game7two") {
       std::cout<<"Solving game7two problem ..."<<std::endl<<std::endl;
       gpu_time = kernel_HC_Solver_game7two(N, batchCount, coefsCount, ldda, my_queue, d_startSols_array, d_Track_array,
                                           d_startCoefs_array, d_targetCoefs_array, d_cgesvA_array, d_cgesvB_array, cm, d_Hx_idx_array, d_Ht_idx_array);
     }
-    /*else if (hc_problem == "pole28sys") {
+    else if (hc_problem == "pole28sys") {
       std::cout<<"Solving pole28sys problem ..."<<std::endl<<std::endl;
       gpu_time = kernel_HC_Solver_pole28sys(N, batchCount, coefsCount, ldda, my_queue, d_startSols_array, d_Track_array,
                                           d_startCoefs_array, d_targetCoefs_array, d_cgesvA_array, d_cgesvB_array, cm, d_Hx_idx_array, d_Ht_idx_array);
@@ -344,29 +283,6 @@ namespace magmaHCWrapper {
     //magma_cprint(N+1, 1, h_track_numOfPred_s + s * (N+1), N+1);
     magma_cprint(N, 1, h_cgesvB_verify + s * ldb, ldb);
     //magma_cprint(N, N, h_cgesvA_verify + s * lda, lda);
-
-    // ------------------- Measure clocks -------------------
-    // -- transfer back to cpu; used to measure clock cycles and convert it into time --
-    err = cudaMemcpy(host_clk_data, clk_data, batchCount*sizeof(long long), cudaMemcpyDeviceToHost);
-    printf("peak clock rate: %dkHz\n", peak_clk);
-    
-    float max_block_time = 0.0, block_time = 0.0;
-    float sumOfClkTime = 0.0;
-    int batchid = 0;
-    for (int b = 0; b < batchCount; b++) {
-        block_time = host_clk_data[b]/(float)peak_clk;
-	      sm_time_file << block_time << "\n";
-	      if (block_time > max_block_time) {
-	        max_block_time = block_time;
-          batchid = b;
-	      }
-	    //printf("measured clock cycles: %ld, elapsed time: %fms\n", host_clk_data[b], host_clk_data[b]/(float)peak_clk);
-      sumOfClkTime += host_clk_data[b]/(float)peak_clk;
-    }
-    printf("average batch elapsed time: %f (ms)\n", sumOfClkTime / (float)batchCount);
-    printf("max block time = %f (ms)\n", max_block_time);
-    sm_time_file.close();
-    // ------------------------------------------------------
 
     // ============================================================================================
     // -- CPU-HC --
@@ -389,15 +305,6 @@ namespace magmaHCWrapper {
     }
     else if (hc_problem == "d1") {
       cpu_time = cpu_hc_solver_d1(h_Track_cpu, h_Track_Success, h_startSols, h_Track, h_startCoefs, h_targetCoefs, h_cgesvA, h_cgesvB, batchCount, coefsCount, N, my_queue, 50, tracks_success_file);
-    }
-    else if (hc_problem == "cyclic7") {
-      cpu_time = cpu_hc_solver_cyclic7(h_Track_cpu, h_Track_Success, h_startSols, h_Track, h_startCoefs, h_targetCoefs, h_cgesvA, h_cgesvB, batchCount, coefsCount, N, my_queue, 90, tracks_success_file);
-    }
-    else if (hc_problem == "cyclic8") {
-      cpu_time = cpu_hc_solver_cyclic8(h_Track_cpu, h_Track_Success, h_startSols, h_Track, h_startCoefs, h_targetCoefs, h_cgesvA, h_cgesvB, batchCount, coefsCount, N, my_queue, 90, tracks_success_file);
-    }
-    else if (hc_problem == "cyclic9") {
-      cpu_time = cpu_hc_solver_cyclic9(h_Track_cpu, h_Track_Success, h_startSols, h_Track, h_startCoefs, h_targetCoefs, h_cgesvA, h_cgesvB, batchCount, coefsCount, N, my_queue, 90, tracks_success_file);
     }
     else if (hc_problem == "katsura6") {
       cpu_time = cpu_hc_solver_katsura6(h_Track_cpu, h_Track_Success, h_startSols, h_Track, h_startCoefs, h_targetCoefs, h_cgesvA, h_cgesvB, batchCount, coefsCount, N, my_queue, 400, tracks_success_file);
@@ -429,11 +336,14 @@ namespace magmaHCWrapper {
     else if (hc_problem == "katsura15") {
       cpu_time = cpu_hc_solver_katsura15(h_Track_cpu, h_Track_Success, h_startSols, h_Track, h_startCoefs, h_targetCoefs, h_cgesvA, h_cgesvB, batchCount, coefsCount, N, my_queue, 400, tracks_success_file);
     }
-    else if (hc_problem == "katsura20") {
-      cpu_time = cpu_hc_solver_katsura20(h_Track_cpu, h_Track_Success, h_startSols, h_Track, h_startCoefs, h_targetCoefs, h_cgesvA, h_cgesvB, batchCount, coefsCount, N, my_queue, 400, tracks_success_file);
+    /*else if (hc_problem == "cyclic7") {
+      cpu_time = cpu_hc_solver_cyclic7(h_Track_cpu, h_Track_Success, h_startSols, h_Track, h_startCoefs, h_targetCoefs, h_cgesvA, h_cgesvB, batchCount, coefsCount, N, my_queue, 90, tracks_success_file);
     }
-    else if (hc_problem == "katsura21") {
-      cpu_time = cpu_hc_solver_katsura21(h_Track_cpu, h_Track_Success, h_startSols, h_Track, h_startCoefs, h_targetCoefs, h_cgesvA, h_cgesvB, batchCount, coefsCount, N, my_queue, 400, tracks_success_file);
+    else if (hc_problem == "cyclic8") {
+      cpu_time = cpu_hc_solver_cyclic8(h_Track_cpu, h_Track_Success, h_startSols, h_Track, h_startCoefs, h_targetCoefs, h_cgesvA, h_cgesvB, batchCount, coefsCount, N, my_queue, 90, tracks_success_file);
+    }
+    else if (hc_problem == "cyclic9") {
+      cpu_time = cpu_hc_solver_cyclic9(h_Track_cpu, h_Track_Success, h_startSols, h_Track, h_startCoefs, h_targetCoefs, h_cgesvA, h_cgesvB, batchCount, coefsCount, N, my_queue, 90, tracks_success_file);
     }
     else if (hc_problem == "game6two") {
       cpu_time = cpu_hc_solver_game6two(h_Track_cpu, h_Track_Success, h_startSols, h_Track, h_startCoefs, h_targetCoefs, h_cgesvA, h_cgesvB, batchCount, coefsCount, N, my_queue, 400, tracks_success_file);
@@ -443,7 +353,7 @@ namespace magmaHCWrapper {
     }
     else if (hc_problem == "pole28sys") {
       cpu_time = cpu_hc_solver_pole28sys(h_Track_cpu, h_Track_Success, h_startSols, h_Track, h_startCoefs, h_targetCoefs, h_cgesvA, h_cgesvB, batchCount, coefsCount, N, my_queue, 400, tracks_success_file);
-    }
+    }*/
 
     printf("%% Problem   # of eqs   # of sols    GPU+CPU time (ms)    CPU time (ms)\n");
     printf("%%===========================================================================\n");
