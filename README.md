@@ -64,21 +64,38 @@ In this instruction, we take alea6 as an example. <br /><br />
 ``M2-HxHt-only-y-raw``: Only the y's of the HxHt symbolic evaluations. <br />
 ``M2-HxH-only-G-raw``: Only the G's of the HxH symbolic evaluations. <br />
 ``M2-HxH-only-y-raw``: Only the y's of the HxH symbolic evaluations. <br />
-**(3) Reformations:** Use ``/auto-gen-tools/reformatEval.m`` to generate files that change the Macaulay2 C code of ``M2-HxHt-only-G-raw`` and ``M2-HxH-only-G-raw`` into MAGMA data type so that we can use them directly in the c++ code. Be sure to remove the constants ``C0 = ...``, ``C1 = ...``, etc in ``M2-HxHt-only-G-raw`` and ``M2-HxH-only-G-raw``. Likewise, use ``/auto-gen-tools/reformat_y.m`` to generate files that change the Macaulay2 C code of ``M2-HxHt-only-y-raw`` and ``M2-HxH-only-y-raw``.
+**(3) Reformations:** Use ``/auto-gen-tools/reformatEval.m`` to generate files that change the Macaulay2 C code of ``M2-HxHt-only-G-raw`` and ``M2-HxH-only-G-raw`` into MAGMA data type so that we can use them directly in the c++ code. Be sure to remove the constants ``C0 = ...``, ``C1 = ...``, etc in ``M2-HxHt-only-G-raw`` and ``M2-HxH-only-G-raw``. Likewise, use ``/auto-gen-tools/reformat_y.m`` to generate files that change the Macaulay2 C code of ``M2-HxHt-only-y-raw`` and ``M2-HxH-only-y-raw``. <br />
 
-**STEP 4: Make a CPU HC code (This is optional if you do not need a CPU version of HC)**
-**(1) **
+**STEP 4: Generate Jacobian evaluation indices for GPU-HC**<br />
+**(1) Create your problem for index generator:** under ``/auto-gen-tools/idx-matrices-generator/``, create your problem matlab script. Add your problem in ``/auto-gen-tools/idx-matrices-generator/const_matrix_generator.m``. Make sure that the indices start from 0. <br />
+**(2) Run index generator:** Run ``/auto-gen-tools/idx-matrices-generator/const_matrix_generator.m``. Change the file write directory if necessary. Two files, ``Hx.txt`` and ``Ht.txt`` will be created. <br />
 
+**STEP 5: Make your HC solver in C++** <br />
+**(1) Create a problem folder:** Under ``/GPU-HC/straight-line-HC/problems/``, create a problem folder containing ``Hx.txt``, ``Ht.txt``, your start coefficients ``start_coefs.txt``, your start solutions ``start_sols.txt``, and your target coefficients ``target_coefs.txt``. <br />
+**(2) Define your problem parameters:** Go to ``/GPU-HC/straight-line-HC/define_params_and_read_files.cu`` and add your problem. <br />
+**(3) Direct the solver to your problem:** Go to ``/GPU-HC/straight-line-HC/homotopy_continuation_solver.cu`` and put in your problem. Make sure to include your problem function in ``/GPU-HC/straight-line-HC/magmaHC/cpu-compute/cpu-compute.h`` for a CPU-HC solver, and ``/GPU-HC/straight-line-HC/magmaHC/gpu-kernels/magmaHC-kernels.h`` for GPU-HC solver. <br />
+**(4) Create a CPU-HC solver:** Create Jacobian evaluation functions for your problem under ``/GPU-HC/straight-line-HC/magmaHC/cpu-compute/cpu-eval-HxHt.h`` and ``/GPU-HC/straight-line-HC/magmaHC/cpu-compute/cpu-eval-HxH.h``. Copy and paste the code from the files generated in STEP 3 (3). Create the solver under ``GPU-HC/straight-line-HC/magmaHC/cpu-compute/cpu-hc-solver/``. Change the values of ``C0``, ``C1``, etc if necessary (see STEP 3 (3)). <br />
+**(5) Create a GPU-HC solver:** Create a CUDA kernel under ``/GPU-HC/straight-line-HC/magmaHC/gpu-kernels/`` and a Jacobian evaluation device function under ``/GPU-HC/straight-line-HC/magmaHC/gpu-idx-eval/``. <br /> For the CUDA kernel, please refer to the alea6 problem for reference. Make sure to put in the problem parameters as the templates for the kernels. For the jacobian evaluation device function, there are four functions: <br />
+``eval_cdt_<problem_name>``: the evaluation of the coefficient homotopy ``(target_coefficient)*t + (start_coefficient)*(1-t)``. Also please refer to the device function in the alea6 problem. Change the loop number according to the number of coefficients and the number of your problem unknowns if necessary. <br />
+``eval_Hx_<problem_name>``: the evaluation of the Jacobian Hx. <br />
+``eval_Ht_<problem_name>``: the evaluation of the Jacobian Ht. <br />
+``eval_H_<problem_name>``: the evaluation of the Homotopy H. <br />
+Change the number of unknowns in each term of your problem for the above three device functions if necessary. <br />
+
+**STEP 6: Include newly created code files in CMakeLists.txt** <br />
+Finally, add the code files you just created in the ``CMakeLists.txt`` under ``/GPU-HC/straight-line-HC/magmaHC/``. <br />
+
+**STEP 7: Now you should be able to run your HC solver!** <br />
 
 # 6. Important Update Notice (Oct. 9th 2022)
 (1) In the published papers, start solutions are generated using Julia's homotopy continuation package. We found out that among all the generated start solutions, some of them are almost identical, creating redundant HC paths. Therefore, we have made a change on this where Julia's monodromy solver is used to generate start solutons. An example Julia script is given in ``/example-polynomial-data/``. <br />
-(2) Straight-line HC CUDA kernel code have been optimized a bit. The timings for each problem could be a bit different from what we published in the papers. <br />
-(3) We have discovered some numerical instable issues in the parameter HC. We are now improving this and will update the repo as soon as possible.
+(2) Straight-line HC CUDA kernel code have been optimized a bit, and the tolerance rate is strict in this repo. The timings for each problem could be a bit different from what we published in the papers. <br />
+(3) We have discovered some numerical instable issues in the parameter HC. We are now improving this now and will update the repo as soon as possible. <br />
 
 # 7. Reference
 Please cite the following papers if you use this code: <br />
 Straight-line HC: <br />
-``Chien, Chiang-Heng, Hongyi Fan, Ahmad Abdelfattah, Elias Tsigaridas, Stanimire Tomov, and Benjamin Kimia. "GPU-Based Homotopy Continuation for Minimal Problems in Computer Vision." In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 15765-15776. 2022.`` <br />
+``Chien, Chiang-Heng, Hongyi Fan, Ahmad Abdelfattah, Elias Tsigaridas, Stanimire Tomov, and Benjamin Kimia. "GPU-Based Homotopy Continuation for Minimal Problems in Computer Vision." In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 15765-15776. 2022.`` [Paper link](https://openaccess.thecvf.com/content/CVPR2022/html/Chien_GPU-Based_Homotopy_Continuation_for_Minimal_Problems_in_Computer_Vision_CVPR_2022_paper.html) <br />
 Parameter HC: <br />
-``Chien, Chiang-Heng, Hongyi Fan, Ahmad Abdelfattah, Elias Tsigaridas, Stanimire Tomov, and Benjamin Kimia. "Parallel Path Tracking for Homotopy Continuation using GPU." In Proceedings of the International Symposium on Symbolic and Algebraic Computation. 2022.``
+``Chien, Chiang-Heng, Hongyi Fan, Elias Tsigaridas, Ahmad Abdelfattah, Stanimire Tomov, and Benjamin Kimia. "Parallel Path Tracking for Homotopy Continuation using GPU." In Proceedings of the International Symposium on Symbolic and Algebraic Computation. 2022.`` [Paper link](https://par.nsf.gov/biblio/10333125)
 
