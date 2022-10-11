@@ -15,8 +15,10 @@ This repository primarily contains three folders: <br />
 (6) pthread <br />
 (7) if you want to solve a new polynomial problem not listed in the ``polynomial-problems`` folder, you will need Matlab 2019 or higher as well as [Macaulay2](http://www2.macaulay2.com/Macaulay2/Downloads/) and [Julia](https://julialang.org/downloads/) in order to generate symbolic Jacobian expressions and start solutions.
 
+# 3. Constraints
+The only restriction of GPU-HC is that the polynomial system of interest must have the number of variables lesser than 32. For those having more than 32 variables, you may need to reduce the size of the problem before using GPU-HC. <br />
 
-# 3. How to build and compile the code
+# 4. How to build and compile the code
 (1) After cloning the repo, cd to the repo folder and create a 'build' directory and enter it
 ```bash
 mkdir build && cd build
@@ -29,7 +31,7 @@ cmake .. && make -j
 ```
 
 
-# 4. How to run the execution file after successful compilation
+# 5. How to run the execution file after successful compilation
 (1) enter the bin foler under build folder of the repo dorectory
 ```bash
 cd bin
@@ -39,7 +41,7 @@ cd bin
 ./magmaHC-main <input-argument> <command>
 ```
 
-# 5. How to use software tools and edit the code to solve a new polynomial problem
+# 6. How to use software tools and edit the code to solve a new polynomial problem
 First, create a folder of your problem-name where all data can be placed. All scripts and materials mentioned below are given under the ``polynoamil-data-preparations`` folder. <br />
 **STAIGHT-LINE HC** <br /> <br />
 In this instruction, we take alea6 as an example. <br /><br />
@@ -88,15 +90,15 @@ Finally, add the code files you just created in the ``CMakeLists.txt`` under ``/
 
 **STEP 7: NOW YOU SHOULD BE ABLE TO RUN YOUR HC SOLVER!** <br />
 
-# 6. Important Update Notice (Oct. 9th 2022)
+# 7. Important Update Notice (Oct. 9th 2022)
 (1) In the published papers, start solutions are generated using Julia's homotopy continuation package. We found out that among all the generated start solutions, some of them are almost identical, creating redundant HC paths. Therefore, we have made a change on this where Julia's monodromy solver is used to generate start solutons. An example Julia script is given in ``/example-polynomial-data/``. <br />
 (2) Straight-line HC CUDA kernel code have been optimized a bit, and the tolerance rate is strict in this repo. The timings for each problem could be a bit different from what we published in the papers. <br />
 (3) We have discovered some numerical instable issues in the parameter HC. We are now improving this now and will update the repo as soon as possible. <br />
 
-# 7. Known issues
+# 8. Known issues
 When using ``#pragma unroll`` for some of the for-loops, an error message from nvcc comes out. Commenting out ``#pragma unroll`` solves the issue. <br />
 
-# 8. Reference
+# 9. References
 Please cite the following papers if you use this code: <br />
 Straight-line HC: <br />
 ``Chien, Chiang-Heng, Hongyi Fan, Ahmad Abdelfattah, Elias Tsigaridas, Stanimire Tomov, and Benjamin Kimia. "GPU-Based Homotopy Continuation for Minimal Problems in Computer Vision." In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 15765-15776. 2022.`` [Paper link](https://openaccess.thecvf.com/content/CVPR2022/html/Chien_GPU-Based_Homotopy_Continuation_for_Minimal_Problems_in_Computer_Vision_CVPR_2022_paper.html) <br />
