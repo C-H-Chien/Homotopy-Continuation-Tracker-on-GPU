@@ -58,6 +58,7 @@ In this instruction, we take alea6 as an example. <br /><br />
 **(4) Reformation:** Use ``/auto-gen-tools/reformateStartSolsFromJulia.m`` matlab script to reformat start solutions. Edit the input/output file directory and the output file named ``start-sols.txt`` will be generated. For start coefficients, manually reformat them as they appear in the example. <br /><br />
 
 **STEP 3: GENERATE SYMBOLIC EXPRESSIONS OF JACOBIANS**<br />
+**This is for the CPU-HC solver. Skip this step if you do not need a CPU solver.** <br />
 **(1) Generate raw format from M2:** Use Macaulay2 to generate the C code of the symbolic Jacobian evaluations. An example is provided in ``/example-polynomial-data/alea6/M2-Jacobian-Evluation-Ccode``. <br />
 **(2) Copy M2 generated C code to files:** Copy the generated C code to files (Please refer to the example files under ``/example-polynomial-data/alea6/``): <br /> 
 ``M2-HxHt-only-G-raw``: Only the G's of the HxHt symbolic evaluations. <br />
@@ -67,7 +68,7 @@ In this instruction, we take alea6 as an example. <br /><br />
 **(3) Reformations:** Use ``/auto-gen-tools/reformatEval.m`` to generate files that change the Macaulay2 C code of ``M2-HxHt-only-G-raw`` and ``M2-HxH-only-G-raw`` into MAGMA data type so that we can use them directly in the c++ code. Be sure to remove the constants ``C0 = ...``, ``C1 = ...``, etc in ``M2-HxHt-only-G-raw`` and ``M2-HxH-only-G-raw``. Likewise, use ``/auto-gen-tools/reformat_y.m`` to generate files that change the Macaulay2 C code of ``M2-HxHt-only-y-raw`` and ``M2-HxH-only-y-raw``. <br /><br />
 
 **STEP 4: GENERATE JACOBIAN EVALUATION INDICES FOR GPU-HC**<br />
-**(1) Create your problem for index generator:** under ``/auto-gen-tools/idx-matrices-generator/``, create your problem matlab script. Add your problem in ``/auto-gen-tools/idx-matrices-generator/const_matrix_generator.m``. Make sure that the indices start from 0. <br />
+**(1) Create your problem for index generator:** under ``/auto-gen-tools/idx-matrices-generator/``, create your problem matlab script. Add your problem in ``/auto-gen-tools/idx-matrices-generator/const_matrix_generator.m``. Make sure that the indices start from 0 and follow the format as they are in the provided scripts. <br />
 **(2) Run index generator:** Run ``/auto-gen-tools/idx-matrices-generator/const_matrix_generator.m``. Change the file write directory if necessary. Two files, ``Hx.txt`` and ``Ht.txt`` will be created. <br /><br />
 
 **STEP 5: CONSTRUCT YOUR HC SOLVER** <br />
@@ -92,7 +93,10 @@ Finally, add the code files you just created in the ``CMakeLists.txt`` under ``/
 (2) Straight-line HC CUDA kernel code have been optimized a bit, and the tolerance rate is strict in this repo. The timings for each problem could be a bit different from what we published in the papers. <br />
 (3) We have discovered some numerical instable issues in the parameter HC. We are now improving this now and will update the repo as soon as possible. <br />
 
-# 7. Reference
+# 7. Known issues
+When using ``#pragma unroll`` for some of the for-loops, an error message from nvcc comes out. Commenting out ``#pragma unroll`` solves the issue. <br />
+
+# 8. Reference
 Please cite the following papers if you use this code: <br />
 Straight-line HC: <br />
 ``Chien, Chiang-Heng, Hongyi Fan, Ahmad Abdelfattah, Elias Tsigaridas, Stanimire Tomov, and Benjamin Kimia. "GPU-Based Homotopy Continuation for Minimal Problems in Computer Vision." In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 15765-15776. 2022.`` [Paper link](https://openaccess.thecvf.com/content/CVPR2022/html/Chien_GPU-Based_Homotopy_Continuation_for_Minimal_Problems_in_Computer_Vision_CVPR_2022_paper.html) <br />
