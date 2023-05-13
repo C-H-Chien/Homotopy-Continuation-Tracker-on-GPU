@@ -1,2 +1,0 @@
-/usr/bin/ar qc ../lib/libmagmaHC.a  CMakeFiles/magmaHC.dir/define_params_and_read_files.cu.o CMakeFiles/magmaHC.dir/homotopy_continuation_solver.cu.o CMakeFiles/magmaHC.dir/gpu-kernels/kernel_HC_Solver_six_lines_6x6.cu.o CMakeFiles/magmaHC.dir/gpu-kernels/kernel_HC_Solver_six_lines_16.cu.o CMakeFiles/magmaHC.dir/gpu-kernels/kernel_HC_Solver_3views_4pts.cu.o
-/usr/bin/ranlib ../lib/libmagmaHC.a
