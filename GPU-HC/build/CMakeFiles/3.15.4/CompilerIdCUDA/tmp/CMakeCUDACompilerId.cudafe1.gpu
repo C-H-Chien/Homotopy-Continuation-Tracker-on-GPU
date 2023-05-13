@@ -1,0 +1,101 @@
+typedef char __nv_bool;
+# 209 "/gpfs/rt/7.2/opt/gcc/10.2/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include/stddef.h" 3
+typedef unsigned long size_t;
+#include "crt/device_runtime.h"
+# 260 "/gpfs/rt/7.2/opt/gcc/10.2/include/c++/10.2.0/x86_64-pc-linux-gnu/bits/c++config.h" 3
+typedef unsigned long _ZSt6size_t;
+# 75 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaMalloc(void **, size_t);
+# 80 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaFuncGetAttributes(struct cudaFuncAttributes *, const void *);
+# 85 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaDeviceGetAttribute(int *, enum cudaDeviceAttr, int);
+# 90 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaGetDevice(int *);
+# 95 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaOccupancyMaxActiveBlocksPerMultiprocessor(int *, const void *, int, size_t);
+# 100 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags(int *, const void *, int, size_t, unsigned);
+#include "common_functions.h"
+# 75 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaMalloc(
+# 75 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+void **p, 
+# 75 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+size_t s){
+# 76 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+{
+# 77 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+return cudaErrorUnknown;
+# 78 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+}}
+# 80 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaFuncGetAttributes(
+# 80 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+struct cudaFuncAttributes *p, 
+# 80 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+const void *c){
+# 81 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+{
+# 82 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+return cudaErrorUnknown;
+# 83 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+}}
+# 85 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaDeviceGetAttribute(
+# 85 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+int *value, 
+# 85 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+enum cudaDeviceAttr attr, 
+# 85 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+int device){
+# 86 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+{
+# 87 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+return cudaErrorUnknown;
+# 88 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+}}
+# 90 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaGetDevice(
+# 90 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+int *device){
+# 91 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+{
+# 92 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+return cudaErrorUnknown;
+# 93 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+}}
+# 95 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+# 95 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+int *numBlocks, 
+# 95 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+const void *func, 
+# 95 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+int blockSize, 
+# 95 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+size_t dynamicSmemSize){
+# 96 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+{
+# 97 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+return cudaErrorUnknown;
+# 98 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+}}
+# 100 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags(
+# 100 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+int *numBlocks, 
+# 100 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+const void *func, 
+# 100 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+int blockSize, 
+# 100 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+size_t dynamicSmemSize, 
+# 100 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+unsigned flags){
+# 101 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+{
+# 102 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+return cudaErrorUnknown;
+# 103 "/gpfs/runtime/opt/cuda/11.1.1/cuda/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+}}
