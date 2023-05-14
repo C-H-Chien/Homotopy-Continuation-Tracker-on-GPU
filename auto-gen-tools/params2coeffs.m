@@ -15,7 +15,7 @@ format long;
 
 %> This is my lab laptop directory
 fileFolder = '/path/to/your/minimal-problems/';
-problem = "six_lines_16/";
+problem = "5pt_rel_pos_geo_form_quat/";
 problemName = extractBefore(problem, "/");
 
 params.make_coefficientHC = 0;
@@ -57,10 +57,10 @@ outputFileWr_keep_params_rep_problem = fopen(fullOutputFileName_keep_params_rep_
 
 
 % -- define systems --
-if strcmp(problem, 'six_lines_generalized_cam/')
-    [f, numOfVars] = sys_six_lines_generalized_cam();
-elseif strcmp(problem, 'six_lines_16/')
-    [f, numOfVars] = sys_six_lines_16();
+if strcmp(problem, '5pt_rel_pos_alg_form_quat/')
+    [f, numOfVars] = sys_5pt_rel_pos_alg_form_quat();
+elseif strcmp(problem, '5pt_rel_pos_geo_form_quat/')
+    [f, numOfVars] = sys_5pt_rel_pos_geo_form_quat();
 end
 
 for i = 1:numOfVars
