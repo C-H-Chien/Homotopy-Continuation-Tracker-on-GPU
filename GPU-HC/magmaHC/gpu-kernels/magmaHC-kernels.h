@@ -31,7 +31,7 @@ namespace magmaHCWrapper {
     magma_int_t N, magma_int_t batchCount, magma_int_t ldda,
     magma_queue_t my_queue,
     magmaFloatComplex** d_startSols_array, magmaFloatComplex** d_Track_array,
-    magmaFloatComplex** d_cgesvA_array, magmaFloatComplex** d_cgesvB_array, const_mats *cm,
+    magmaFloatComplex** d_cgesvA_array, magmaFloatComplex** d_cgesvB_array,
     magma_int_t* d_Hx_idx_array, magma_int_t* d_Ht_idx_array,
     magmaFloatComplex_ptr d_phc_coeffs_Hx, magmaFloatComplex_ptr d_phc_coeffs_Ht,
     magma_int_t numOf_phc_coeffs
@@ -42,7 +42,7 @@ namespace magmaHCWrapper {
     magma_int_t N, magma_int_t batchCount, magma_int_t ldda,
     magma_queue_t my_queue,
     magmaFloatComplex** d_startSols_array, magmaFloatComplex** d_Track_array,
-    magmaFloatComplex** d_cgesvA_array, magmaFloatComplex** d_cgesvB_array, const_mats *cm,
+    magmaFloatComplex** d_cgesvA_array, magmaFloatComplex** d_cgesvB_array,
     magma_int_t* d_Hx_idx_array, magma_int_t* d_Ht_idx_array,
     magmaFloatComplex_ptr d_phc_coeffs_Hx, magmaFloatComplex_ptr d_phc_coeffs_Ht,
     magma_int_t numOf_phc_coeffs

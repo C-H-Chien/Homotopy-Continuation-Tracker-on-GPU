@@ -219,17 +219,11 @@ int main(int argc, char **argv) {
     Ht_file_read_success = 1;
   }
 
-  //> numerical params2coeffs
-  if (HC_problem == "six_lines_6x6") {
-    //magmaHCWrapper::p2c_numerical_six_lines_6x6(h_phc_coeffs_Hx, h_phc_coeffs_Ht);
-    magmaHCWrapper::p2c_numerical_six_lines_6x6_v2(h_phc_coeffs_Hx, h_phc_coeffs_Ht);
-  }
-  else if (HC_problem == "six_lines_16") {
-    magmaHCWrapper::p2c_symbolic_six_lines_16(h_startParams, h_targetParams, h_phc_coeffs_Hx, h_phc_coeffs_Ht);
-  }
-  else if (HC_problem == "3views_4pts") {
-    magmaHCWrapper::p2c_symbolic_3views_4pts(h_startParams, h_targetParams, h_phc_coeffs_Hx, h_phc_coeffs_Ht);
-  }
+  //> symbolic params2coeffs
+  if      (HC_problem == "5pt_rel_pos_geo_form_quat") magmaHCWrapper::p2c_5pt_rel_pos_geo_form_quat(h_targetParams, h_startParams, h_phc_coeffs_Hx, h_phc_coeffs_Ht);
+  else if (HC_problem == "5pt_rel_pos_alg_form_quat") magmaHCWrapper::p2c_5pt_rel_pos_alg_form_quat(h_targetParams, h_startParams, h_phc_coeffs_Hx, h_phc_coeffs_Ht);
+
+  //for (int i = 0; i < 10; i ++) std::cout << MAGMA_C_REAL(h_phc_coeffs_Ht[i]) << "\t" << MAGMA_C_IMAG(h_phc_coeffs_Ht[i]) << std::endl;
   
   read_success = (start_sols_read_success && start_coeffs_read_success && targetParams_read_success && Hx_file_read_success && Ht_file_read_success);
 

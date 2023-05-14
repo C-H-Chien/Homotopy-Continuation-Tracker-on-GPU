@@ -1,6 +1,6 @@
 find_package(Threads REQUIRED)
 link_libraries(magmaHC)
-link_libraries(magmaHC-DP64)
+#link_libraries(magmaHC-DP64)
 
 add_executable(magmaHC-main magmaHC-main.cu)
 

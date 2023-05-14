@@ -1,4 +1,4 @@
-Path Traking for Homotopy Continuation in GPU - Parameter Homotopy Continuation applied to Computer Vision Applications
+# Path Traking for Homotopy Continuation in GPU - Parameter Homotopy Continuation applied to Computer Vision Applications
 
 # 1. After build and compile
 

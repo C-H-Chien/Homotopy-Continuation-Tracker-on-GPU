@@ -180,13 +180,15 @@ namespace magmaHCWrapper {
 
     if (hc_problem == "5pt_rel_pos_geo_form_quat") {
       std::cout<<"Solving 5-point relative pose problem (geometric form) ..."<<std::endl<<std::endl;
-      gpu_time = kernel_HC_Solver_5pt_rel_pos_geo_form_quat(N, batchCount, ldda, my_queue, d_startSols_array, d_Track_array, d_cgesvA_array, d_cgesvB_array, 
-                                                d_Hx_idx, d_Ht_idx, d_phc_coeffs_Hx, d_phc_coeffs_Ht, pp->numOfCoeffsFromParams);
+      gpu_time = kernel_HC_Solver_5pt_rel_pos_geo_form_quat
+                 (N, batchCount, ldda, my_queue, d_startSols_array, d_Track_array, d_cgesvA_array, d_cgesvB_array, 
+                  d_Hx_idx, d_Ht_idx, d_phc_coeffs_Hx, d_phc_coeffs_Ht, pp->numOfCoeffsFromParams);
     }
     else if (hc_problem == "5pt_rel_pos_alg_form_quat") {
       std::cout<<"Solving 5-point relative pose problem (algebraic form) ..."<<std::endl<<std::endl;
-      gpu_time = kernel_HC_Solver_5pt_rel_pos_alg_form_quat(N, batchCount, ldda, my_queue, d_startSols_array, d_Track_array, d_cgesvA_array, d_cgesvB_array, 
-                                               d_Hx_idx, d_Ht_idx, d_phc_coeffs_Hx, d_phc_coeffs_Ht, pp->numOfCoeffsFromParams);
+      gpu_time = kernel_HC_Solver_5pt_rel_pos_alg_form_quat
+                 (N, batchCount, ldda, my_queue, d_startSols_array, d_Track_array, d_cgesvA_array, d_cgesvB_array, 
+                  d_Hx_idx, d_Ht_idx, d_phc_coeffs_Hx, d_phc_coeffs_Ht, pp->numOfCoeffsFromParams);
     }
 
     //> Check returns from the kernel
