@@ -49,4 +49,4 @@ cd bin
 ```
 
 ## How to use GPU-HC to solve a new polynomial problem
-There are two example problems provided in this repository: 5-point relative pose problem in (i) geometric and (ii) algebraic forms. <br />
+There are two example problems provided in this repository: 5-point relative pose problem in (i) geometric and (ii) algebraic forms. (To be updated...) <br />
