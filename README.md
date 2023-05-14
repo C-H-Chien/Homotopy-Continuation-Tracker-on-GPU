@@ -1,9 +1,8 @@
 # GPU-HC: Homotopy Continuation Path Tracking in GPU
 ### Research @ LEMS, Brown University (CVPR 2022)
 ## Introduction
-GPU-HC, as its name suggests, is a GPU implementation of Homotopy Continuation Solver. It is a general tool for finding roots of a polynomial systems (check our papers for more details). Our research aims at applying GPU-HC for computer vision problems, especially multiview geometry problems, where timings are crucial as the computation is typically performed under a RANSAC loop. Please refer and cite the following two papers if you intend to use them in your work. Also, please do not hesitate to contact chiang-heng_chien@brown.edu if you have any questions on using GPU-HC. Currently, the only restriction of GPU-HC is that the polynomial system of interest must have the number of variables lesser than 32. We are planning to develop a solver enabling polynomials of unknowns greater than 32.
+GPU-HC, as its name suggests, is a GPU implementation of Homotopy Continuation Solver. It is a general tool for finding roots of a polynomial systems (check our papers for more details). Our research aims at applying GPU-HC for computer vision problems, especially multiview geometry problems, where timings are crucial as the computation is typically performed under a RANSAC loop. Please refer and cite the following two papers if you intend to use them in your work. Also, please do not hesitate to contact chiang-heng_chien@brown.edu if you have any questions on using GPU-HC. Currently, the only restriction of GPU-HC is that the polynomial system of interest must have the number of variables lesser than 32. We are planning to develop a solver enabling polynomials of unknowns greater than 32. <br />
 
-This is the source code of the following two papers: <br />
 1. ``Chien, Chiang-Heng, Hongyi Fan, Ahmad Abdelfattah, Elias Tsigaridas, Stanimire Tomov, and Benjamin Kimia. "GPU-Based Homotopy Continuation for Minimal Problems in Computer Vision." In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 15765-15776. 2022.`` [Paper link](https://openaccess.thecvf.com/content/CVPR2022/html/Chien_GPU-Based_Homotopy_Continuation_for_Minimal_Problems_in_Computer_Vision_CVPR_2022_paper.html) <br />
 
 2. ``Chien, Chiang-Heng, Hongyi Fan, Elias Tsigaridas, Ahmad Abdelfattah, Stanimire Tomov, and Benjamin Kimia. "Parallel Path Tracking for Homotopy Continuation using GPU." In Proceedings of the International Symposium on Symbolic and Algebraic Computation. 2022.`` [Paper link](https://par.nsf.gov/biblio/10333125) <br /> <br />
@@ -50,3 +49,4 @@ cd bin
 ```
 
 ## How to use GPU-HC to solve a new polynomial problem
+There are two example problems provided in this repository: 5-point relative pose problem in (i) geometric and (ii) algebraic forms. <br />
