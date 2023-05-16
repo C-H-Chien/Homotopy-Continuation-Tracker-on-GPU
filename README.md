@@ -13,8 +13,8 @@ GPU-HC, as its name suggests, is a GPU implementation of Homotopy Continuation S
 
 ## Contents
 This repository primarily contains three folders: <br />
-``GPU-HC``: main code of GPU-HC solver.
-``auto-gen-tools``: software tools used to automatically generate necessary data for GPU-HC to solve new problems <br />
+``GPU-HC``: main code of GPU-HC solver. <br />
+``auto-data-gen-tools``: software tools used to automatically generate necessary data for GPU-HC to solve new problems <br />
 ``problem-data-generation``: example polynomial system data. <br />
 
 ## Dependencies:
