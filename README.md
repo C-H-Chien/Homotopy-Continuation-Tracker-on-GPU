@@ -49,4 +49,10 @@ cd bin
 ```
 
 ## How to use GPU-HC to solve a new polynomial problem
-There are two example problems provided in this repository: 5-point relative pose problem in (i) geometric and (ii) algebraic forms. (To be updated...) <br />
+There are two example problems provided in this repository: 5-point relative pose problem in (i) geometric and (ii) algebraic forms. Their polynomials can be generated from either the Julia script or the MATLAB script under ``problem-data-generation/`` <br />
+Step 1. Create the polynomial system  
+        Formulate your polynomial system as the one in ``auto-data-gen-tools/sys_5pt_rel_pos_geo_form_quat.m``. 
+Step 2. Generate start parameters and solutions  
+        Create a Julia script which perfoms a Monodromy solver that finds the solutions of a start system. Examples of a Julia script can be found under ``problem-data-generation/``, e.g., for 5-point relative pose estimation of geometric form, its Julia script is ``Julia_Monodromy_Solver_Examples/5-Point-Relative-Pose-Geometric-Form.jl``. A Julia monodromy solver script for the 3-view triangulation problem is also provided if you explicitly have the polynomial system.  
+<br />
+(To be updated...) <br />
