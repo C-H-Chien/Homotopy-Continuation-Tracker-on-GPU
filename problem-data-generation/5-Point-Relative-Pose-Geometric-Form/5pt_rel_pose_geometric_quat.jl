@@ -32,24 +32,5 @@ Eq5 = dot([t[1]; t[2]; 1], cross([x[5,2,:];1], R * [x[5,1,:];1]))
 #> Quaternion Normalization Constraint Eqs
 quat_nom_R = r[1]^2 + r[2]^2 + r[3]^2 + r[4]^2 - 1 
 
-#> All Equations, 16 equations in total
+#> All Equations, 6 equations in total
 Eqs = [Eq1; Eq2; Eq3; Eq4; Eq5; quat_nom_R];
-variables_list = collect(Iterators.flatten([t, r]));
-parameters_list = collect(Iterators.flatten([permutedims(x,[3,2,1])]))
-F = System(Eqs;variables=variables_list, parameters =parameters_list);
-
-S = monodromy_solve(F)
-start_solutions = solutions(S);
-start_params = S.parameters;
-
-#Try to solve with random Parameters
-#target_params = rand(33) + rand(33) * im
-
-#@time for i = 1:10
-#solve(F, start_solutions; start_parameters=start_params, target_parameters=target_params)
-#end
-
-#io = open("/path/to/folder/", "w");
-#using DelimitedFiles
-#writedlm(io, start_solutions);
-#close(io)
