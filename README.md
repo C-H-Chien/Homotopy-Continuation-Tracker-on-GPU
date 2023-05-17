@@ -13,9 +13,9 @@ GPU-HC, as its name suggests, is a GPU implementation of Homotopy Continuation S
 
 ## Contents
 This repository primarily contains three folders: <br />
-``GPU-HC``: main code of GPU-HC solver. <br />
-``auto-data-gen-tools``: software tools used to automatically generate necessary data for GPU-HC to solve new problems <br />
-``problem-data-generation``: example polynomial system data. <br />
+- [x] ``GPU-HC``: main code of GPU-HC solver. <br />
+- [x] ``auto-data-gen-tools``: software tools used to automatically generate necessary data for GPU-HC to solve new problems <br />
+- [x] ``problem-data-generation``: example polynomial system data. <br />
 
 ## Dependencies:
 (1) CMake 3.14 or higher <br />
@@ -31,21 +31,24 @@ This repository primarily contains three folders: <br />
 ```bash
 mkdir build && cd build
 ```
-(2) make sure to change routes in CMakeFiles according to your local machine. See README.md of either straight-line or parameter HC. <br />
-(3) create a make file and compile the entire code <br />
-(There are a lot of problems run in this repo. It may be time consuming if all GPU kernels are compiled. To save your time, feel free to comment out the kernel in the CMakeLists.txt under ``/GPU-HC/straight-line-HC/magmaHC/`` or ``/GPU-HC/parameter-HC/magmaHC/``)
+(2) Make sure to change paths of dependencies in CMakeFiles according to your local machine. <br />
+(3) Create a make file and compile the entire code <br />
 ```bash
 cmake .. && make -j
 ```
 
 ## How to run the execution file after successful compilation
-(1) enter the bin foler under build folder of the repo dorectory
+(1) Enter the bin foler under build folder of the repo dorectory
 ```bash
 cd bin
 ```
-(2) run the code by specifically typing input arguments. See README.md in folders of either straight-line or parameter HC under ``GPU-HC`` folder.
+(2) Run the code by specifically typing input arguments.
 ```bash
 ./magmaHC-main <input-argument> <command>
+```
+As an example, to run 5-point relative pose problem in geometric form, type
+```bash
+./magmaHC-main -p 5pt_rel_pos_geo_form_quat
 ```
 
 ## How to use GPU-HC to solve a new polynomial problem
