@@ -23,13 +23,13 @@ params.write_Ht_indices = 1;
 params.write_Hx_indices = 1;
 
 if params.write_Ht_indices
-    outputHtIndicesFileName = 'Ht_indices.txt';
+    outputHtIndicesFileName = 'Ht_idx.txt';
     fullOutputFileName_Ht_indices = fullfile(fileFolder, problem, outputHtIndicesFileName);
     outputFileWr_Ht_indices = fopen(fullOutputFileName_Ht_indices, 'w');
 end
 
 if params.write_Hx_indices
-    outputHxIndicesFileName = 'Hx_indices.txt';
+    outputHxIndicesFileName = 'Hx_idx.txt';
     fullOutputFileName_Hx_indices = fullfile(fileFolder, problem, outputHxIndicesFileName);
     outputFileWr_Hx_indices = fopen(fullOutputFileName_Hx_indices, 'w');
 end

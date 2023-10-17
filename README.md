@@ -52,13 +52,23 @@ As an example, to run 5-point relative pose problem in geometric form, type
 ```
 
 ## How to use GPU-HC to solve a new polynomial problem
-There are two example problems provided in this repository: 5-point relative pose problem in (i) geometric and (ii) algebraic forms. Their polynomials can be generated from either the Julia script or the MATLAB script under ``problem-data-generation/`` <br />
-- **Step 1. Create the polynomial system:** Formulate your _explicit_ polynomial system as a matlab script. An example can be found in ``auto-data-gen-tools/sys_5pt_rel_pos_geo_form_quat.m`` where ``p`` is the system parameters and ``x`` are the unknowns. 
-- **Step 2. Generate start parameters and solutions:** Create a Julia script which perfoms a Monodromy solver that finds the solutions of a start system. An example can be found under ``problem-data-generation/``, _e.g._, for 5-point relative pose estimation of geometric form, refer to ``Julia_Monodromy_Solver_Examples/5-Point-Relative-Pose-Geometric-Form.jl``. Remember to write the start parameters and solutions to files.
-- **Step 3. Reformulate the start parameters and solutions:** <br />
+There are two example problems provided in this repository: 5-point relative pose problem in __(i)__ geometric and __(ii)__ algebraic forms. Their polynomials can be generated from either the Julia script or the MATLAB script under ``problem-data-generation/`` <br />
+- **Step 1. Create Your Polynomial System:** Formulate your _explicit_ polynomial system as a matlab script. An example can be found in ``auto-data-gen-tools/sys_5pt_rel_pos_geo_form_quat.m`` where ``p`` is the system parameters and ``x`` are the unknowns. 
+- **Step 2. Generate Start Parameters and Solutions:** 
+	- Create a Julia script which perfoms a Monodromy solver that finds the solutions of a start system. An example can be found under ``problem-data-generation/``, _e.g._, for 5-point relative pose estimation of geometric form, refer to ``Julia_Monodromy_Solver_Examples/5-Point-Relative-Pose-Geometric-Form.jl``. <br />
+	- Remember to write the start parameters and solutions to files when running Julia. <br />
+- **Step 3. Reformulate the Start Parameters and Solutions:** <br />
 	- **Start solutions:** Run ``auto-data-gen-tools/reformatStartSolsFromJulia.m`` to reformulate the start solutions. Make sure to specify the file path and names. <br />
 	- **Start parameters:** Reformulation is trivial. Manually reformulate it as the one in ``GPU-HC/problems/5pt_rel_pos_geo_form_quat/start_params.txt``. The first column is the real part while the second is the imaginary part. <br />
-
+- **Step 4. Create Jacobian Matrices Evaluation Indices Automatically:** <br />
+	- Simply edit ``auto-data-gen-tools/params2coeffs.m`` script to insert your problem. This needs the matlab script you prepared in Step 1. <br />
+	- Run the ``auto-data-gen-tools/params2coeffs.m`` script. You should expect several output files, but the following files are necessary for GPU-HC: <br />
+		- ``Hx_idx.txt``: Jacobian matrix $\frac{\partial H}{\partial x}$ evaluation indices. <br />
+		- ``Ht_idx.txt``: Jacobian matrix $\frac{\partial H}{\partial t}$ evaluation indices. <br />
+- **Step XX. Deploy your problem in GPU-HC:** Make a folder of your problem name under ``GPU-HC/problems/`` and put
+	- Start system solutions and parameters made in Step 3.
+	- Your target parameters. Formulation is identical to the start parameters.
+	- Jacobian evaluation indices made in Step X. 
 
 <br />
 (To be updated...) <br />
