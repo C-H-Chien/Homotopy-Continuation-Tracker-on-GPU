@@ -3,13 +3,13 @@
 ## Introduction
 GPU-HC, as its name suggests, is a GPU implementation of Homotopy Continuation Solver. It is a general tool for finding roots of a polynomial systems (check our papers for more details). Our research aims at applying GPU-HC for computer vision problems, especially multiview geometry problems, where timings are crucial as the computation is typically performed under a RANSAC loop. Please refer and cite the following two papers if you intend to use them in your work. Also, please do not hesitate to contact chiang-heng_chien@brown.edu if you have any questions on using GPU-HC. Currently, the only restriction of GPU-HC is that the polynomial system of interest must have the number of variables lesser than 32. We are planning to develop a solver enabling polynomials of unknowns greater than 32. <br />
 
-1. ``Chien, Chiang-Heng, Hongyi Fan, Ahmad Abdelfattah, Elias Tsigaridas, Stanimire Tomov, and Benjamin Kimia. "GPU-Based Homotopy Continuation for Minimal Problems in Computer Vision." In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 15765-15776. 2022.`` [Paper link](https://openaccess.thecvf.com/content/CVPR2022/html/Chien_GPU-Based_Homotopy_Continuation_for_Minimal_Problems_in_Computer_Vision_CVPR_2022_paper.html) <br />
+1. ``Chien, Chiang-Heng, Hongyi Fan, Ahmad Abdelfattah, Elias Tsigaridas, Stanimire Tomov, and Benjamin Kimia. "GPU-Based Homotopy Continuation for Minimal Problems in Computer Vision." In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 15765-15776. 2022.`` [[Paper link](https://openaccess.thecvf.com/content/CVPR2022/html/Chien_GPU-Based_Homotopy_Continuation_for_Minimal_Problems_in_Computer_Vision_CVPR_2022_paper.html)] <br />
 
-2. ``Chien, Chiang-Heng, Hongyi Fan, Elias Tsigaridas, Ahmad Abdelfattah, Stanimire Tomov, and Benjamin Kimia. "Parallel Path Tracking for Homotopy Continuation using GPU." In Proceedings of the International Symposium on Symbolic and Algebraic Computation. 2022.`` [Paper link](https://par.nsf.gov/biblio/10333125) <br /> <br />
+2. ``Chien, Chiang-Heng, Hongyi Fan, Elias Tsigaridas, Ahmad Abdelfattah, Stanimire Tomov, and Benjamin Kimia. "Parallel Path Tracking for Homotopy Continuation using GPU." In Proceedings of the International Symposium on Symbolic and Algebraic Computation. 2022.`` [[Paper link](https://par.nsf.gov/biblio/10333125)] <br /> <br />
 
 ## New Updates
-1. 2023.05.14 GPU-HC has a new release!
-2. 2023.03.12 GPU-HC has now been used in solving three-view relative pose problem of a generalized camera! <br />
+1. 2023.05.14 GPU-HC has a new release! <br />
+2. 2023.03.12 GPU-HC has now been used in solving generalized three-view relative pose problem. Checkout this [ICCV paper](https://openaccess.thecvf.com/content/ICCV2023/papers/Ding_Minimal_Solutions_to_Generalized_Three-View_Relative_Pose_Problem_ICCV_2023_paper.pdf) and [GitHub page](https://github.com/C-H-Chien/Three_View_Generalized_Camera). <br />
 
 ## Contents
 This repository primarily contains three folders: <br />
@@ -53,7 +53,13 @@ As an example, to run 5-point relative pose problem in geometric form, type
 
 ## How to use GPU-HC to solve a new polynomial problem
 There are two example problems provided in this repository: 5-point relative pose problem in (i) geometric and (ii) algebraic forms. Their polynomials can be generated from either the Julia script or the MATLAB script under ``problem-data-generation/`` <br />
-- **Step 1. Create the polynomial system:** Formulate your polynomial system as the one in ``auto-data-gen-tools/sys_5pt_rel_pos_geo_form_quat.m``. 
-- **Step 2. Generate start parameters and solutions:** Create a Julia script which perfoms a Monodromy solver that finds the solutions of a start system. Examples of a Julia script can be found under ``problem-data-generation/``, e.g., for 5-point relative pose estimation of geometric form, its Julia script is ``Julia_Monodromy_Solver_Examples/5-Point-Relative-Pose-Geometric-Form.jl``. A Julia monodromy solver script for the 3-view triangulation problem is also provided if you explicitly have the polynomial system.  
+- **Step 1. Create the polynomial system:** Formulate your _explicit_ polynomial system as the one in ``auto-data-gen-tools/sys_5pt_rel_pos_geo_form_quat.m`` where ``p`` is the system parameters and ``x`` are the unknowns. 
+- **Step 2. Generate start parameters and solutions:** Create a Julia script which perfoms a Monodromy solver that finds the solutions of a start system. Examples of a Julia script can be found under ``problem-data-generation/``, e.g., for 5-point relative pose estimation of geometric form, its Julia script is ``Julia_Monodromy_Solver_Examples/5-Point-Relative-Pose-Geometric-Form.jl``.
 <br />
 (To be updated...) <br />
+
+## Limitations
+Several limitations of the GPU-HC solver: <br />
+(1) The system size must not exceed 32x32. <br />
+(2) GPU-HC is unable to solve an over-determined system. One possible way to tackle this is to choose only partial polynomials to make the system well-determined. This might not guarantee to find the solution of interest, but sometimes it works. <br />
+(3) There is no _generic_ (e.g., circular arc) gamma trick applied in the solver. This will however be introduced in the future.
