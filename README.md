@@ -53,8 +53,13 @@ As an example, to run 5-point relative pose problem in geometric form, type
 
 ## How to use GPU-HC to solve a new polynomial problem
 There are two example problems provided in this repository: 5-point relative pose problem in (i) geometric and (ii) algebraic forms. Their polynomials can be generated from either the Julia script or the MATLAB script under ``problem-data-generation/`` <br />
-- **Step 1. Create the polynomial system:** Formulate your _explicit_ polynomial system as the one in ``auto-data-gen-tools/sys_5pt_rel_pos_geo_form_quat.m`` where ``p`` is the system parameters and ``x`` are the unknowns. 
-- **Step 2. Generate start parameters and solutions:** Create a Julia script which perfoms a Monodromy solver that finds the solutions of a start system. Examples of a Julia script can be found under ``problem-data-generation/``, e.g., for 5-point relative pose estimation of geometric form, its Julia script is ``Julia_Monodromy_Solver_Examples/5-Point-Relative-Pose-Geometric-Form.jl``.
+- **Step 1. Create the polynomial system:** Formulate your _explicit_ polynomial system as a matlab script. An example can be found in ``auto-data-gen-tools/sys_5pt_rel_pos_geo_form_quat.m`` where ``p`` is the system parameters and ``x`` are the unknowns. 
+- **Step 2. Generate start parameters and solutions:** Create a Julia script which perfoms a Monodromy solver that finds the solutions of a start system. An example can be found under ``problem-data-generation/``, _e.g._, for 5-point relative pose estimation of geometric form, refer to ``Julia_Monodromy_Solver_Examples/5-Point-Relative-Pose-Geometric-Form.jl``. Remember to write the start parameters and solutions to files.
+- **Step 3. Reformulate the start parameters and solutions:** <br />
+	- **Start solutions:** Run ``auto-data-gen-tools/reformatStartSolsFromJulia.m`` to reformulate the start solutions. Make sure to specify the file path and names. <br />
+	- **Start parameters:** Reformulation is trivial. Manually reformulate it as the one in ``GPU-HC/problems/5pt_rel_pos_geo_form_quat/start_params.txt``. The first column is the real part while the second is the imaginary part. <br />
+
+
 <br />
 (To be updated...) <br />
 
@@ -62,4 +67,4 @@ There are two example problems provided in this repository: 5-point relative pos
 Several limitations of the GPU-HC solver: <br />
 (1) The system size must not exceed 32x32. <br />
 (2) GPU-HC is unable to solve an over-determined system. One possible way to tackle this is to choose only partial polynomials to make the system well-determined. This might not guarantee to find the solution of interest, but sometimes it works. <br />
-(3) There is no _generic_ (e.g., circular arc) gamma trick applied in the solver. This will however be introduced in the future.
+(3) There is no _generic_ (_e.g._, circular arc) gamma trick applied in the solver. This will however be introduced in the future.
