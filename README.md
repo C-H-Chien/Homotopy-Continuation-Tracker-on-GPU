@@ -78,14 +78,13 @@ There are two example problems provided in this repository: 5-point relative pos
 		- ``GPU-HC/cmd/magmaHC-main.cu``, lines 223-224.
 	- Edit the following scripts:
 		- ``GPU-HC/gpu-kernels/<problem-name>.cu``: input arguments when launching the kernel are: <br />
-```
+``
 e = cudaLaunchKernel((void*)homotopy_continuation_solver_<problem-name>
     < Number of Unknowns, Number of Coefficients, Number of Maximal Steps,
       Maximal Correction Iterations, Number of Successful Prediction to Increase $\Delta t$, 
       Hx_max_terms, Hx_max_parts, Ht_max_terms, Ht_max_parts >, 
     grid, threads, kernel_args, shmem, my_queue->cuda_stream());
-
-```
+``
 		- ``GPU-HC/gpu-idx-evals/dev-eval-indxing-<problem-name>.cuh``:
 			- Function ``eval_parameter_homotopy``: Check the comments from the example script ``dev-eval-indxing-5pt_rel_pos_geo_form_quat.cuh`` to make necessary changes.
 			- Function ``eval_Jacobian_Hx``: the number of ``s_track`` is the value ``Hx_maximal_parts`` minus 1.
