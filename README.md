@@ -1,7 +1,7 @@
 # GPU-HC: Homotopy Continuation Path Tracking in GPU
 ### Research @ LEMS, Brown University (CVPR 2022)
 ## Introduction
-GPU-HC, as its name suggests, is a GPU implementation of Homotopy Continuation Solver. It is a general tool for finding roots of a polynomial systems (check our papers for more details). Our research aims at applying GPU-HC for computer vision problems, especially multiview geometry problems, where timings are crucial as the computation is typically performed under a RANSAC loop. Please refer and cite the following two papers if you intend to use them in your work. Also, please do not hesitate to contact chiang-heng_chien@brown.edu if you have any questions on using GPU-HC. Currently, the only restriction of GPU-HC is that the polynomial system of interest must have the number of variables lesser than 32. We are planning to develop a solver enabling polynomials of unknowns greater than 32. <br />
+GPU-HC, as its name suggests, is a GPU implementation of Homotopy Continuation Solver. It is a general tool for finding roots of a polynomial systems (check our papers for more details). Our research aims at applying GPU-HC for computer vision problems, especially multiview geometry problems, where timings are crucial as the computation is typically performed under a RANSAC loop. Please refer and cite the following two papers if you intend to use them in your work. Also, please do not hesitate to contact chiang-heng_chien@brown.edu if you have any questions on using GPU-HC. <br />
 
 1. ``Chien, Chiang-Heng, Hongyi Fan, Ahmad Abdelfattah, Elias Tsigaridas, Stanimire Tomov, and Benjamin Kimia. "GPU-Based Homotopy Continuation for Minimal Problems in Computer Vision." In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 15765-15776. 2022.`` [[Paper link](https://openaccess.thecvf.com/content/CVPR2022/html/Chien_GPU-Based_Homotopy_Continuation_for_Minimal_Problems_in_Computer_Vision_CVPR_2022_paper.html)] <br />
 
@@ -52,7 +52,7 @@ As an example, to run 5-point relative pose problem in geometric form, type
 ```
 
 ## How to use GPU-HC to solve a new polynomial problem
-There are two example problems provided in this repository: 5-point relative pose problem in __(i)__ geometric and __(ii)__ algebraic forms. Their polynomials can be generated from either the Julia script or the MATLAB script under ``problem-data-generation/`` <br />
+There are two example problems provided in this repository: 5-point relative pose problem in __(i)__ geometric and __(ii)__ algebraic forms. Their polynomials can be generated from either the Julia script or the MATLAB script under ``problem-data-generation/``. Let your polynomial system name be <problem-name>. <br />
 - **Step 1. Create Your Polynomial System:** Formulate your _explicit_ polynomial system as a matlab script. An example can be found in ``auto-data-gen-tools/sys_5pt_rel_pos_geo_form_quat.m`` where ``p`` is the system parameters and ``x`` are the unknowns. 
 - **Step 2. Generate Start Parameters and Solutions:** 
 	- Create a Julia script which perfoms a Monodromy solver that finds the solutions of a start system. An example can be found under ``problem-data-generation/``, _e.g._, for 5-point relative pose estimation of geometric form, refer to ``Julia_Monodromy_Solver_Examples/5-Point-Relative-Pose-Geometric-Form.jl``. <br />
@@ -61,20 +61,42 @@ There are two example problems provided in this repository: 5-point relative pos
 	- **Start solutions:** Run ``auto-data-gen-tools/reformatStartSolsFromJulia.m`` to reformulate the start solutions. Make sure to specify the file path and names. <br />
 	- **Start parameters:** Reformulation is trivial. Manually reformulate it as the one in ``GPU-HC/problems/5pt_rel_pos_geo_form_quat/start_params.txt``. The first column is the real part while the second is the imaginary part. <br />
 - **Step 4. Create Jacobian Matrices Evaluation Indices Automatically:** <br />
-	- Simply edit ``auto-data-gen-tools/params2coeffs.m`` script to insert your problem. This needs the matlab script you prepared in Step 1. <br />
+	- Add your problem in the ``auto-data-gen-tools/params2coeffs.m`` (refer to lines 60-64). This needs the matlab script you prepared in Step 1. <br />
 	- Run the ``auto-data-gen-tools/params2coeffs.m`` script. You should expect several output files, but the following files are necessary for GPU-HC: <br />
 		- ``Hx_idx.txt``: Jacobian matrix $\frac{\partial H}{\partial x}$ evaluation indices. <br />
 		- ``Ht_idx.txt``: Jacobian matrix $\frac{\partial H}{\partial t}$ evaluation indices. <br />
-- **Step XX. Deploy your problem in GPU-HC:** Make a folder of your problem name under ``GPU-HC/problems/`` and put
-	- Start system solutions and parameters made in Step 3.
-	- Your target parameters. Formulation is identical to the start parameters.
-	- Jacobian evaluation indices made in Step X. 
+		- ``P2C_script.txt``: Parameters to coefficient conversion.
+- **Step 5. Deploy your problem in GPU-HC:** 
+	- Make a folder named <problem-name> under ``GPU-HC/problems/`` and put __(i)__ start system solutions and parameters made in Step 3, __(ii)__ ``Hx_idx.txt`` and ``Ht_idx.txt`` made in Step 4, and __(iii)__ your target parameters for which the formulation is identical to the start parameters.
+	- Create the following files for your polynomial problem:
+		- ``GPU-HC/magmaHC/const-matrices/<problem-name>.h``. Paste the content in ``P2C_script.txt`` into it and make necessary revisions.
+		- ``GPU-HC/gpu-kernels/<problem-name>.cu``. You can make it as a copy from the example and make necessary revisions.
+		- ``GPU-HC/gpu-idx-evals/dev-eval-indxing-<problem-name>.cuh``. Again, you can make it as a copy from the example and make necessary revisions.
+	- Insert your polynomial problem:
+		- ``GPU-HC/magmaHC/define_params_and_read_files.cu``. Numbers for Hx_maximal_terms, etc. are shown after running ``params2coeffs.m`` in Step 4.
+		- ``GPU-HC/magmaHC/homotopy_continuation_solver.cu``, lines 181-192.
+		- ``GPU-HC/cmd/magmaHC-main.cu``, lines 223-224.
+	- Edit the following scripts:
+		- ``GPU-HC/gpu-kernels/<problem-name>.cu``: input arguments when launching the kernel are: <br />
+```
+e = cudaLaunchKernel((void*)homotopy_continuation_solver_<problem-name>
+    < Number of Unknowns, Number of Coefficients, Number of Maximal Steps,
+      Maximal Correction Iterations, Number of Successful Prediction to Increase $\Delta t$, 
+      Hx_max_terms, Hx_max_parts, Ht_max_terms, Ht_max_parts >, 
+    grid, threads, kernel_args, shmem, my_queue->cuda_stream());
+
+```
+		- ``GPU-HC/gpu-idx-evals/dev-eval-indxing-<problem-name>.cuh``:
+			- Function ``eval_parameter_homotopy``: Check the comments from the example script ``dev-eval-indxing-5pt_rel_pos_geo_form_quat.cuh`` to make necessary changes.
+			- Function ``eval_Jacobian_Hx``: the number of ``s_track`` is the value ``Hx_maximal_parts`` minus 1.
+			- Function ``eval_Jacobian_Ht``: the number of ``s_track`` is the value ``Ht_maximal_parts`` minus 1.
+			- Function ``eval_Homotopy``: the same as ``eval_Jacobian_Ht``.
 
 <br />
 (To be updated...) <br />
 
 ## Limitations
 Several limitations of the GPU-HC solver: <br />
-(1) The system size must not exceed 32x32. <br />
+(1) The system size must not exceed 32x32. We are planning to enable solving such large system size in the future. <br />
 (2) GPU-HC is unable to solve an over-determined system. One possible way to tackle this is to choose only partial polynomials to make the system well-determined. This might not guarantee to find the solution of interest, but sometimes it works. <br />
 (3) There is no _generic_ (_e.g._, circular arc) gamma trick applied in the solver. This will however be introduced in the future.
