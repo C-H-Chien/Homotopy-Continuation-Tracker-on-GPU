@@ -33,7 +33,7 @@
 #undef min
 #include "batched_kernel_param.h"
 
-namespace magmaHCWrapper {
+//namespace GPU_Device {
 
 	template<int N>
     __device__ __inline__ void
@@ -105,6 +105,6 @@ namespace magmaHCWrapper {
 			magmablas_syncwarp();
 		}
 	}
-}
+//}
 
 #endif

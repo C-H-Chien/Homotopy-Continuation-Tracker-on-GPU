@@ -12,7 +12,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g -Wall" CACHE STRING "" FORCE)
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native" CACHE STRING "" FORCE)
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -ffast-math" CACHE STRING "" FORCE)
 
-project(MINUS)
+project(TrifocalRelativePose)
 
 # -- enable the use of cuda --
 option(USE_CUDA "Use CUDA" ON)
@@ -126,7 +126,6 @@ include(TestBigEndian)
 TEST_BIG_ENDIAN(MY_BIG_ENDIAN)
 
 # main lib
-add_subdirectory(magmaHC)
-#add_subdirectory(magmaHC-DP64)
+add_subdirectory( magmaHC )
 # commands / executables
 add_subdirectory(cmd)

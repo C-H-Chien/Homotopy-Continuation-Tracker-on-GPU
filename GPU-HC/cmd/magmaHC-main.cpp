@@ -12,75 +12,26 @@
 //    Chiang-Heng Chien  21-12-29    Initially created a parametric HC for a General Computer Vision Problems
 //    Chiang-Heng Chien  22-11-14    Add geometric form of 5pt relative pose problem
 //    Chiang-Heng Chien  22-11-16    Add algebraic form of 5pt relative pose problem
+//    Chiang-Heng Chien  23-10-20    Add gamma trick and trifocal relative pose from lines at points problem
+//    Chiang-Heng Chien  23-12-27    Add definitions.hpp placing all Macros
 //
 //> (c) LEMS, Brown University
 //> Chiang-Heng Chien (chiang-heng_chien@brown.edu)
 // =======================================================================================================
-//> nvidia cuda
-#include <cuda.h>
-#include <cuda_runtime.h>
 
 //> magma
 #include "magma_v2.h"
 
-//> magma
-#include "magmaHC/magmaHC-problems.cuh"
+//> Macros
+#include "magmaHC/definitions.hpp"
+#include "magmaHC/GPU_HC_Solver.hpp"
 
 //> p2c
+#include "magmaHC/const-matrices/p2c-trifocal_2op1p_30x30.h"
 #include "magmaHC/const-matrices/p2c-5pt_rel_pos_alg_form_quat.h"
 #include "magmaHC/const-matrices/p2c-5pt_rel_pos_geo_form_quat.h"
 
-//> global repo directory
-std::string repo_dir = "/gpfs/data/bkimia/cchien3/Homotopy-Continuation-Tracker-on-GPU/GPU-HC/";
-
 int main(int argc, char **argv) {
-  argc; ++argv;
-  std::string arg;
-  int argIndx = 0;
-  int argTotal = 4;
-  std::string HC_problem = "default";
-
-  if (argc) {
-    arg = std::string(*argv);
-    if (arg == "-h" || arg == "--help") {
-      magmaHCWrapper::print_usage();
-      exit(1);
-    }
-    else if (argc <= argTotal) {
-      while(argIndx <= argTotal-1) {
-        if (arg == "-p" || arg == "--problem") {
-          argv++;
-          arg = std::string(*argv);
-          HC_problem = arg;
-          argIndx+=2;
-          break;
-        }
-        else {
-          std::cerr<<"invalid input arguments! See examples: \n";
-          magmaHCWrapper::print_usage();
-          exit(1);
-        }
-        argv++;
-      }
-    }
-    else if (argc > argTotal) {
-      std::cerr<<"too many arguments!\n";
-      magmaHCWrapper::print_usage();
-      exit(1);
-    }
-  }
-  else {
-    magmaHCWrapper::print_usage();
-    exit(1);
-  }
-
-  //> Write successful HC track solutions to files
-  std::ofstream track_sols_file;
-  std::string write_sols_file_dir = repo_dir;
-  write_sols_file_dir.append("GPU_Converged_HC_tracks.txt");
-  track_sols_file.open(write_sols_file_dir);
-  if ( !track_sols_file.is_open() )
-    std::cout<<"files " << write_sols_file_dir << " cannot be opened!"<<std::endl;
 
   magmaFloatComplex *h_startSols;
   magmaFloatComplex *h_Track;
@@ -92,26 +43,19 @@ int main(int argc, char **argv) {
   magma_int_t *h_Ht_idx;
 
   //> files to be read
-  std::string repo_root_dir = repo_dir;
-  repo_dir.append("problems/");
-  std::string problem_filename = repo_dir.append(HC_problem);
-
-  //> declare class objects (put the long lasting object in dynamic memory)
-  magmaHCWrapper::problem_params* pp = new magmaHCWrapper::problem_params;
-  //magmaHCWrapper::const_mats* cm = new magmaHCWrapper::const_mats;
-
-  pp->define_problem_params(problem_filename, HC_problem);
+  std::string repo_root_dir = REPO_PATH.append("problems/");
+  std::string problem_filename = repo_root_dir.append(HC_PROBLEM);
 
   //> allocate tracks and coeffs arrays in cpu
-  magma_cmalloc_cpu( &h_startSols,    pp->numOfTracks*(pp->numOfVars+1) );
-  magma_cmalloc_cpu( &h_Track,        pp->numOfTracks*(pp->numOfVars+1) );
-  magma_cmalloc_cpu( &h_startParams,  pp->numOfParams );
-  magma_cmalloc_cpu( &h_targetParams, pp->numOfParams );
+  magma_cmalloc_cpu( &h_startSols,    NUM_OF_TRACKS*(NUM_OF_VARS+1) );
+  magma_cmalloc_cpu( &h_Track,        NUM_OF_TRACKS*(NUM_OF_VARS+1) );
+  magma_cmalloc_cpu( &h_startParams,  NUM_OF_PARAMS );
+  magma_cmalloc_cpu( &h_targetParams, NUM_OF_PARAMS );
 
-  magma_cmalloc_cpu( &h_phc_coeffs_Hx, (pp->numOfCoeffsFromParams+1)*(pp->max_orderOf_t+1) );
-  magma_cmalloc_cpu( &h_phc_coeffs_Ht, (pp->numOfCoeffsFromParams+1)*(pp->max_orderOf_t) );
-  magma_imalloc_cpu( &h_Hx_idx,        pp->numOfVars*pp->numOfVars*pp->Hx_maximal_terms*pp->Hx_maximal_parts );
-  magma_imalloc_cpu( &h_Ht_idx,        pp->numOfVars*pp->Ht_maximal_terms*pp->Ht_maximal_parts );
+  magma_cmalloc_cpu( &h_phc_coeffs_Hx, (NUM_OF_COEFFS_FROM_PARAMS+1)*(MAX_ORDER_OF_T+1) );
+  magma_cmalloc_cpu( &h_phc_coeffs_Ht, (NUM_OF_COEFFS_FROM_PARAMS+1)*(MAX_ORDER_OF_T) );
+  magma_imalloc_cpu( &h_Hx_idx,        NUM_OF_VARS * NUM_OF_VARS * HX_MAXIMAL_TERMS * HX_MAXIMAL_PARTS );
+  magma_imalloc_cpu( &h_Ht_idx,        NUM_OF_VARS * HT_MAXIMAL_TERMS * HT_MAXIMAL_PARTS );
 
   // =============================================================================
   //> read files: start solutions, start coefficients, and target parameters
@@ -133,12 +77,12 @@ int main(int argc, char **argv) {
   float s_real, s_imag;
   int d = 0, i = 0; 
   startSols_file.open(startSols_filename_test, std::ios_base::in);
-  if (!startSols_file) { std::cerr << "problem start solutions file not existed!\n"; exit(1); }
+  if (!startSols_file) { std::cerr << "problem start solutions file " << startSols_filename_test << " not existed!\n"; exit(1); }
   else {
     while (startSols_file >> s_real >> s_imag) {
-      (h_startSols + i * (pp->numOfVars+1))[d] = MAGMA_C_MAKE(s_real, s_imag);
-      (h_Track + i * (pp->numOfVars+1))[d] = MAGMA_C_MAKE(s_real, s_imag);
-      if (d < pp->numOfVars-1) {
+      (h_startSols + i * (NUM_OF_VARS+1))[d] = MAGMA_C_MAKE(s_real, s_imag);
+      (h_Track + i * (NUM_OF_VARS+1))[d] = MAGMA_C_MAKE(s_real, s_imag);
+      if (d < NUM_OF_VARS-1) {
         d++;
       }
       else {
@@ -146,9 +90,9 @@ int main(int argc, char **argv) {
         i++;
       }
     }
-    for(int k = 0; k < pp->numOfTracks; k++) {
-      (h_startSols + k * (pp->numOfVars+1))[pp->numOfVars] = MAGMA_C_MAKE(1.0, 0.0);
-      (h_Track + k * (pp->numOfVars+1))[pp->numOfVars] = MAGMA_C_MAKE(1.0, 0.0);
+    for(int k = 0; k < NUM_OF_TRACKS; k++) {
+      (h_startSols + k * (NUM_OF_VARS+1))[NUM_OF_VARS] = MAGMA_C_MAKE(1.0, 0.0);
+      (h_Track + k * (NUM_OF_VARS+1))[NUM_OF_VARS] = MAGMA_C_MAKE(1.0, 0.0);
     }
     start_sols_read_success = 1;
   }
@@ -219,36 +163,39 @@ int main(int argc, char **argv) {
     Ht_file_read_success = 1;
   }
 
-  //> symbolic params2coeffs
-  if      (HC_problem == "5pt_rel_pos_geo_form_quat") magmaHCWrapper::p2c_5pt_rel_pos_geo_form_quat(h_targetParams, h_startParams, h_phc_coeffs_Hx, h_phc_coeffs_Ht);
-  else if (HC_problem == "5pt_rel_pos_alg_form_quat") magmaHCWrapper::p2c_5pt_rel_pos_alg_form_quat(h_targetParams, h_startParams, h_phc_coeffs_Hx, h_phc_coeffs_Ht);
-
-  //for (int i = 0; i < 10; i ++) std::cout << MAGMA_C_REAL(h_phc_coeffs_Ht[i]) << "\t" << MAGMA_C_IMAG(h_phc_coeffs_Ht[i]) << std::endl;
+  read_success = (start_sols_read_success && start_coeffs_read_success && targetParams_read_success \
+                  && Hx_file_read_success && Ht_file_read_success);
   
-  read_success = (start_sols_read_success && start_coeffs_read_success && targetParams_read_success && Hx_file_read_success && Ht_file_read_success);
-
-  //> call homotopy continuation solver
   if (read_success) {
-    magmaHCWrapper::homotopy_continuation_solver(h_startSols, h_Track, h_startParams, h_targetParams, h_Hx_idx, h_Ht_idx, h_phc_coeffs_Hx, h_phc_coeffs_Ht, pp, HC_problem, track_sols_file);
+
+    std::cout << "Solving Problem " << HC_PROBLEM << std::endl;
+#if REL_POSE_5PT_GEO_FORM_QUAT
+    magmaHCWrapper::p2c_5pt_rel_pos_geo_form_quat(h_targetParams, h_startParams, h_phc_coeffs_Hx, h_phc_coeffs_Ht);
+#elif REL_POSE_5PT_ALG_FORM_QUAT
+    magmaHCWrapper::p2c_5pt_rel_pos_alg_form_quat(h_targetParams, h_startParams, h_phc_coeffs_Hx, h_phc_coeffs_Ht);
+#endif
+
+    GPU_HC_Solver GPU_HC_( h_startSols, h_Track, h_startParams, h_targetParams, h_Hx_idx, h_Ht_idx, h_phc_coeffs_Hx, h_phc_coeffs_Ht );
+    
+    //> Member functions
+    GPU_HC_.Prepare_Files_for_Write();
+    GPU_HC_.Allocate_Arrays();
+    GPU_HC_.Data_Transfer_From_Host_To_Device();
+    GPU_HC_.Solve_by_GPU_HC();
   }
   else {
     std::cout<<"read files failed!"<<std::endl;
     exit(1);
   }
 
-  delete pp;
-  //delete cm;
   magma_free_cpu( h_startSols );
   magma_free_cpu( h_Track );
   magma_free_cpu( h_startParams );
   magma_free_cpu( h_targetParams );
   magma_free_cpu( h_phc_coeffs_Hx );
   magma_free_cpu( h_phc_coeffs_Ht );
-
   magma_free_cpu( h_Hx_idx );
   magma_free_cpu( h_Ht_idx );
-
-  track_sols_file.close();
 
   return 0;
 }

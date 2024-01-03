@@ -1,23 +1,21 @@
 #ifndef dev_eval_indxing_5pt_rel_pos_alg_form_quat_cuh_
 #define dev_eval_indxing_5pt_rel_pos_alg_form_quat_cuh_
-// ============================================================================
-// Device function for evaluating the parallel indexing for Hx, Ht, and H of
-// 5pt_rel_pos_alg_form_quat problem
+// =================================================================================================
+// Device function for evaluating the Jacobians ∂H/∂x, ∂H/∂t, and H
 //
 // Modifications
-//    Chien  22-11-16:   Originally created
+//    Chiang-Heng Chien  22-11-16:   Originally created as an example problem for GPU-HC solver
+//    Chiang-Heng Chien  23-12-28:   Add macros for easy variable reference
 //
-// ============================================================================
+// =================================================================================================
 #include <cstdio>
 #include <iostream>
 #include <iomanip>
 #include <cstring>
 
-// -- cuda included --
 #include <cuda_runtime.h>
 
-// -- magma included --
-#include "flops.h"
+//> MAGMA
 #include "magma_v2.h"
 #include "magma_lapack.h"
 #include "magma_internal.h"
@@ -32,10 +30,12 @@
 #undef min
 #include "batched_kernel_param.h"
 
-namespace magmaHCWrapper {
+//> Macros
+#include "../definitions.hpp"
 
-    // -- compute the linear interpolations of parameters of phc --
-    template<int N, int N_2, int N_3>
+//namespace GPU_Device {
+
+    //> Compute the linear interpolations of parameters of phc
     __device__ __inline__ void
     eval_parameter_homotopy(
         const int tx, float t, 
@@ -45,13 +45,16 @@ namespace magmaHCWrapper {
         const magmaFloatComplex __restrict__ *d_phc_coeffs_Ht )
     {
         // =============================================================================
-        //> parameter homotopy of Hx
+        //> parameter homotopy of Hx and Ht
         //> floor((75+1)/6) = 12
         #pragma unroll
         for (int i = 0; i < 12; i++) {
-          s_phc_coeffs_Hx[ tx + i*N ] = d_phc_coeffs_Hx[ tx*3 + i*N_3 ] 
-                                      + d_phc_coeffs_Hx[ tx*3 + 1 + i*N_3 ] * t
-                                      + (d_phc_coeffs_Hx[ tx*3 + 2 + i*N_3 ] * t) * t;
+          s_phc_coeffs_Hx[ tx + i*NUM_OF_VARS ] = d_phc_coeffs_Hx[ tx*3 + i*3*NUM_OF_VARS ] 
+                                                + d_phc_coeffs_Hx[ tx*3 + 1 + i*3*NUM_OF_VARS ] * t
+                                                + (d_phc_coeffs_Hx[ tx*3 + 2 + i*3*NUM_OF_VARS ] * t) * t;
+
+          s_phc_coeffs_Ht[ tx + i*NUM_OF_VARS ] = d_phc_coeffs_Ht[ tx*2 + i*2*NUM_OF_VARS ] 
+                                                + d_phc_coeffs_Ht[ tx*2 + 1 + i*2*NUM_OF_VARS ] * t;
         }
 
         //> the remaining part
@@ -59,81 +62,68 @@ namespace magmaHCWrapper {
           s_phc_coeffs_Hx[ tx + 72 ] = d_phc_coeffs_Hx[ tx*3 + 216 ] 
                                      + d_phc_coeffs_Hx[ tx*3 + 216 + 1 ] * t
                                      + (d_phc_coeffs_Hx[ tx*3 + 216 + 2 ] * t) * t;
-        }
-
-        // ==============================================================================
-        //> parameter homotopy of Ht
-        //> floor((75+1)/6) = 12
-        #pragma unroll
-        for (int i = 0; i < 12; i++) {
-          s_phc_coeffs_Ht[ tx + i*N ] = d_phc_coeffs_Ht[ tx*2 + i*N_2 ] 
-                                      + d_phc_coeffs_Ht[ tx*2 + 1 + i*N_2 ] * t;
-        }
-
-        //> the remaining part
-        if (tx < 4) {
+          
           s_phc_coeffs_Ht[ tx + 72 ] = d_phc_coeffs_Ht[ tx*2 + 144 ] 
                                      + d_phc_coeffs_Ht[ tx*2 + 144 + 1 ] * t;
         }
     }
 
-    // -- Hx parallel indexing --
-    template<int N, int max_terms, int max_parts, int max_terms_parts, int N_max_terms_parts>
+    //> Parallel Jacobian Evaluation ∂H/∂x
+    template< int max_terms_parts, int N_max_terms_parts >
     __device__ __inline__ void
     eval_Jacobian_Hx(
-        const int tx, magmaFloatComplex *s_track, magmaFloatComplex r_cgesvA[N],
+        const int tx, magmaFloatComplex *s_track, magmaFloatComplex r_cgesvA[NUM_OF_VARS],
         const int* __restrict__ d_Hx_idx, magmaFloatComplex *s_phc_coeffs )
     {
-      //#pragma unroll
-      for(int i = 0; i < N; i++) {
+      #pragma unroll
+      for(int i = 0; i < NUM_OF_VARS; i++) {
         r_cgesvA[i] = MAGMA_C_ZERO;
 
-        //#pragma unroll
-        for(int j = 0; j < max_terms; j++) {
-          r_cgesvA[i] += d_Hx_idx[j*max_parts + i*max_terms_parts + tx*N_max_terms_parts] 
-                       * s_phc_coeffs[ d_Hx_idx[j*max_parts + 1 + i*max_terms_parts + tx*N_max_terms_parts] ]
-                       * s_track[ d_Hx_idx[j*max_parts + 2 + i*max_terms_parts + tx*N_max_terms_parts] ]
-                       * s_track[ d_Hx_idx[j*max_parts + 3 + i*max_terms_parts + tx*N_max_terms_parts] ] ;
-          //r_cgesvA[i] = MAGMA_C_MAKE(d_Hx_idx[i*max_terms_parts + tx*N_max_terms_parts], 0.0);
+        #pragma unroll
+        for(int j = 0; j < HX_MAXIMAL_TERMS; j++) {
+          r_cgesvA[i] += d_Hx_idx[j*HX_MAXIMAL_PARTS + i*max_terms_parts + tx*N_max_terms_parts] 
+                       * s_phc_coeffs[ d_Hx_idx[j*HX_MAXIMAL_PARTS + 1 + i*max_terms_parts + tx*N_max_terms_parts] ]
+                       * s_track[ d_Hx_idx[j*HX_MAXIMAL_PARTS + 2 + i*max_terms_parts + tx*N_max_terms_parts] ]
+                       * s_track[ d_Hx_idx[j*HX_MAXIMAL_PARTS + 3 + i*max_terms_parts + tx*N_max_terms_parts] ] ;
         }
       }
     }
 
-    // -- Ht parallel indexing --
-    template<int N, int max_terms, int max_parts, int max_terms_parts>
+    //> Parallel Jacobian Evaluation ∂H/∂t
+    template< int max_terms_parts >
     __device__ __inline__ void
     eval_Jacobian_Ht(
         const int tx, magmaFloatComplex *s_track, magmaFloatComplex &r_cgesvB,
         const int* __restrict__ d_Ht_idx, magmaFloatComplex *s_phc_coeffs)
     {
       r_cgesvB = MAGMA_C_ZERO;
-      //#pragma unroll
-      for (int i = 0; i < max_terms; i++) {
-        r_cgesvB -= d_Ht_idx[i*max_parts + tx*max_terms_parts] 
-                  * s_phc_coeffs[ d_Ht_idx[i*max_parts + 1 + tx*max_terms_parts] ]
-                  * s_track[ d_Ht_idx[i*max_parts + 2 + tx*max_terms_parts] ] 
-                  * s_track[ d_Ht_idx[i*max_parts + 3 + tx*max_terms_parts] ] 
-                  * s_track[ d_Ht_idx[i*max_parts + 4 + tx*max_terms_parts] ];
+      #pragma unroll
+      for (int i = 0; i < HT_MAXIMAL_TERMS; i++) {
+        r_cgesvB -= d_Ht_idx[i*HT_MAXIMAL_PARTS + tx*max_terms_parts] 
+                  * s_phc_coeffs[ d_Ht_idx[i*HT_MAXIMAL_PARTS + 1 + tx*max_terms_parts] ]
+                  * s_track[ d_Ht_idx[i*HT_MAXIMAL_PARTS + 2 + tx*max_terms_parts] ] 
+                  * s_track[ d_Ht_idx[i*HT_MAXIMAL_PARTS + 3 + tx*max_terms_parts] ] 
+                  * s_track[ d_Ht_idx[i*HT_MAXIMAL_PARTS + 4 + tx*max_terms_parts] ];
       }
     }
 
-    // -- H parallel indexing --
-    template<int N, int max_terms, int max_parts, int max_terms_parts>
+    //> Parallel Homotopy Evaluation
+    template< int max_terms_parts >
     __device__ __inline__ void
     eval_Homotopy(
         const int tx, magmaFloatComplex *s_track, magmaFloatComplex &r_cgesvB,
         const int* __restrict__ d_Ht_idx, magmaFloatComplex *s_phc_coeffs)
     {
       r_cgesvB = MAGMA_C_ZERO;
-      //#pragma unroll
-      for (int i = 0; i < max_terms; i++) {
-        r_cgesvB += d_Ht_idx[i*max_parts + tx*max_terms_parts] 
-                  * s_phc_coeffs[ d_Ht_idx[i*max_parts + 1 + tx*max_terms_parts] ]
-                  * s_track[ d_Ht_idx[i*max_parts + 2 + tx*max_terms_parts] ] 
-                  * s_track[ d_Ht_idx[i*max_parts + 3 + tx*max_terms_parts] ] 
-                  * s_track[ d_Ht_idx[i*max_parts + 4 + tx*max_terms_parts] ] ;
+      #pragma unroll
+      for (int i = 0; i < HT_MAXIMAL_TERMS; i++) {
+        r_cgesvB += d_Ht_idx[i*HT_MAXIMAL_PARTS + tx*max_terms_parts] 
+                  * s_phc_coeffs[ d_Ht_idx[i*HT_MAXIMAL_PARTS + 1 + tx*max_terms_parts] ]
+                  * s_track[ d_Ht_idx[i*HT_MAXIMAL_PARTS + 2 + tx*max_terms_parts] ] 
+                  * s_track[ d_Ht_idx[i*HT_MAXIMAL_PARTS + 3 + tx*max_terms_parts] ] 
+                  * s_track[ d_Ht_idx[i*HT_MAXIMAL_PARTS + 4 + tx*max_terms_parts] ] ;
       }
     }
-}
+//}
 
 #endif
