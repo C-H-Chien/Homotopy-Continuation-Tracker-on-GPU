@@ -34,7 +34,13 @@
 
 //namespace GPU_Device {
 
-    // -- compute the linear interpolations of parameters of phc
+    //> Compute the linear interpolations of parameters of phc
+    template< unsigned Full_Parallel_Offset, \
+              unsigned Partial_Parallel_Thread_Offset, \
+              unsigned Partial_Parallel_Index_Offset, \
+              unsigned Max_Order_of_t_Plus_One, \
+              unsigned Partial_Parallel_Index_Offset_Hx, \
+              unsigned Partial_Parallel_Index_Offset_Ht >
     __device__ __inline__ void
     eval_parameter_homotopy(
         const int tx, float t, 
@@ -44,26 +50,27 @@
         const magmaFloatComplex __restrict__ *d_phc_coeffs_Ht )
     {
         // =============================================================================
-        //> parameter homotopy of Hx
-        //> floor((75+1)/6) = 12
+        //> parameter homotopy for evaluating ∂H/∂x and ∂H/∂t
         #pragma unroll
-        for (int i = 0; i < 12; i++) {
-          s_phc_coeffs_Hx[ tx + i*NUM_OF_VARS ] = d_phc_coeffs_Hx[ tx*3 + i*NUM_OF_VARS*3 ] 
-                                                + d_phc_coeffs_Hx[ tx*3 + 1 + i*NUM_OF_VARS*3 ] * t
-                                                + (d_phc_coeffs_Hx[ tx*3 + 2 + i*NUM_OF_VARS*3 ] * t) * t;
+        for (int i = 0; i < Full_Parallel_Offset; i++) {
+          s_phc_coeffs_Hx[ tx + i*NUM_OF_VARS ] = d_phc_coeffs_Hx[ tx*Max_Order_of_t_Plus_One + i*NUM_OF_VARS*Max_Order_of_t_Plus_One ] 
+                                                + d_phc_coeffs_Hx[ tx*Max_Order_of_t_Plus_One + 1 + i*NUM_OF_VARS*Max_Order_of_t_Plus_One ] * t
+                                                + d_phc_coeffs_Hx[ tx*Max_Order_of_t_Plus_One + 2 + i*NUM_OF_VARS*Max_Order_of_t_Plus_One ] * t * t;
 
-          s_phc_coeffs_Ht[ tx + i*NUM_OF_VARS ] = d_phc_coeffs_Ht[ tx*2 + i*NUM_OF_VARS*2 ] 
-                                                + d_phc_coeffs_Ht[ tx*2 + 1 + i*NUM_OF_VARS*2 ] * t;
+          s_phc_coeffs_Ht[ tx + i*NUM_OF_VARS ] = d_phc_coeffs_Ht[ tx*MAX_ORDER_OF_T + i*NUM_OF_VARS*MAX_ORDER_OF_T ] 
+                                                + d_phc_coeffs_Ht[ tx*MAX_ORDER_OF_T + 1 + i*NUM_OF_VARS*MAX_ORDER_OF_T ] * t;
         }
 
         //> the remaining part
-        if (tx < 4) {
-          s_phc_coeffs_Hx[ tx + 72 ] = d_phc_coeffs_Hx[ tx*3 + 216 ] 
-                                     + d_phc_coeffs_Hx[ tx*3 + 216 + 1 ] * t
-                                     + (d_phc_coeffs_Hx[ tx*3 + 216 + 2 ] * t) * t;
+        if (tx < Partial_Parallel_Thread_Offset) {
+          s_phc_coeffs_Hx[ tx + Partial_Parallel_Index_Offset ] = \
+              d_phc_coeffs_Hx[ tx*Max_Order_of_t_Plus_One + Partial_Parallel_Index_Offset_Hx ] 
+            + d_phc_coeffs_Hx[ tx*Max_Order_of_t_Plus_One + Partial_Parallel_Index_Offset_Hx + 1 ] * t
+            + (d_phc_coeffs_Hx[ tx*Max_Order_of_t_Plus_One + Partial_Parallel_Index_Offset_Hx + 2 ] * t) * t;
 
-          s_phc_coeffs_Ht[ tx + 72 ] = d_phc_coeffs_Ht[ tx*2 + 144 ] 
-                                     + d_phc_coeffs_Ht[ tx*2 + 144 + 1 ] * t;
+          s_phc_coeffs_Ht[ tx + Partial_Parallel_Index_Offset ] = \
+              d_phc_coeffs_Ht[ tx*MAX_ORDER_OF_T + Partial_Parallel_Index_Offset_Ht ] 
+            + d_phc_coeffs_Ht[ tx*MAX_ORDER_OF_T + Partial_Parallel_Index_Offset_Ht + 1 ] * t;
         }
     }
 

@@ -5,7 +5,7 @@
 //
 // Modifications
 //    Chiang-Heng Chien  22-11-16:   Initially created
-//    Chiang-Heng Chien  23-12-28:   Add macros and circular arc homotopy for gamma-trick
+//    Chiang-Heng Chien  24-01-04:   Add macro definitions for computing coefficients from parameter homotopy
 //
 //> (c) LEMS, Brown University
 //> Chiang-Heng Chien (chiang-heng_chien@brown.edu)
@@ -47,15 +47,19 @@
 
 //namespace GPU_Device {
 
+  template< unsigned Full_Parallel_Offset, \
+            unsigned Partial_Parallel_Thread_Offset, \
+            unsigned Partial_Parallel_Index_Offset, \
+            unsigned Max_Order_of_t_Plus_One, \
+            unsigned Partial_Parallel_Index_Offset_Hx, \
+            unsigned Partial_Parallel_Index_Offset_Ht >
   __global__ void
   homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
-    //magma_int_t ldda,
     magmaFloatComplex** d_startSols_array, magmaFloatComplex** d_Track_array,
-    //magmaFloatComplex** d_cgesvA_array, 
-    magmaFloatComplex** d_cgesvB_array,
     magma_int_t* d_Hx_indices, magma_int_t* d_Ht_indices,
     magmaFloatComplex_ptr d_phc_coeffs_Hx, magmaFloatComplex_ptr d_phc_coeffs_Ht,
-    bool* d_is_GPU_HC_Sol_Converge
+    bool* d_is_GPU_HC_Sol_Converge, bool* d_is_GPU_HC_Sol_Infinity,
+    magmaFloatComplex* d_Debug_Purpose
   )
   {
     extern __shared__ magmaFloatComplex zdata[];
@@ -64,8 +68,6 @@
 
     magmaFloatComplex* d_startSols   = d_startSols_array[batchid];
     magmaFloatComplex* d_track       = d_Track_array[batchid];
-    //magmaFloatComplex* d_cgesvA      = d_cgesvA_array[batchid];
-    //magmaFloatComplex* d_cgesvB      = d_cgesvB_array[batchid];
     const int* __restrict__ d_Hx_idx = d_Hx_indices;
     const int* __restrict__ d_Ht_idx = d_Ht_indices;
     const magmaFloatComplex* __restrict__ d_const_phc_coeffs_Hx = d_phc_coeffs_Hx;
@@ -94,13 +96,6 @@
     float *s_norm                           = s_sqrt_corr + (NUM_OF_VARS);
     bool s_isSuccessful                     = (bool)(s_norm + 2);
     int s_pred_success_count                = (int)(s_isSuccessful + 1);
-
-    //> initialization: read from gm
-    //#pragma unroll
-    /*for(int i = 0; i < NUM_OF_VARS; i++) {
-      r_cgesvA[i] = d_cgesvA[ i * ldda + tx ];
-    }
-    r_cgesvB = d_cgesvB[tx];*/
 
     s_sols[tx] = d_startSols[tx];
     s_track[tx] = d_track[tx];
@@ -143,7 +138,9 @@
         //> Runge-Kutta Predictor
         // ===================================================================
         //> get HxHt for k1
-        eval_parameter_homotopy( tx, t0, s_phc_coeffs_Hx, s_phc_coeffs_Ht, d_const_phc_coeffs_Hx, d_const_phc_coeffs_Ht );
+        eval_parameter_homotopy<Full_Parallel_Offset, Partial_Parallel_Thread_Offset, Partial_Parallel_Index_Offset, \
+                                Max_Order_of_t_Plus_One, Partial_Parallel_Index_Offset_Hx, Partial_Parallel_Index_Offset_Ht> \
+                                ( tx, t0, s_phc_coeffs_Hx, s_phc_coeffs_Ht, d_const_phc_coeffs_Hx, d_const_phc_coeffs_Ht );
         eval_Jacobian_Hx< HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS, NUM_OF_VARS*HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS>( tx, s_track, r_cgesvA, d_Hx_idx, s_phc_coeffs_Hx );
         eval_Jacobian_Ht< HT_MAXIMAL_TERMS*HT_MAXIMAL_PARTS >( tx, s_track, r_cgesvB, d_Ht_idx, s_phc_coeffs_Ht );
 
@@ -156,7 +153,9 @@
         magmablas_syncwarp();
 
         //> get HxHt for k2
-        eval_parameter_homotopy( tx, t0, s_phc_coeffs_Hx, s_phc_coeffs_Ht, d_const_phc_coeffs_Hx, d_const_phc_coeffs_Ht );
+        eval_parameter_homotopy<Full_Parallel_Offset, Partial_Parallel_Thread_Offset, Partial_Parallel_Index_Offset, \
+                                Max_Order_of_t_Plus_One, Partial_Parallel_Index_Offset_Hx, Partial_Parallel_Index_Offset_Ht> \
+                                ( tx, t0, s_phc_coeffs_Hx, s_phc_coeffs_Ht, d_const_phc_coeffs_Hx, d_const_phc_coeffs_Ht );
         eval_Jacobian_Hx< HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS, NUM_OF_VARS*HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS>( tx, s_track, r_cgesvA, d_Hx_idx, s_phc_coeffs_Hx );
         eval_Jacobian_Ht< HT_MAXIMAL_TERMS*HT_MAXIMAL_PARTS >( tx, s_track, r_cgesvB, d_Ht_idx, s_phc_coeffs_Ht );
 
@@ -181,7 +180,9 @@
         magmablas_syncwarp();
 
         //> get HxHt for k4
-        eval_parameter_homotopy( tx, t0, s_phc_coeffs_Hx, s_phc_coeffs_Ht, d_const_phc_coeffs_Hx, d_const_phc_coeffs_Ht );
+        eval_parameter_homotopy<Full_Parallel_Offset, Partial_Parallel_Thread_Offset, Partial_Parallel_Index_Offset, \
+                                Max_Order_of_t_Plus_One, Partial_Parallel_Index_Offset_Hx, Partial_Parallel_Index_Offset_Ht> \
+                                ( tx, t0, s_phc_coeffs_Hx, s_phc_coeffs_Ht, d_const_phc_coeffs_Hx, d_const_phc_coeffs_Ht );
         eval_Jacobian_Hx< HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS, NUM_OF_VARS*HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS>( tx, s_track, r_cgesvA, d_Hx_idx, s_phc_coeffs_Hx );
         eval_Jacobian_Ht< HT_MAXIMAL_TERMS*HT_MAXIMAL_PARTS >( tx, s_track, r_cgesvB, d_Ht_idx, s_phc_coeffs_Ht );
 
@@ -224,7 +225,7 @@
 
         //> stop if the values of the solution is too large
         if ((s_norm[1] > 1e14) && (t0 < 1.0) && (1.0-t0 > 0.001)) {
-          //inf_failed = 1;
+          inf_failed = 1;
           break;
         }
 
@@ -256,31 +257,39 @@
       }
     }
     
-    //> d_track stores the solutions
     d_track[tx] = s_track[tx];
-
-    if (tx == 0) d_is_GPU_HC_Sol_Converge[ batchid ] = (t0 >= 1.0 || (1.0-t0 <= 0.0000001)) ? (1) : (0);
+    if (tx == 0) {
+      d_is_GPU_HC_Sol_Converge[ batchid ] = (t0 >= 1.0 || (1.0-t0 <= 0.0000001)) ? (1) : (0);
+      d_is_GPU_HC_Sol_Infinity[ batchid ] = (inf_failed) ? (1) : (0);
+    }
 
 #if GPU_DEBUG
-    //> d_cgesvB tells whether the track is finished, if not, stores t0 and delta_t
-    d_cgesvB[tx] = (t0 >= 1.0 || (1.0-t0 <= 0.0000001)) ? MAGMA_C_MAKE(1.0, 0.0) : MAGMA_C_MAKE(t0, delta_t);
+    d_Debug_Purpose[ batchid ] = (t0 >= 1.0 || (1.0-t0 <= 0.0000001)) ? MAGMA_C_MAKE(1.0, 0.0) : MAGMA_C_MAKE(t0, delta_t);
 #endif
   }
 
   real_Double_t
   kernel_HC_Solver_5pt_rel_pos_alg_form_quat(                      
     magma_queue_t my_queue, \
-    magmaFloatComplex** d_startSols_array,  magmaFloatComplex** d_Track_array, \
-    magmaFloatComplex** d_cgesvA_array,     magmaFloatComplex** d_cgesvB_array, \
-    magma_int_t* d_Hx_idx_array,            magma_int_t* d_Ht_idx_array, \
-    magmaFloatComplex_ptr d_phc_coeffs_Hx,  magmaFloatComplex_ptr d_phc_coeffs_Ht, \
-    bool* d_is_GPU_HC_Sol_Converge
+    magmaFloatComplex** d_startSols_array, magmaFloatComplex** d_Track_array, \
+    magma_int_t* d_Hx_idx_array,           magma_int_t* d_Ht_idx_array, \
+    magmaFloatComplex_ptr d_phc_coeffs_Hx, magmaFloatComplex_ptr d_phc_coeffs_Ht, \
+    bool* d_is_GPU_HC_Sol_Converge,        bool* d_is_GPU_HC_Sol_Infinity, \
+    magmaFloatComplex* d_Debug_Purpose
   )
   {
     real_Double_t gpu_time;
     dim3 threads(NUM_OF_VARS, 1, 1);
     dim3 grid(NUM_OF_TRACKS, 1, 1);
     cudaError_t e = cudaErrorInvalidValue;
+
+    //> Constant values for evaluating the Jacobians, passed as template
+    const unsigned Full_Parallel_Offset                 = (NUM_OF_COEFFS_FROM_PARAMS+1)/(NUM_OF_VARS);
+    const unsigned Partial_Parallel_Thread_Offset       = (NUM_OF_COEFFS_FROM_PARAMS+1) - (NUM_OF_VARS)*(Full_Parallel_Offset);
+    const unsigned Partial_Parallel_Index_Offset        = (NUM_OF_VARS)*(Full_Parallel_Offset);
+    const unsigned Max_Order_of_t_Plus_One              = MAX_ORDER_OF_T + 1;
+    const unsigned Partial_Parallel_Index_Offset_for_Hx = (NUM_OF_VARS-1)*(Max_Order_of_t_Plus_One) + (MAX_ORDER_OF_T) + (Full_Parallel_Offset-1)*(Max_Order_of_t_Plus_One)*(NUM_OF_VARS) + 1;
+    const unsigned Partial_Parallel_Index_Offset_for_Ht = (NUM_OF_VARS-1)*(MAX_ORDER_OF_T) + (MAX_ORDER_OF_T-1) + (Full_Parallel_Offset-1)*(MAX_ORDER_OF_T)*(NUM_OF_VARS) + 1;
 
     //> declare shared memory
     magma_int_t shmem  = 0;
@@ -301,17 +310,21 @@
     shmem += 1 * sizeof(bool);              // is_successful 
     shmem += 1 * sizeof(int);               // predictor_success counter
 
-    void *kernel_args[] = { //&ldda, 
-                            &d_startSols_array, &d_Track_array, \
-                            //&d_cgesvA_array, 
-                            &d_cgesvB_array, \
+    void *kernel_args[] = { &d_startSols_array, &d_Track_array, \
                             &d_Hx_idx_array, &d_Ht_idx_array, \
                             &d_phc_coeffs_Hx, &d_phc_coeffs_Ht, \
-                            &d_is_GPU_HC_Sol_Converge };
+                            &d_is_GPU_HC_Sol_Converge, &d_is_GPU_HC_Sol_Infinity, \
+                            &d_Debug_Purpose };
 
     gpu_time = magma_sync_wtime( my_queue );
 
-    e = cudaLaunchKernel((void*)homotopy_continuation_solver_5pt_rel_pos_alg_form_quat, \
+    e = cudaLaunchKernel((void*)homotopy_continuation_solver_5pt_rel_pos_alg_form_quat \
+                          <Full_Parallel_Offset, \
+                           Partial_Parallel_Thread_Offset, \
+                           Partial_Parallel_Index_Offset, \
+                           Max_Order_of_t_Plus_One, \
+                           Partial_Parallel_Index_Offset_for_Hx, \
+                           Partial_Parallel_Index_Offset_for_Ht>, \
                           grid, threads, kernel_args, shmem, my_queue->cuda_stream());
 
     gpu_time = magma_sync_wtime( my_queue ) - gpu_time;

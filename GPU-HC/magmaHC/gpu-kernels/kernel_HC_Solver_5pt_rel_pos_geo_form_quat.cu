@@ -5,6 +5,7 @@
 //
 // Modifications
 //    Chiang-Heng Chien  22-10-31:   Initially created
+//    Chiang-Heng Chien  24-01-04:   Add macro definitions for computing coefficients from parameter homotopy
 //
 //> (c) LEMS, Brown University
 //> Chiang-Heng Chien (chiang-heng_chien@brown.edu)
@@ -43,6 +44,12 @@
 
 //namespace GPU_Device {
 
+  template< unsigned Full_Parallel_Offset, \
+            unsigned Partial_Parallel_Thread_Offset, \
+            unsigned Partial_Parallel_Index_Offset, \
+            unsigned Max_Order_of_t_Plus_One, \
+            unsigned Partial_Parallel_Index_Offset_Hx, \
+            unsigned Partial_Parallel_Index_Offset_Ht >
   __global__ void
   homotopy_continuation_solver_5pt_rel_pos_geo_form_quat(
     magmaFloatComplex** d_startSols_array, magmaFloatComplex** d_Track_array,
@@ -129,7 +136,9 @@
         // -- Runge-Kutta Predictor --
         // ===================================================================
         // -- get HxHt for k1 --
-        eval_parameter_homotopy( tx, t0, s_phc_coeffs_Hx, s_phc_coeffs_Ht, d_const_phc_coeffs_Hx, d_const_phc_coeffs_Ht );
+        eval_parameter_homotopy<Full_Parallel_Offset, Partial_Parallel_Thread_Offset, Partial_Parallel_Index_Offset, \
+                                Max_Order_of_t_Plus_One, Partial_Parallel_Index_Offset_Hx, Partial_Parallel_Index_Offset_Ht> \
+                                ( tx, t0, s_phc_coeffs_Hx, s_phc_coeffs_Ht, d_const_phc_coeffs_Hx, d_const_phc_coeffs_Ht );
         eval_Jacobian_Hx< HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS, NUM_OF_VARS*HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS>( tx, s_track, r_cgesvA, d_Hx_idx, s_phc_coeffs_Hx );
         eval_Jacobian_Ht< HT_MAXIMAL_TERMS*HT_MAXIMAL_PARTS >( tx, s_track, r_cgesvB, d_Ht_idx, s_phc_coeffs_Ht );
 
@@ -142,7 +151,9 @@
         magmablas_syncwarp();
 
         // -- get HxHt for k2 --
-        eval_parameter_homotopy( tx, t0, s_phc_coeffs_Hx, s_phc_coeffs_Ht, d_const_phc_coeffs_Hx, d_const_phc_coeffs_Ht );
+        eval_parameter_homotopy<Full_Parallel_Offset, Partial_Parallel_Thread_Offset, Partial_Parallel_Index_Offset, \
+                                Max_Order_of_t_Plus_One, Partial_Parallel_Index_Offset_Hx, Partial_Parallel_Index_Offset_Ht> \
+                                ( tx, t0, s_phc_coeffs_Hx, s_phc_coeffs_Ht, d_const_phc_coeffs_Hx, d_const_phc_coeffs_Ht );
         eval_Jacobian_Hx< HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS, NUM_OF_VARS*HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS>( tx, s_track, r_cgesvA, d_Hx_idx, s_phc_coeffs_Hx );
         eval_Jacobian_Ht< HT_MAXIMAL_TERMS*HT_MAXIMAL_PARTS >( tx, s_track, r_cgesvB, d_Ht_idx, s_phc_coeffs_Ht );
 
@@ -167,7 +178,9 @@
         magmablas_syncwarp();
 
         // -- get HxHt for k4 --
-        eval_parameter_homotopy( tx, t0, s_phc_coeffs_Hx, s_phc_coeffs_Ht, d_const_phc_coeffs_Hx, d_const_phc_coeffs_Ht );
+        eval_parameter_homotopy<Full_Parallel_Offset, Partial_Parallel_Thread_Offset, Partial_Parallel_Index_Offset, \
+                                Max_Order_of_t_Plus_One, Partial_Parallel_Index_Offset_Hx, Partial_Parallel_Index_Offset_Ht> \
+                                ( tx, t0, s_phc_coeffs_Hx, s_phc_coeffs_Ht, d_const_phc_coeffs_Hx, d_const_phc_coeffs_Ht );
         eval_Jacobian_Hx< HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS, NUM_OF_VARS*HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS>( tx, s_track, r_cgesvA, d_Hx_idx, s_phc_coeffs_Hx );
         eval_Jacobian_Ht< HT_MAXIMAL_TERMS*HT_MAXIMAL_PARTS >( tx, s_track, r_cgesvB, d_Ht_idx, s_phc_coeffs_Ht );
 
@@ -268,6 +281,14 @@
     dim3 grid(NUM_OF_TRACKS, 1, 1);
     cudaError_t e = cudaErrorInvalidValue;
 
+    //> Constant values for evaluating the Jacobians, passed as template
+    const unsigned Full_Parallel_Offset                 = (NUM_OF_COEFFS_FROM_PARAMS+1)/(NUM_OF_VARS);
+    const unsigned Partial_Parallel_Thread_Offset       = (NUM_OF_COEFFS_FROM_PARAMS+1) - (NUM_OF_VARS)*(Full_Parallel_Offset);
+    const unsigned Partial_Parallel_Index_Offset        = (NUM_OF_VARS)*(Full_Parallel_Offset);
+    const unsigned Max_Order_of_t_Plus_One              = MAX_ORDER_OF_T + 1;
+    const unsigned Partial_Parallel_Index_Offset_for_Hx = (NUM_OF_VARS-1)*(Max_Order_of_t_Plus_One) + (MAX_ORDER_OF_T) + (Full_Parallel_Offset-1)*(Max_Order_of_t_Plus_One)*(NUM_OF_VARS) + 1;
+    const unsigned Partial_Parallel_Index_Offset_for_Ht = (NUM_OF_VARS-1)*(MAX_ORDER_OF_T) + (MAX_ORDER_OF_T-1) + (Full_Parallel_Offset-1)*(MAX_ORDER_OF_T)*(NUM_OF_VARS) + 1;
+
     magma_int_t shmem  = 0;
     shmem += (NUM_OF_VARS+1) * sizeof(magmaFloatComplex);       // startSols
     shmem += (NUM_OF_VARS+1) * sizeof(magmaFloatComplex);       // track
@@ -294,8 +315,14 @@
 
     gpu_time = magma_sync_wtime( my_queue );
     
-    e = cudaLaunchKernel((void*)homotopy_continuation_solver_5pt_rel_pos_geo_form_quat, \
-                         grid, threads, kernel_args, shmem, my_queue->cuda_stream());
+    e = cudaLaunchKernel((void*)homotopy_continuation_solver_5pt_rel_pos_geo_form_quat \
+                          <Full_Parallel_Offset, \
+                           Partial_Parallel_Thread_Offset, \
+                           Partial_Parallel_Index_Offset, \
+                           Max_Order_of_t_Plus_One, \
+                           Partial_Parallel_Index_Offset_for_Hx, \
+                           Partial_Parallel_Index_Offset_for_Ht>, \
+                          grid, threads, kernel_args, shmem, my_queue->cuda_stream());
 
     gpu_time = magma_sync_wtime( my_queue ) - gpu_time;
     if( e != cudaSuccess ) printf("cudaLaunchKernel of homotopy_continuation_solver_5pt_rel_pos_geo_form_quat is not successful!\n");
