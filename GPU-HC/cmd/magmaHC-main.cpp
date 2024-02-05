@@ -168,17 +168,21 @@ int main(int argc, char **argv) {
   
   if (read_success) {
 
+    std::cout << "===============================================================" << std::endl;
     std::cout << "Solving Problem " << HC_PROBLEM << std::endl;
+    std::cout << "===============================================================" << std::endl;
+    
 #if REL_POSE_5PT_GEO_FORM_QUAT
     magmaHCWrapper::p2c_5pt_rel_pos_geo_form_quat(h_targetParams, h_startParams, h_phc_coeffs_Hx, h_phc_coeffs_Ht);
 #elif REL_POSE_5PT_ALG_FORM_QUAT
     magmaHCWrapper::p2c_5pt_rel_pos_alg_form_quat(h_targetParams, h_startParams, h_phc_coeffs_Hx, h_phc_coeffs_Ht);
+#elif TRIFOCAL_2OP1P_30X30
+    magmaHCWrapper::p2c_trifocal_2op1p_30x30(h_targetParams, h_startParams, h_phc_coeffs_Hx, h_phc_coeffs_Ht);
 #endif
 
     GPU_HC_Solver GPU_HC_( h_startSols, h_Track, h_startParams, h_targetParams, h_Hx_idx, h_Ht_idx, h_phc_coeffs_Hx, h_phc_coeffs_Ht );
     
     //> Member functions
-    GPU_HC_.Prepare_Files_for_Write();
     GPU_HC_.Allocate_Arrays();
     GPU_HC_.Data_Transfer_From_Host_To_Device();
     GPU_HC_.Solve_by_GPU_HC();

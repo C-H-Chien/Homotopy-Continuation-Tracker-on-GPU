@@ -4,6 +4,9 @@ set (control_sources
   GPU_HC_Solver.hpp
   GPU_HC_Solver.cpp
 
+  Evaluations.hpp
+  Evaluations.cpp
+
   #>  magma kernels
   gpu-kernels/magmaHC-kernels.hpp
   gpu-kernels/kernel_HC_Solver_5pt_rel_pos_geo_form_quat.cu
@@ -32,8 +35,10 @@ include_directories( "/users/cchien3/data/cchien3/magma/magmablas" )
 add_library( magmaHC ${control_sources} )
 target_link_libraries(magmaHC 
         -L/gpfs/runtime/opt/magma-gpu/2.4.0/lib magma
+        #-L/gpfs/runtime/opt/magma/2.7.1/lib magma
         -L${CUDAPATH}/lib cublas cudart cusparse
-        -L/gpfs/runtime/opt/openblas/0.3.7/lib openblas
+        #-L/gpfs/runtime/opt/openblas/0.3.7/lib openblas
+        -L/gpfs/runtime/opt/openblas/0.3.23-u6k5fey/lib openblas
         -L/usr/lib64 pthread
         )
 set_target_properties(magmaHC PROPERTIES CUDA_SEPARABLE_COMPILATION ON)

@@ -63,16 +63,12 @@ GPU_HC_Solver::GPU_HC_Solver( magmaFloatComplex *h_startSols,   magmaFloatComple
 
     h_is_GPU_HC_Sol_Converge = new bool[ NUM_OF_TRACKS ];
     h_is_GPU_HC_Sol_Infinity = new bool[ NUM_OF_TRACKS ];
+}
+
+// void GPU_HC_Solver::Prepare_Files_for_Write() {
     
-}
 
-void GPU_HC_Solver::Prepare_Files_for_Write() {
-    //> Write successful HC track solutions to files
-    std::string write_sols_file_dir = WRITE_FILES_PATH.append("GPU_Converged_HC_tracks.txt");
-    track_sols_file.open(write_sols_file_dir);
-    if ( !track_sols_file.is_open() ) std::cout<<"OPEN FILE ERROR: File " << write_sols_file_dir << " cannot be opened!"<<std::endl;
-
-}
+// }
 
 void GPU_HC_Solver::Allocate_Arrays() {
     //> CPU Allocations
@@ -161,26 +157,36 @@ void GPU_HC_Solver::Solve_by_GPU_HC() {
     magma_cgetmatrix( NUM_OF_TRACKS, (1), d_Debug_Purpose, NUM_OF_TRACKS, h_Debug_Purpose, NUM_OF_VARS, my_queue );
 #endif
     
-    int num_of_convergence = 0;
-    int num_of_infinity_sols = 0;
-    for (int bs = 0; bs < NUM_OF_TRACKS; bs++) {
-      track_sols_file << std::setprecision(10);
-      int num_of_real_sols = 0;
+    // int num_of_convergence = 0;
+    // int num_of_infinity_sols = 0;
+    // for (int bs = 0; bs < NUM_OF_TRACKS; bs++) {
+    //   track_sols_file << std::setprecision(10);
+    //   int num_of_real_sols = 0;
 
-      track_sols_file << h_is_GPU_HC_Sol_Converge[ bs ] << "\n";
-      for (int vs = 0; vs < NUM_OF_VARS; vs++) {
-        track_sols_file << std::setprecision(20) << MAGMA_C_REAL((h_GPU_HC_Track_Sols + bs * (NUM_OF_VARS+1))[vs]) << "\t" \
-                        << std::setprecision(20) << MAGMA_C_IMAG((h_GPU_HC_Track_Sols + bs * (NUM_OF_VARS+1))[vs]) << "\n";
-      }
-      track_sols_file << "\n";
+    //   track_sols_file << h_is_GPU_HC_Sol_Converge[ bs ] << "\n";
+    //   for (int vs = 0; vs < NUM_OF_VARS; vs++) {
+    //     track_sols_file << std::setprecision(20) << MAGMA_C_REAL((h_GPU_HC_Track_Sols + bs * (NUM_OF_VARS+1))[vs]) << "\t" \
+    //                     << std::setprecision(20) << MAGMA_C_IMAG((h_GPU_HC_Track_Sols + bs * (NUM_OF_VARS+1))[vs]) << "\n";
+    //   }
+    //   track_sols_file << "\n";
 
-      if ( h_is_GPU_HC_Sol_Converge[ bs ] ) num_of_convergence++;
-      if ( h_is_GPU_HC_Sol_Infinity[ bs ] ) num_of_infinity_sols++;
-    }
+    //   if ( h_is_GPU_HC_Sol_Converge[ bs ] ) num_of_convergence++;
+    //   if ( h_is_GPU_HC_Sol_Infinity[ bs ] ) num_of_infinity_sols++;
+    // }
+    
+    //> Object for the Evaluations class
+    Evaluations Evaluate_GPUHC_Sols;
+    Evaluate_GPUHC_Sols.Write_Converged_Sols( h_GPU_HC_Track_Sols, h_is_GPU_HC_Sol_Converge );
+    Evaluate_GPUHC_Sols.Evaluate_Sols( h_GPU_HC_Track_Sols, h_is_GPU_HC_Sol_Converge, h_is_GPU_HC_Sol_Infinity );
+
+    std::cout << "## Evaluation of GPU-HC Solutions: " << std::endl;
+    std::cout << " - Number of Converged Solutions:       " << Evaluate_GPUHC_Sols.Num_Of_Coverged_Sols << std::endl;
+    std::cout << " - Number of Real Solutions:            " << Evaluate_GPUHC_Sols.Num_Of_Real_Sols << std::endl;
+    std::cout << " - Number of Infinity Failed Solutions: " << Evaluate_GPUHC_Sols.Num_Of_Inf_Sols << std::endl;
     
     printf("## GPU time = %7.2f (ms)\n", (gpu_time)*1000);
-    printf("- Number of convergence: %d\n", num_of_convergence);
-    printf("- Number of infinity failed solutions: %d\n", num_of_infinity_sols);
+    // printf("- Number of convergence: %d\n", num_of_convergence);
+    // printf("- Number of infinity failed solutions: %d\n", num_of_infinity_sols);
 }
 
 GPU_HC_Solver::~GPU_HC_Solver() {
@@ -211,8 +217,8 @@ GPU_HC_Solver::~GPU_HC_Solver() {
     printf( "\n" );
     magma_finalize();
 
-    //> Close all files
-    track_sols_file.close();
+    // //> Close all files
+    // track_sols_file.close();
 }
 
 

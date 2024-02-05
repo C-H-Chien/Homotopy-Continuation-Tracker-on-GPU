@@ -9,22 +9,28 @@
 
 //> A list of minimal problems (only one of them is true)
 #define TRIFOCAL_2OP1P_30X30                    (false)
-#define REL_POSE_5PT_ALG_FORM_QUAT              (false)
-#define REL_POSE_5PT_GEO_FORM_QUAT              (true)
+#define REL_POSE_5PT_ALG_FORM_QUAT              (true)
+#define REL_POSE_5PT_GEO_FORM_QUAT              (false)
 
 //> Homotopy Continuation Hyper-Parameters
-#define HC_MAX_STEPS                            (42)
+#define HC_MAX_STEPS                            (100)
 #define HC_MAX_CORRECTION_STEPS                 (4)
 #define HC_NUM_OF_STEPS_TO_INCREASE_DELTA_T     (5)
-#define APPLY_GAMMA_TRICK                       (false)
+#define APPLY_GAMMA_TRICK                       (true)
 #define USE_DOUBLE_PRECISION                    (false)
 #define GPU_DEBUG                               (false)
 
+//> Evaluation macros
+#define ZERO_IMAG_PART_TOL_FOR_SP               (1e-4)
+#define ZERO_IMAG_PART_TOL_FOR_DP               (1e-8)
+
 //> Define a random complex numbner gamma used in the gamma-trick
 #if USE_DOUBLE_PRECISION
-    #define GAMMA                               MAGMA_Z_MAKE(1 / std::sqrt(2), 1 / std::sqrt(2));
+    #define GAMMA                               MAGMA_Z_MAKE(0.707213579, 0.707213579)
+    #define GAMMA_MINUS_ONE                     MAGMA_Z_MAKE(-0.292786421, 0.707213579)
 #else
-    #define GAMMA                               MAGMA_C_MAKE(1 / std::sqrt(2), 1 / std::sqrt(2));
+    #define GAMMA                               MAGMA_C_MAKE(0.707213579, 0.707213579)
+    #define GAMMA_MINUS_ONE                     MAGMA_C_MAKE(-0.292786421, 0.707213579)
 #endif
 
 //> Problem specifications 
@@ -73,6 +79,10 @@
 //> [DO NOT CHANGE] The following macros are constant. They are used for shuffle operation in a warp level. 
 #define FULL_MASK                               (0xffffffff)
 #define WARP_SIZE                               (32)
+#define HALF_WARP_SIZE                          (16)
+
+//> [DO NOT CHANGE] Constant values
+#define ONE_OVER_SIX                            (0.166666666667)
 
 //> CUDA error check
 #define cudacheck( a )  do { \
@@ -84,4 +94,5 @@
                             }\
                         } while(0)
 
-
+#define LOG_FILE_ERROR(err_msg)         printf("\033[1;31mERROR: File %s not found!\033[0m\n", err_msg );
+#define LOG_ERROR(err_msg)              printf("\033[1;31mERROR: %s\033[0m\n", err_msg );

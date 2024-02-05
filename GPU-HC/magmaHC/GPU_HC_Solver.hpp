@@ -19,6 +19,7 @@
 
 //> MAGMA
 #include "magma_v2.h"
+#include "Evaluations.hpp"
 #include "gpu-kernels/magmaHC-kernels.hpp"
 
 class GPU_HC_Solver {
@@ -77,16 +78,14 @@ public:
                    magmaFloatComplex*, magmaFloatComplex* );
     
     //> Member functions
-    void Prepare_Files_for_Write();
+    //void Prepare_Files_for_Write();
     void Allocate_Arrays();
     void Data_Transfer_From_Host_To_Device();
     void Solve_by_GPU_HC();
 
-    ~GPU_HC_Solver();
+    // friend class Evaluations;
 
-private:
-    //> output streams for files to be written
-    std::ofstream track_sols_file;
+    ~GPU_HC_Solver();
 };
 
 #endif
