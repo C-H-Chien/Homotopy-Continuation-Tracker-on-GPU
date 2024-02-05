@@ -40,9 +40,10 @@
 //namespace GPU_Device {
 
     //> compute the parameter homotopy
+    template < typename T >
     __device__ __inline__ void
     compute_param_homotopy(
-      const int tx, float t,
+      const int tx, T t,
       magmaFloatComplex *s_param_homotopy,
       magmaFloatComplex *s_start_params,
       magmaFloatComplex *s_target_params
@@ -62,7 +63,7 @@
     template< int max_terms_parts >
     __device__ __inline__ void
     eval_Jacobian_Hx(
-        const int tx, float t,                //> thread id and t
+        const int tx,                //> thread id
         magmaFloatComplex r_cgesvA[NUM_OF_VARS],        //> each row of the Jacobian matrix
         magmaFloatComplex *s_vars,            //> variables
         magmaFloatComplex *s_start_params,    //> start parameters
@@ -132,7 +133,7 @@
     //> Jacobian \partial H / \partial t parallel evaluation
     __device__ __inline__ void
     eval_Jacobian_Ht(
-        const int tx, float t,                //> thread id and t
+        const int tx,                //> thread id
         magmaFloatComplex &r_cgesvB,          //> each row of the Jacobian matrix
         magmaFloatComplex *s_vars,            //> variables
         magmaFloatComplex *s_start_params,    //> start parameters
@@ -206,7 +207,7 @@
     //> parameter homotopy evaluation
     __device__ __inline__ void
     eval_Parameter_Homotopy(
-        const int tx, float t,                //> thread id and t
+        const int tx,                //> thread id
         magmaFloatComplex &r_cgesvB,          //> each row of the parameter homotopy
         magmaFloatComplex *s_vars,            //> variables
         magmaFloatComplex *s_start_params,    //> start parameters

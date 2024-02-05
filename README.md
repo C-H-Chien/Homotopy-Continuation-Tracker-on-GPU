@@ -10,6 +10,8 @@ GPU-HC, as its name suggests, is a GPU implementation of Homotopy Continuation S
 ## New Updates
 1. 2023.05.14 GPU-HC has a new release! <br />
 2. 2023.03.12 GPU-HC has now been used in solving generalized three-view relative pose problem. Checkout this [ICCV paper](https://openaccess.thecvf.com/content/ICCV2023/papers/Ding_Minimal_Solutions_to_Generalized_Three-View_Relative_Pose_Problem_ICCV_2023_paper.pdf) and [GitHub page](https://github.com/C-H-Chien/Three_View_Generalized_Camera). <br />
+3. 2023.12.29 Major change in the GPU-HC main code which homogenize the code for all minimal problems. Also adding gamma trick for circular-arc homotopy. <br />
+
 
 ## Contents
 This repository primarily contains three folders: <br />
@@ -18,6 +20,7 @@ This repository primarily contains three folders: <br />
 - [x] ``problem-data-generation``: example polynomial system data. <br />
 
 ## Dependencies:
+(We are going to release a new version independent of MAGMA library) <br />
 (1) CMake 3.14 or higher <br />
 (2) MAGMA 2.6.1 or higher <br />
 (3) CUDA 9.0 or higher <br />
@@ -78,13 +81,7 @@ There are two example problems provided in this repository: 5-point relative pos
 		- ``GPU-HC/cmd/magmaHC-main.cu``, lines 223-224.
 	- Edit the following scripts:
 		- ``GPU-HC/gpu-kernels/<problem-name>.cu``: input arguments when launching the kernel are: <br />
-``
-e = cudaLaunchKernel((void*)homotopy_continuation_solver_<problem-name>
-    < Number of Unknowns, Number of Coefficients, Number of Maximal Steps,
-      Maximal Correction Iterations, Number of Successful Prediction to Increase $\Delta t$, 
-      Hx_max_terms, Hx_max_parts, Ht_max_terms, Ht_max_parts >, 
-    grid, threads, kernel_args, shmem, my_queue->cuda_stream());
-``
+
 		- ``GPU-HC/gpu-idx-evals/dev-eval-indxing-<problem-name>.cuh``:
 			- Function ``eval_parameter_homotopy``: Check the comments from the example script ``dev-eval-indxing-5pt_rel_pos_geo_form_quat.cuh`` to make necessary changes.
 			- Function ``eval_Jacobian_Hx``: the number of ``s_track`` is the value ``Hx_maximal_parts`` minus 1.
@@ -98,4 +95,3 @@ e = cudaLaunchKernel((void*)homotopy_continuation_solver_<problem-name>
 Several limitations of the GPU-HC solver: <br />
 (1) The system size must not exceed 32x32. We are planning to enable solving such large system size in the future. <br />
 (2) GPU-HC is unable to solve an over-determined system. One possible way to tackle this is to choose only partial polynomials to make the system well-determined. This might not guarantee to find the solution of interest, but sometimes it works. <br />
-(3) There is no _generic_ (_e.g._, circular arc) gamma trick applied in the solver. This will however be introduced in the future.

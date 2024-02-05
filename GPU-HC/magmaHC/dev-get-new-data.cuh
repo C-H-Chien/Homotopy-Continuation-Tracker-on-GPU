@@ -40,61 +40,56 @@
     __device__ __inline__ void
     create_x_for_k2(
       const int tx, float &t, float delta_t, float one_half_delta_t, magmaFloatComplex *s_sols,
-      magmaFloatComplex *s_track, magmaFloatComplex *sB )
+      magmaFloatComplex *s_track, magmaFloatComplex *sB, magmaFloatComplex gc )
     {
-      s_sols[tx] += sB[tx] * delta_t * 1.0/6.0;     // -- s = s + (\Delta t) (k1/6) --
-      sB[tx] *= one_half_delta_t;                   // -- k1 * (\Delta t)/2 --
+      s_sols[tx] += sB[tx] * delta_t * gc * 1.0/6.0;     // -- s = s + (\Delta t) (k1/6) --
+      sB[tx] *= one_half_delta_t * gc;                   // -- k1 * (\Delta t)/2 --
       s_track[tx] += sB[tx];                        // -- x = x + k1 * (\Delta t)/2 --
       t += one_half_delta_t;                        // -- t = t + (\Delta t)/2 --
     }
 
     __device__ __inline__ void
     create_x_for_k3(
-      const int tx, float delta_t, float one_half_delta_t, magmaFloatComplex *s_sols,
-      magmaFloatComplex *s_track, magmaFloatComplex *s_track_pred_init, magmaFloatComplex *sB )
+      const int tx, float delta_t, float one_half_delta_t, magmaFloatComplex *s_sols, \
+      magmaFloatComplex *s_track, magmaFloatComplex *s_track_pred_init, magmaFloatComplex *sB, \
+      magmaFloatComplex gc05 )
     {
-      s_sols[tx] += sB[tx] * delta_t * 1.0/3.0;     // -- s = s + (\Delta t) (k1/6 + k2/3) --
+      s_sols[tx] += sB[tx] * delta_t * gc05 * 1.0/3.0;     // -- s = s + (\Delta t) (k1/6 + k2/3) --
       s_track[tx] = s_track_pred_init[tx];          // -- copy the initial prior prediction solution --
-      sB[tx] *= one_half_delta_t;                   // -- k2 * (\Delta t)/2 --
+      sB[tx] *= one_half_delta_t * gc05;                   // -- k2 * (\Delta t)/2 --
       s_track[tx] += sB[tx];                        // -- x = x + k2 * (\Delta t)/2 --
     }
 
     __device__ __inline__ void
     create_x_for_k4(
       const int tx, float &t, float delta_t, float one_half_delta_t, magmaFloatComplex *s_sols,
-      magmaFloatComplex *s_track, magmaFloatComplex *s_track_pred_init, magmaFloatComplex *sB )
+      magmaFloatComplex *s_track, magmaFloatComplex *s_track_pred_init, magmaFloatComplex *sB, \
+      magmaFloatComplex gc05 )
     {
-      s_sols[tx] += sB[tx] * delta_t * 1.0/3.0;     // -- s = s + (\Delta t) (k1/6 + k2/3 + k3/3) --
+      s_sols[tx] += sB[tx] * delta_t * gc05 * 1.0/3.0;     // -- s = s + (\Delta t) (k1/6 + k2/3 + k3/3) --
       s_track[tx] = s_track_pred_init[tx];          // -- copy the initial prior prediction solution --
-      sB[tx] *= delta_t;                            // -- k3 * (\Delta t) --
+      sB[tx] *= delta_t * gc05;                            // -- k3 * (\Delta t) --
       s_track[tx] += sB[tx];                        // -- x = x + k3 * (\Delta t) --
       t += one_half_delta_t;                        // -- now t becomes t = t + (\Delta t) --
     }
 
+    /*
     __device__ __inline__ void
     compute_norm2(
       const int tx, magmaFloatComplex *sB, magmaFloatComplex *s_track,
       float *s_sqrt_sols, float *s_sqrt_corr, float* s_norm)
     {
-//#if NUM_OF_VARS > 32
-      //> Use reduction sum
       s_sqrt_sols[tx] = MAGMA_C_REAL(sB[tx])*MAGMA_C_REAL(sB[tx]) + MAGMA_C_IMAG(sB[tx])*MAGMA_C_IMAG(sB[tx]);
       s_sqrt_corr[tx] = MAGMA_C_REAL(s_track[tx])*MAGMA_C_REAL(s_track[tx]) + MAGMA_C_IMAG(s_track[tx])*MAGMA_C_IMAG(s_track[tx]);
       __syncthreads();
       magma_sum_reduce< NUM_OF_VARS >( tx, s_sqrt_sols );
       magma_sum_reduce< NUM_OF_VARS >( tx, s_sqrt_corr );
-/*#else
-      //> Use shuffle operation 
-      for (int offset = WARP_SIZE/2; offset > 0; offset /= 2 ) {
-        T data_from_another_lane = __shfl_down_sync(FULL_MASK, local_rC[0], offset);
-        local_rC[0] += data_from_another_lane;
-      }
-#endif*/
+
       if ( tx == 0 ) {
           s_norm[0] = s_sqrt_sols[0];
           s_norm[1] = s_sqrt_corr[0];
       }
-    }
+    }*/
 //}
 
 #endif

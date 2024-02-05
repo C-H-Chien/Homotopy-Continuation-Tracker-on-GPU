@@ -35,7 +35,8 @@
 //namespace GPU_Device {
 
     //> Compute the linear interpolations of parameters of phc
-    template< unsigned Full_Parallel_Offset, \
+    template< typename T, \
+              unsigned Full_Parallel_Offset, \
               unsigned Partial_Parallel_Thread_Offset, \
               unsigned Partial_Parallel_Index_Offset, \
               unsigned Max_Order_of_t_Plus_One, \
@@ -43,7 +44,7 @@
               unsigned Partial_Parallel_Index_Offset_Ht >
     __device__ __inline__ void
     eval_parameter_homotopy(
-        const int tx, float t, 
+        const int tx, T t, 
         magmaFloatComplex *s_phc_coeffs_Hx,
         magmaFloatComplex *s_phc_coeffs_Ht,
         const magmaFloatComplex __restrict__ *d_phc_coeffs_Hx,
