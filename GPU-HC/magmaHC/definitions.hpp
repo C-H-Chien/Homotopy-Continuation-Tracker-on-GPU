@@ -9,20 +9,22 @@
 
 //> A list of minimal problems (only one of them is true)
 #define TRIFOCAL_2OP1P_30X30                    (false)
-#define REL_POSE_5PT_ALG_FORM_QUAT              (true)
-#define REL_POSE_5PT_GEO_FORM_QUAT              (false)
+#define REL_POSE_5PT_ALG_FORM_QUAT              (false)
+#define REL_POSE_5PT_GEO_FORM_QUAT              (true)
 
 //> Homotopy Continuation Hyper-Parameters
-#define HC_MAX_STEPS                            (100)
-#define HC_MAX_CORRECTION_STEPS                 (4)
-#define HC_NUM_OF_STEPS_TO_INCREASE_DELTA_T     (5)
-#define APPLY_GAMMA_TRICK                       (true)
+#define HC_MAX_STEPS                            (42)    //> Varies from problem to problem
+#define HC_MAX_CORRECTION_STEPS                 (3)
+#define HC_NUM_OF_STEPS_TO_INCREASE_DELTA_T     (4)
+#define APPLY_GAMMA_TRICK                       (false)
 #define USE_DOUBLE_PRECISION                    (false)
 #define GPU_DEBUG                               (false)
 
 //> Evaluation macros
+#define DUPLICATE_SOL_DIFF_TOL                  (1e-4)
 #define ZERO_IMAG_PART_TOL_FOR_SP               (1e-4)
 #define ZERO_IMAG_PART_TOL_FOR_DP               (1e-8)
+#define DEBUG_EVALUATOR                         (false)
 
 //> Define a random complex numbner gamma used in the gamma-trick
 #if USE_DOUBLE_PRECISION
@@ -36,6 +38,7 @@
 //> Problem specifications 
 #if TRIFOCAL_2OP1P_30X30
     #define HC_PROBLEM                          std::string("trifocal_2op1p_30x30")
+    #define PRINT_OUT_PROBLEM_NAME              std::string("Trifocal Relative Pose Problem (Chicago 30x30)")
     #define NUM_OF_PARAMS                       (33)
     #define NUM_OF_TRACKS                       (312)
     #define NUM_OF_VARS                         (30)
@@ -48,6 +51,7 @@
     #define UNDEFINE_HC_PROBLEM                 (false)
 #elif REL_POSE_5PT_ALG_FORM_QUAT
     #define HC_PROBLEM                          std::string("5pt_rel_pos_alg_form_quat")
+    #define PRINT_OUT_PROBLEM_NAME              std::string("5-Point Relative Pose Problem (Algebraic Form with Quaternion)")
     #define NUM_OF_PARAMS                       (20)
     #define NUM_OF_TRACKS                       (40)
     #define NUM_OF_VARS                         (6)
@@ -60,6 +64,7 @@
     #define UNDEFINE_HC_PROBLEM                 (false)
 #elif REL_POSE_5PT_GEO_FORM_QUAT
     #define HC_PROBLEM                          std::string("5pt_rel_pos_geo_form_quat")
+    #define PRINT_OUT_PROBLEM_NAME              std::string("5-Point Relative Pose Problem (Geometric Form with Quaternion)")
     #define NUM_OF_PARAMS                       (20)
     #define NUM_OF_TRACKS                       (40)
     #define NUM_OF_VARS                         (6)
@@ -96,3 +101,5 @@
 
 #define LOG_FILE_ERROR(err_msg)         printf("\033[1;31mERROR: File %s not found!\033[0m\n", err_msg );
 #define LOG_ERROR(err_msg)              printf("\033[1;31mERROR: %s\033[0m\n", err_msg );
+#define LOG_DATA_LOAD_ERROR(err_msg)    printf("\033[1;31mDATA LOAD ERROR: %s not loaded successfully!\033[0m\n", err_msg );
+

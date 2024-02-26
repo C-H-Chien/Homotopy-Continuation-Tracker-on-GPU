@@ -19,7 +19,6 @@
 
 //> MAGMA
 #include "magma_v2.h"
-#include "Evaluations.hpp"
 #include "gpu-kernels/magmaHC-kernels.hpp"
 
 class GPU_HC_Solver {
@@ -29,63 +28,64 @@ class GPU_HC_Solver {
 
     //> Varaibles as sizes of arrays
     magma_int_t             ldda, lddb, ldd_params;
-    magma_int_t             size_Hx;
-    magma_int_t             size_Ht;
-    magma_int_t             phc_coeffs_Hx_size;
-    magma_int_t             phc_coeffs_Ht_size;
+    magma_int_t             dHdx_Index_Size;
+    magma_int_t             dHdt_Index_Size;
+    magma_int_t             dHdx_PHC_Coeffs_Size;
+    magma_int_t             dHdt_PHC_Coeffs_Size;
     magma_int_t             ldd_phc_Params_Hx;
     magma_int_t             ldd_phc_Params_Ht;
 
     //> Variables and arrays on the CPU side
     magmaFloatComplex       *h_GPU_HC_Track_Sols;
-    magmaFloatComplex       *h_params_diff;
+    magmaFloatComplex       *h_diffParams;
+    magmaFloatComplex       *h_Start_Sols;
+    magmaFloatComplex       *h_Homotopy_Sols;
+    magmaFloatComplex       *h_Start_Params;
+    magmaFloatComplex       *h_Target_Params;
+    magmaFloatComplex       *h_dHdx_PHC_Coeffs;
+    magmaFloatComplex       *h_dHdt_PHC_Coeffs;
+    magma_int_t             *h_dHdx_Index;
+    magma_int_t             *h_dHdt_Index;
+    magmaFloatComplex       *h_Debug_Purpose;
     bool                    *h_is_GPU_HC_Sol_Converge;
     bool                    *h_is_GPU_HC_Sol_Infinity;
-    
-    magmaFloatComplex       *h_startSols;
-    magmaFloatComplex       *h_Track;
-    magmaFloatComplex       *h_startParams;
-    magmaFloatComplex       *h_targetParams;
-    magma_int_t             *h_Hx_idx;
-    magma_int_t             *h_Ht_idx;
-    magmaFloatComplex       *h_phc_coeffs_Hx;
-    magmaFloatComplex       *h_phc_coeffs_Ht;
 
     //> Variables and arrays on the GPU side
+    magmaFloatComplex_ptr   d_Start_Sols, d_Homotopy_Sols;
+    magmaFloatComplex_ptr   d_Start_Params, d_Target_Params;
+    magmaFloatComplex_ptr   d_dHdx_PHC_Coeffs;
+    magmaFloatComplex_ptr   d_dHdt_PHC_Coeffs;
+    magma_int_t             *d_dHdx_Index;
+    magma_int_t             *d_dHdt_Index;
+    magmaFloatComplex       **d_Start_Sols_array;
+    magmaFloatComplex       **d_Homotopy_Sols_array;
+    magmaFloatComplex       *d_diffParams;
+    magmaFloatComplex       *d_Debug_Purpose;
     bool                    *d_is_GPU_HC_Sol_Converge;
     bool                    *d_is_GPU_HC_Sol_Infinity;
-    magmaFloatComplex_ptr   d_startSols, d_Track;
-    magmaFloatComplex_ptr   d_startParams, d_targetParams;
-    magmaFloatComplex_ptr   d_phc_coeffs_Hx;
-    magmaFloatComplex_ptr   d_phc_coeffs_Ht;
-    magma_int_t             *d_Hx_idx;
-    magma_int_t             *d_Ht_idx;
-    magmaFloatComplex       **d_startSols_array;
-    magmaFloatComplex       **d_Track_array;
-    magmaFloatComplex       *d_diffParams;
-
-    magmaFloatComplex       *h_Debug_Purpose;
-    magmaFloatComplex       *d_Debug_Purpose;
 
 public:
     //> The timers
     real_Double_t           gpu_time;
-    real_Double_t           data_h2d_time, data_d2h_time;
-    
-    GPU_HC_Solver( magmaFloatComplex*, magmaFloatComplex*, \
-                   magmaFloatComplex*, magmaFloatComplex*, \
-                   magma_int_t*, magma_int_t*, \
-                   magmaFloatComplex*, magmaFloatComplex* );
+    real_Double_t           transfer_h2d_time;
+    real_Double_t           transfer_d2h_time;
+
+    //> Constructor
+    GPU_HC_Solver();
     
     //> Member functions
-    //void Prepare_Files_for_Write();
+    bool Read_Problem_Data();
     void Allocate_Arrays();
+    void Construct_Coeffs_From_Params();
     void Data_Transfer_From_Host_To_Device();
     void Solve_by_GPU_HC();
 
-    // friend class Evaluations;
-
+    //> Destructor
     ~GPU_HC_Solver();
+
+private:
+    std::string Problem_File_Path;
+
 };
 
 #endif

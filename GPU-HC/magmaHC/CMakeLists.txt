@@ -4,6 +4,11 @@ set (control_sources
   GPU_HC_Solver.hpp
   GPU_HC_Solver.cpp
 
+  #> Read problem data
+  Data_Reader.hpp
+  Data_Reader.cpp
+
+  #> Evaluations on HC solutions
   Evaluations.hpp
   Evaluations.cpp
 
@@ -21,9 +26,9 @@ set (control_sources
   gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30.cuh
 
   #>  p2c constant matrix
-  const-matrices/p2c-5pt_rel_pos_alg_form_quat.h
-  const-matrices/p2c-5pt_rel_pos_geo_form_quat.h
-  const-matrices/p2c-trifocal_2op1p_30x30.h
+  PHC_Coeffs/p2c-5pt_rel_pos_alg_form_quat.h
+  PHC_Coeffs/p2c-5pt_rel_pos_geo_form_quat.h
+  PHC_Coeffs/p2c-trifocal_2op1p_30x30.h
 )
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
@@ -34,10 +39,9 @@ include_directories( "/users/cchien3/data/cchien3/magma/magmablas" )
 
 add_library( magmaHC ${control_sources} )
 target_link_libraries(magmaHC 
-        -L/gpfs/runtime/opt/magma-gpu/2.4.0/lib magma
-        #-L/gpfs/runtime/opt/magma/2.7.1/lib magma
-        -L${CUDAPATH}/lib cublas cudart cusparse
-        #-L/gpfs/runtime/opt/openblas/0.3.7/lib openblas
+        #-L/gpfs/runtime/opt/magma-gpu/2.4.0/lib magma
+        -L/users/cchien3/data/cchien3/magma-cchien3/lib magma
+        #-L${CUDAPATH}/lib cublas #cudart cusparse
         -L/gpfs/runtime/opt/openblas/0.3.23-u6k5fey/lib openblas
         -L/usr/lib64 pthread
         )
