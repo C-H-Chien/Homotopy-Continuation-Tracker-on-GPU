@@ -9,13 +9,13 @@
 
 //> A list of minimal problems (only one of them is true)
 #define TRIFOCAL_2OP1P_30X30                    (false)
-#define REL_POSE_5PT_ALG_FORM_QUAT              (false)
-#define REL_POSE_5PT_GEO_FORM_QUAT              (true)
+#define REL_POSE_5PT_ALG_FORM_QUAT              (true)
+#define REL_POSE_5PT_GEO_FORM_QUAT              (false)
 
 //> Homotopy Continuation Hyper-Parameters
-#define HC_MAX_STEPS                            (42)    //> Varies from problem to problem
-#define HC_MAX_CORRECTION_STEPS                 (3)
-#define HC_NUM_OF_STEPS_TO_INCREASE_DELTA_T     (4)
+#define HC_MAX_STEPS                            (42)    //> Varies from problem to problem. 42 for 5-point algorithm. 100 for trifocal relative pose problem.
+#define HC_MAX_CORRECTION_STEPS                 (3)     //> Could be fine-tuned
+#define HC_NUM_OF_STEPS_TO_INCREASE_DELTA_T     (4)     //> Could be fine-tuned
 #define APPLY_GAMMA_TRICK                       (false)
 #define USE_DOUBLE_PRECISION                    (false)
 #define GPU_DEBUG                               (false)

@@ -354,6 +354,12 @@ kernel_HC_Solver_5pt_rel_pos_alg_form_quat(
 
   gpu_time = magma_sync_wtime( my_queue );
 
+  // float gpu_time_cost;
+  // cudaEvent_t start, stop;
+  // cudacheck( cudaEventCreate(&start) );
+  // cudacheck( cudaEventCreate(&stop) );
+
+  // cudacheck( cudaEventRecord(start) );
   e = cudaLaunchKernel((void*)homotopy_continuation_solver_5pt_rel_pos_alg_form_quat \
                         <Full_Parallel_Offset, \
                           Partial_Parallel_Thread_Offset, \
@@ -363,10 +369,15 @@ kernel_HC_Solver_5pt_rel_pos_alg_form_quat(
                           Partial_Parallel_Index_Offset_for_Ht>, \
                         grid, threads, kernel_args, shmem, my_queue->cuda_stream());
 
+  // cudacheck( cudaEventRecord(stop) );
+  // cudacheck( cudaEventSynchronize(stop) );
+  // cudacheck( cudaEventElapsedTime(&gpu_time_cost, start, stop) );
+
   gpu_time = magma_sync_wtime( my_queue ) - gpu_time;
   if( e != cudaSuccess ) printf("cudaLaunchKernel of homotopy_continuation_solver_5pt_rel_pos_alg_form_quat is not successful!\n");
 
   return gpu_time;
+  // return gpu_time_cost;
 }
 
 #endif
