@@ -47,12 +47,14 @@ void Evaluations::Write_Converged_Sols( \
   for (int bs = 0; bs < NUM_OF_TRACKS; bs++) {
     GPUHC_Track_Sols_File << std::setprecision(10);
 
-    GPUHC_Track_Sols_File << h_is_GPU_HC_Sol_Converge[ bs ] << "\n";
-    for (int vs = 0; vs < NUM_OF_VARS; vs++) {
-      GPUHC_Track_Sols_File << std::setprecision(20) << MAGMA_C_REAL((h_GPU_HC_Track_Sols + bs * (NUM_OF_VARS+1))[vs]) << "\t" \
-                            << std::setprecision(20) << MAGMA_C_IMAG((h_GPU_HC_Track_Sols + bs * (NUM_OF_VARS+1))[vs]) << "\n";
+    if (h_is_GPU_HC_Sol_Converge[ bs ] == 1) {
+      //GPUHC_Track_Sols_File << h_is_GPU_HC_Sol_Converge[ bs ] << "\n";
+      for (int vs = 0; vs < NUM_OF_VARS; vs++) {
+        GPUHC_Track_Sols_File << std::setprecision(20) << MAGMA_C_REAL((h_GPU_HC_Track_Sols + bs * (NUM_OF_VARS+1))[vs]) << "\t" \
+                              << std::setprecision(20) << MAGMA_C_IMAG((h_GPU_HC_Track_Sols + bs * (NUM_OF_VARS+1))[vs]) << "\n";
+      }
+      GPUHC_Track_Sols_File << "\n";
     }
-    GPUHC_Track_Sols_File << "\n";
   }
 }
 
@@ -67,9 +69,11 @@ void Evaluations::Evaluate_Sols( \
     if ( h_is_GPU_HC_Sol_Infinity[ bs ] ) Num_Of_Inf_Sols++;
 
     int Num_Of_Real_Vars = 0;
-    for (int vs = 0; vs < NUM_OF_VARS; vs++) {
-      if (MAGMA_C_IMAG((h_GPU_HC_Track_Sols + bs * (NUM_OF_VARS+1))[vs]) <= ZERO_IMAG_PART_TOL_FOR_SP) {
-          Num_Of_Real_Vars++;
+    if (h_is_GPU_HC_Sol_Converge[ bs ] == 1) {
+      for (int vs = 0; vs < NUM_OF_VARS; vs++) {
+        if (fabs(MAGMA_C_IMAG((h_GPU_HC_Track_Sols + bs * (NUM_OF_VARS+1))[vs])) <= ZERO_IMAG_PART_TOL_FOR_SP) {
+            Num_Of_Real_Vars++;
+        }
       }
     }
 

@@ -27,9 +27,9 @@ public:
     //> Constructor
     Data_Reader(std::string);
 
-    bool Read_Start_Params( cuFloatComplex* &h_Start_Params );
-    bool Read_Target_Params( cuFloatComplex* &h_Target_Params );
-    bool Read_Start_Sols( cuFloatComplex* &h_Start_Sols, cuFloatComplex* &h_Homotopy_Sols );
+    bool Read_Start_Params( magmaFloatComplex* &h_Start_Params );
+    bool Read_Target_Params( magmaFloatComplex* &h_Target_Params );
+    bool Read_Start_Sols( magmaFloatComplex* &h_Start_Sols, magmaFloatComplex* &h_Homotopy_Sols );
 
     bool Read_dHdx_Indices( int* &h_dHdx_Index );
     bool Read_dHdt_Indices( int* &h_dHdt_Index );
