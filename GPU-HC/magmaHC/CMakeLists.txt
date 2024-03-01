@@ -39,11 +39,8 @@ include_directories( "/users/cchien3/data/cchien3/magma/magmablas" )
 
 add_library( magmaHC ${control_sources} )
 target_link_libraries(magmaHC 
-        #-L/gpfs/runtime/opt/magma-gpu/2.4.0/lib magma
         -L/users/cchien3/data/cchien3/magma-cchien3/lib magma
-        #-L${CUDAPATH}/lib cublas #cudart cusparse
         -L/gpfs/runtime/opt/openblas/0.3.23-u6k5fey/lib openblas
-        -L/usr/lib64 pthread
         )
 set_target_properties(magmaHC PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
