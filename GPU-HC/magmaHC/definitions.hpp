@@ -3,7 +3,12 @@
 //> ======================================================
 
 //> Repository directory
+#if 0
 #define REPO_PATH                               std::string("/oscar/data/bkimia/cchien3/Homotopy-Continuation-Tracker-on-GPU/GPU-HC/")
+#else
+#define REPO_PATH                               std::string("/home/ahmad/hc-gpu/GPU-HC/")
+#endif
+
 #define WRITE_FILES_FOLDER                      std::string("Output_Write_Files/")
 #define WRITE_FILES_PATH                        REPO_PATH + WRITE_FILES_FOLDER
 
@@ -35,7 +40,7 @@
     #define GAMMA_MINUS_ONE                     MAGMA_C_MAKE(-0.292786421, 0.707213579)
 #endif
 
-//> Problem specifications 
+//> Problem specifications
 #if TRIFOCAL_2OP1P_30X30
     #define HC_PROBLEM                          std::string("trifocal_2op1p_30x30")
     #define PRINT_OUT_PROBLEM_NAME              std::string("Trifocal Relative Pose Problem (Chicago 30x30)")
@@ -81,7 +86,7 @@
 
 
 
-//> [DO NOT CHANGE] The following macros are constant. They are used for shuffle operation in a warp level. 
+//> [DO NOT CHANGE] The following macros are constant. They are used for shuffle operation in a warp level.
 #define FULL_MASK                               (0xffffffff)
 #define WARP_SIZE                               (32)
 #define HALF_WARP_SIZE                          (16)
