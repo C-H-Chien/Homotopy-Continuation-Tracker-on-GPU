@@ -6,10 +6,13 @@ if(NOT CMAKE_CXX_STANDARD_REQUIRED)
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
 endif()
 
-set(CMAKE_CXX_FLAGS_DEBUG "-g -Wall" CACHE STRING "" FORCE)
+set(MAGMADIR    "/home/ahmad/magma-openblas")
+set(OPENBLASDIR "/home/ahmad/openblas")
 
-# -- Crucial flags for performance --
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native" CACHE STRING "" FORCE)
+# this is for custom options on ICL machines
+set(ICL_BUILD 1)
+
+set(CMAKE_CXX_FLAGS_DEBUG "-g -Wall" CACHE STRING "" FORCE)
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -ffast-math" CACHE STRING "" FORCE)
 
 project(TrifocalRelativePose)
@@ -17,8 +20,37 @@ project(TrifocalRelativePose)
 # -- enable the use of cuda --
 option(USE_CUDA "Use CUDA" ON)
 enable_language("CUDA")
-
 include(${CMAKE_CURRENT_SOURCE_DIR}/config/cmake/InitializeBuildType.cmake)
+
+# -- Crucial flags for performance --
+if(DEFINED ICL_BUILD)
+    # for building from the repo, explicitly add the DADD_ option
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -DADD_ -march=native" CACHE STRING "" FORCE)
+
+    # build for volta arch. (compute capability 70)
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode arch=compute_70,code=sm_70")
+
+    # build for ampere arch. (compute capability 80)
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode arch=compute_80,code=sm_80")
+
+    # build for ampere arch. (compute capability 90)
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode arch=compute_90,code=sm_90")
+
+    # add the DADD_ option to nvcc
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -DADD_")
+
+    # this option lets nvcc give some info about register usage/spills
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xptxas -v")
+
+    # this option (currently commented out) can be used to limit the use of registers
+    # set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --maxrregcount 128")
+
+else()
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native" CACHE STRING "" FORCE)
+
+endif()
+
+
 
 #-----------------------------------------------------------------------------
 if(NOT COMMAND SETIFEMPTY)
@@ -116,10 +148,17 @@ set(PROJ_INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_PREFIX}/include/)
 
 # -- include necessary libraries in the commands / executables file --
 include_directories(${PROJ_INCLUDE_DIRS})
-include_directories( "/users/cchien3/data/cchien3/magma-2.5.4/include" )
-include_directories( "/users/cchien3/data/cchien3/magma-2.5.4/testing" )
-include_directories( "/users/cchien3/data/cchien3/magma/control" )
-include_directories( "/users/cchien3/data/cchien3/magma/magmablas" )
+
+include_directories( ${MAGMADIR}/include )
+include_directories( ${MAGMADIR}/testing )
+include_directories( ${MAGMADIR}/control )
+include_directories( ${MAGMADIR}/magmablas )
+link_directories(${MAGMADIR}/lib)
+link_directories(${OPENBLASDIR})
+
+if(DEFINED ICL_BUILD)
+    link_directories("/apps/spacks/2023-11-15/opt/spack/linux-rocky9-x86_64/gcc-11.3.1/gcc-7.5.0-aembyabek5wcmaengfp7yn6c22xe6bq7/lib64/")
+endif()
 
 # adds a test for Endianness and a global variable that should be useful for file format programming -MM
 include(TestBigEndian)
