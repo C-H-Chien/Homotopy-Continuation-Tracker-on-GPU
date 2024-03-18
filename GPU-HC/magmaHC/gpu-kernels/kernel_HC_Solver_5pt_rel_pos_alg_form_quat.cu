@@ -22,7 +22,6 @@
 #include <cuda_runtime.h>
 
 // magma
-#include "flops.h"
 #include "magma_v2.h"
 #include "magma_lapack.h"
 #include "magma_internal.h"
@@ -87,17 +86,18 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
   magmaFloatComplex *s_phc_coeffs_Hx      = sx + NUM_OF_VARS;
   magmaFloatComplex *s_phc_coeffs_Ht      = s_phc_coeffs_Hx + (NUM_OF_COEFFS_FROM_PARAMS+1);
   float* dsx                              = (float*)(s_phc_coeffs_Ht + (NUM_OF_COEFFS_FROM_PARAMS+1));
-  int* sipiv                              = (int*)(dsx + NUM_OF_VARS);
-  int s_pred_success_count                = (int)(sipiv + NUM_OF_VARS);
+  float* s_delta_t_scale                  = dsx + (NUM_OF_VARS);
+  int* sipiv                              = (int*)(s_delta_t_scale + 1);
+  int* s_RK_Coeffs                        = sipiv + (NUM_OF_VARS+1);
 
   s_sols[tx] = d_startSols[tx];
   s_track[tx] = d_track[tx];
   s_track_last_success[tx] = s_track[tx];
-  s_pred_success_count = 0;
   if (tx == 0) {
     s_sols[NUM_OF_VARS]               = MAGMA_C_MAKE(1.0, 0.0);
     s_track[NUM_OF_VARS]              = MAGMA_C_MAKE(1.0, 0.0);
     s_track_last_success[NUM_OF_VARS] = MAGMA_C_MAKE(1.0, 0.0);
+    sipiv[NUM_OF_VARS]                = 0;
   }
   __syncthreads();
 
@@ -110,6 +110,13 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
   magmaFloatComplex gammified_t0;
   magmaFloatComplex gammified_t0_plus_dt;
   magmaFloatComplex gammified_t0_plus_one_half_dt;
+#endif
+
+#if USE_LOOPY_RUNGE_KUTTA
+  bool scales[3];
+  scales[0] = 1;
+  scales[1] = 0;
+  scales[2] = 1;
 #endif
 
   #pragma unroll
@@ -133,9 +140,55 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
 
       t_step = t0;
       one_half_delta_t = 0.5 * delta_t;
+
       // ===================================================================
       //> Runge-Kutta Predictor
       // ===================================================================
+#if USE_LOOPY_RUNGE_KUTTA
+      if (tx == 0) {
+        s_delta_t_scale[0] = 0.0;
+        s_RK_Coeffs[0] = 1.0;
+      }
+      __syncthreads();
+
+      //> For simplicity, let's stay with no gamma-trick mode
+      for (int rk_step = 0; rk_step < 4; rk_step++ ) {
+
+        //> Evaluate parameter homotopy
+        eval_parameter_homotopy<float, Full_Parallel_Offset, Partial_Parallel_Thread_Offset, Partial_Parallel_Index_Offset, \
+                                Max_Order_of_t_Plus_One, Partial_Parallel_Index_Offset_Hx, Partial_Parallel_Index_Offset_Ht> \
+                                ( tx, t0, s_phc_coeffs_Hx, s_phc_coeffs_Ht, d_const_phc_coeffs_Hx, d_const_phc_coeffs_Ht );
+
+        //> Evaluate dH/dx and dH/dt
+        eval_Jacobian_Hx< HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS, NUM_OF_VARS*HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS>( tx, s_track, r_cgesvA, d_Hx_idx, s_phc_coeffs_Hx );
+        eval_Jacobian_Ht< HT_MAXIMAL_TERMS*HT_MAXIMAL_PARTS >( tx, s_track, r_cgesvB, d_Ht_idx, s_phc_coeffs_Ht );
+
+        //> linear system solver: solve for k1, k2, k3, or k4
+        cgesv_batched_small_device< NUM_OF_VARS >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
+        magmablas_syncwarp();
+
+        if (rk_step < 3) {
+
+          s_sols[tx] += sB[tx] * delta_t * (s_RK_Coeffs[0] * 1.0/6.0);
+          s_track[tx] = (s_RK_Coeffs[0] > 1) ? s_track_last_success[tx] : s_track[tx];
+          
+          if (tx == 0) {
+            s_delta_t_scale[0] += scales[rk_step] * one_half_delta_t;
+            s_RK_Coeffs[0] = s_RK_Coeffs[0] << scales[rk_step];           //> Shift one bit
+          }
+          __syncthreads();
+
+          sB[tx] *= s_delta_t_scale[0];
+          s_track[tx] += sB[tx];
+          t0 += scales[rk_step] * one_half_delta_t;
+        }
+        magmablas_syncwarp();
+      }
+      //> Make prediction
+      s_sols[tx] += sB[tx] * delta_t * 1.0/6.0;
+      s_track[tx] = s_sols[tx];
+      __syncthreads();
+#else
 #if APPLY_GAMMA_TRICK
       gammified_t0                  = GAMMA * t0 / (1.0 + (GAMMA - 1.0) * t0);                                      //> t0
       gammified_t0_plus_dt          = GAMMA * (t0 + delta_t) / (1.0 + (GAMMA - 1.0) * (t0 + delta_t));              //> t1
@@ -231,6 +284,8 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
       __syncthreads();
 #endif
 
+#endif  //> USE_LOOPY_RUNGE_KUTTA
+
       // ===================================================================
       //> Gauss-Newton Corrector
       // ===================================================================
@@ -275,30 +330,31 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
       //> Decide Track Changes
       // ===================================================================
       if (!r_isSuccessful) {
-        s_pred_success_count = 0;
         delta_t *= 0.5;
         //> should be the last successful tracked sols
         s_track[tx] = s_track_last_success[tx];
         s_sols[tx] = s_track_last_success[tx];
+        if (tx == 0) sipiv[NUM_OF_VARS] = 0;
         __syncthreads();
         t0 = t_step;
       }
       else {
+        if (tx == 0) sipiv[NUM_OF_VARS]++;
         s_track_last_success[tx] = s_track[tx];
         s_sols[tx] = s_track[tx];
         __syncthreads();
-        s_pred_success_count++;
-        if (s_pred_success_count >= HC_NUM_OF_STEPS_TO_INCREASE_DELTA_T) {
-          s_pred_success_count = 0;
+        if (sipiv[NUM_OF_VARS] >= HC_NUM_OF_STEPS_TO_INCREASE_DELTA_T) {
+          if (tx == 0) sipiv[NUM_OF_VARS] = 0;
           delta_t *= 2;
         }
+        __syncthreads();
       }
     }
     else {
       break;
     }
   }
-  
+
   d_track[tx] = s_track[tx];
   if (tx == 0) {
     d_is_GPU_HC_Sol_Converge[ batchid ] = (t0 >= 1.0 || (1.0-t0 <= 0.0000001)) ? (1) : (0);
@@ -345,6 +401,8 @@ kernel_HC_Solver_5pt_rel_pos_alg_form_quat(
   shmem += NUM_OF_VARS * sizeof(float);                                 // dsx
   shmem += NUM_OF_VARS * sizeof(int);                                   // pivot
   shmem += 1 * sizeof(int);                                             // predictor_success counter
+  shmem += 1 * sizeof(int);                                             // Loopy Runge-Kutta coefficients
+  shmem += 1 * sizeof(float);                                           // Loopy Runge-Kutta delta t
 
   void *kernel_args[] = { &d_startSols_array, &d_Track_array, \
                           &d_Hx_idx_array, &d_Ht_idx_array, \

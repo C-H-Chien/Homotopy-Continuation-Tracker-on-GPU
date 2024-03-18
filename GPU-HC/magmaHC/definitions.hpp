@@ -9,12 +9,14 @@
 #define REPO_PATH                               std::string("/home/ahmad/hc-gpu/GPU-HC/")
 #endif
 
+#define USE_LOOPY_RUNGE_KUTTA                   (false)
+
 #define WRITE_FILES_FOLDER                      std::string("Output_Write_Files/")
 #define WRITE_FILES_PATH                        REPO_PATH + WRITE_FILES_FOLDER
 
 //> A list of minimal problems (only one of them is true)
-#define TRIFOCAL_2OP1P_30X30                    (false)
-#define REL_POSE_5PT_ALG_FORM_QUAT              (true)
+#define TRIFOCAL_2OP1P_30X30                    (true)
+#define REL_POSE_5PT_ALG_FORM_QUAT              (false)
 #define REL_POSE_5PT_GEO_FORM_QUAT              (false)
 
 //> Homotopy Continuation Hyper-Parameters
