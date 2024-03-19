@@ -71,7 +71,7 @@ public:
     real_Double_t           transfer_d2h_time;
 
     //> Constructor
-    GPU_HC_Solver();
+    GPU_HC_Solver( std::string );
     
     //> Member functions
     bool Read_Problem_Data();
@@ -84,8 +84,9 @@ public:
     ~GPU_HC_Solver();
 
 private:
+    std::string REPO_PATH;
     std::string Problem_File_Path;
-
+    std::string Write_Files_Path;
 };
 
 #endif
