@@ -61,6 +61,11 @@ GPU_HC_Solver::GPU_HC_Solver() {
     ldd_phc_Params_Hx     = magma_roundup( dHdx_PHC_Coeffs_Size, 32 );  // multiple of 32 by default
     ldd_phc_Params_Ht     = magma_roundup( dHdt_PHC_Coeffs_Size, 32 );  // multiple of 32 by default
 
+    printf("dHdx_Index_Size      = %5.2f KB\n", (double)(dHdx_Index_Size     *sizeof(magma_int_t))       / 1024.);
+    printf("dHdt_Index_Size      = %5.2f KB\n", (double)(dHdx_Index_Size     *sizeof(magma_int_t))       / 1024.);
+    printf("dHdx_PHC_Coeffs_Size = %5.2f KB\n", (double)(dHdx_PHC_Coeffs_Size*sizeof(magmaFloatComplex)) / 1024.);
+    printf("dHdt_PHC_Coeffs_Size = %5.2f KB\n", (double)(dHdt_PHC_Coeffs_Size*sizeof(magmaFloatComplex)) / 1024.);
+
     magmaFloatComplex **d_Start_Sols_array      = NULL;
     magmaFloatComplex **d_Homotopy_Sols_array   = NULL;
 
@@ -84,7 +89,7 @@ void GPU_HC_Solver::Allocate_Arrays() {
     magma_cmalloc_cpu( &h_diffParams,           NUM_OF_PARAMS+1 );
     magma_cmalloc_cpu( &h_GPU_HC_Track_Sols,    (NUM_OF_VARS+1)*NUM_OF_TRACKS );
     magma_cmalloc_cpu( &h_Debug_Purpose,        NUM_OF_TRACKS );
-    
+
     h_is_GPU_HC_Sol_Converge = new bool[ NUM_OF_TRACKS ];
     h_is_GPU_HC_Sol_Infinity = new bool[ NUM_OF_TRACKS ];
 
@@ -99,10 +104,10 @@ void GPU_HC_Solver::Allocate_Arrays() {
     magma_imalloc( &d_dHdt_Index,               dHdt_Index_Size );
     magma_cmalloc( &d_diffParams,               ldd_params );
     magma_cmalloc( &d_Debug_Purpose,            NUM_OF_TRACKS );
-    
+
     magma_malloc( (void**) &d_Start_Sols_array,     (NUM_OF_TRACKS) * sizeof(magmaFloatComplex*) );
     magma_malloc( (void**) &d_Homotopy_Sols_array,  (NUM_OF_TRACKS) * sizeof(magmaFloatComplex*) );
-    
+
     cudacheck( cudaMalloc( &d_is_GPU_HC_Sol_Converge, NUM_OF_TRACKS * sizeof(bool) ));
     cudacheck( cudaMalloc( &d_is_GPU_HC_Sol_Infinity, NUM_OF_TRACKS * sizeof(bool) ));
 }
@@ -164,7 +169,7 @@ void GPU_HC_Solver::Data_Transfer_From_Host_To_Device() {
     magma_csetmatrix( NUM_OF_PARAMS+1,      (1),           h_diffParams,        NUM_OF_PARAMS+1,      d_diffParams,       ldd_params,        my_queue );
     magma_csetmatrix( NUM_OF_PARAMS,        (1),           h_Start_Params,      NUM_OF_PARAMS,        d_Start_Params,     ldd_params,        my_queue );
     magma_csetmatrix( NUM_OF_PARAMS,        (1),           h_Target_Params,     NUM_OF_PARAMS,        d_Target_Params,    ldd_params,        my_queue );
-    
+
     //> connect pointer to 2d arrays
     magma_cset_pointer( d_Start_Sols_array, d_Start_Sols, (NUM_OF_VARS+1), 0, 0, (NUM_OF_VARS+1), NUM_OF_TRACKS, my_queue );
     magma_cset_pointer( d_Homotopy_Sols_array,     d_Homotopy_Sols,     (NUM_OF_VARS+1), 0, 0, (NUM_OF_VARS+1), NUM_OF_TRACKS, my_queue );
@@ -206,7 +211,7 @@ void GPU_HC_Solver::Solve_by_GPU_HC() {
 #if GPU_DEBUG
     magma_cgetmatrix( NUM_OF_TRACKS, (1), d_Debug_Purpose, NUM_OF_TRACKS, h_Debug_Purpose, NUM_OF_VARS, my_queue );
 #endif
-    
+
     //> Object for the Evaluations class
     Evaluations Evaluate_GPUHC_Sols;
     Evaluate_GPUHC_Sols.Write_Converged_Sols( h_GPU_HC_Track_Sols, h_is_GPU_HC_Sol_Converge );
@@ -228,8 +233,8 @@ void GPU_HC_Solver::Solve_by_GPU_HC() {
     std::cout << " - Number of Real Solutions:            " << Evaluate_GPUHC_Sols.Num_Of_Real_Sols << std::endl;
     std::cout << " - Number of Infinity Failed Solutions: " << Evaluate_GPUHC_Sols.Num_Of_Inf_Sols << std::endl;
     std::cout << " - Number of Unique Solutions:          " << Evaluate_GPUHC_Sols.Num_Of_Unique_Sols << std::endl;
-    
-    
+
+
 }
 
 GPU_HC_Solver::~GPU_HC_Solver() {
@@ -255,7 +260,7 @@ GPU_HC_Solver::~GPU_HC_Solver() {
     magma_free( d_diffParams );
     magma_free( d_is_GPU_HC_Sol_Converge );
     magma_free( d_is_GPU_HC_Sol_Infinity );
-    
+
     magma_free( d_Start_Sols );
     magma_free( d_Homotopy_Sols );
     magma_free( d_Start_Params );
