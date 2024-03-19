@@ -20,6 +20,7 @@ set (control_sources
 
   #>  device function
   dev-cgesv-batched-small.cuh
+  dev-cgesv-batched-small-sm.cuh
   dev-get-new-data.cuh
   gpu-idx-evals/dev-eval-indxing-5pt_rel_pos_geo_form_quat.cuh
   gpu-idx-evals/dev-eval-indxing-5pt_rel_pos_alg_form_quat.cuh
@@ -38,7 +39,7 @@ include_directories( "/users/cchien3/data/cchien3/magma/control" )
 include_directories( "/users/cchien3/data/cchien3/magma/magmablas" )
 
 add_library( magmaHC ${control_sources} )
-target_link_libraries(magmaHC 
+target_link_libraries(magmaHC
         -L/users/cchien3/data/cchien3/magma-cchien3/lib magma
         -L/gpfs/runtime/opt/openblas/0.3.23-u6k5fey/lib openblas
         )
