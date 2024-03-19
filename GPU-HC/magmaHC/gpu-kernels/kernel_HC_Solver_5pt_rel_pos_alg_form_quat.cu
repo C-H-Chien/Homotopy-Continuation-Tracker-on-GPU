@@ -69,7 +69,7 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
   const int* __restrict__ d_Ht_idx = d_Ht_indices;
   const magmaFloatComplex* __restrict__ d_const_phc_coeffs_Hx = d_phc_coeffs_Hx;
   const magmaFloatComplex* __restrict__ d_const_phc_coeffs_Ht = d_phc_coeffs_Ht;
-  
+
   //> registers declarations
   magmaFloatComplex r_cgesvA[NUM_OF_VARS] = {MAGMA_C_ZERO};
   magmaFloatComplex r_cgesvB = MAGMA_C_ZERO;
@@ -99,7 +99,7 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
     s_track_last_success[NUM_OF_VARS] = MAGMA_C_MAKE(1.0, 0.0);
     sipiv[NUM_OF_VARS]                = 0;
   }
-  __syncthreads();
+  magmablas_syncwarp();
 
   float one_half_delta_t;   //> 1/2 \Delta t
   float r_sqrt_sols;
@@ -112,15 +112,9 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
   magmaFloatComplex gammified_t0_plus_one_half_dt;
 #endif
 
-#if USE_LOOPY_RUNGE_KUTTA
-  bool scales[3];
-  scales[0] = 1;
-  scales[1] = 0;
-  scales[2] = 1;
-#endif
-
-  #pragma unroll
-  for (int step = 0; step <= HC_MAX_STEPS; step++) {
+  //#pragma unroll
+  volatile int hc_max_steps = HC_MAX_STEPS;
+  for (int step = 0; step <= hc_max_steps; step++) {
     if (t0 < 1.0 && (1.0-t0 > 0.0000001)) {
 
       // ===================================================================
@@ -145,13 +139,16 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
       //> Runge-Kutta Predictor
       // ===================================================================
 #if USE_LOOPY_RUNGE_KUTTA
+
+      unsigned char scales[3] = {1, 0, 1};
       if (tx == 0) {
         s_delta_t_scale[0] = 0.0;
         s_RK_Coeffs[0] = 1.0;
       }
-      __syncthreads();
+      magmablas_syncwarp();
 
       //> For simplicity, let's stay with no gamma-trick mode
+      #pragma no unroll
       for (int rk_step = 0; rk_step < 4; rk_step++ ) {
 
         //> Evaluate parameter homotopy
@@ -171,12 +168,12 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
 
           s_sols[tx] += sB[tx] * delta_t * (s_RK_Coeffs[0] * 1.0/6.0);
           s_track[tx] = (s_RK_Coeffs[0] > 1) ? s_track_last_success[tx] : s_track[tx];
-          
+
           if (tx == 0) {
             s_delta_t_scale[0] += scales[rk_step] * one_half_delta_t;
             s_RK_Coeffs[0] = s_RK_Coeffs[0] << scales[rk_step];           //> Shift one bit
           }
-          __syncthreads();
+          magmablas_syncwarp();
 
           sB[tx] *= s_delta_t_scale[0];
           s_track[tx] += sB[tx];
@@ -187,7 +184,7 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
       //> Make prediction
       s_sols[tx] += sB[tx] * delta_t * 1.0/6.0;
       s_track[tx] = s_sols[tx];
-      __syncthreads();
+      magmablas_syncwarp();
 #else
 #if APPLY_GAMMA_TRICK
       gammified_t0                  = GAMMA * t0 / (1.0 + (GAMMA - 1.0) * t0);                                      //> t0
@@ -277,11 +274,11 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
       magmaFloatComplex gc1 = GAMMA / (((GAMMA - 1.0) * (t0 + delta_t) + 1.0) * ((GAMMA - 1.0) * (t0 + delta_t) + 1.0));
       s_sols[tx] += sB[tx] * delta_t * gc1 * 1.0/6.0;
       s_track[tx] = s_sols[tx];
-      __syncthreads();
+      magmablas_syncwarp();
 #else
       s_sols[tx] += sB[tx] * delta_t * 1.0/6.0;
       s_track[tx] = s_sols[tx];
-      __syncthreads();
+      magmablas_syncwarp();
 #endif
 
 #endif  //> USE_LOOPY_RUNGE_KUTTA
@@ -290,7 +287,9 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
       //> Gauss-Newton Corrector
       // ===================================================================
       //#pragma unroll
-      for(int i = 0; i < HC_MAX_CORRECTION_STEPS; i++) {
+      volatile int hc_max_xorrection_steps = HC_MAX_CORRECTION_STEPS;
+      #pragma no unroll
+      for(int i = 0; i < hc_max_xorrection_steps; i++) {
 
         eval_Jacobian_Hx< HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS, NUM_OF_VARS*HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS >( tx, s_track, r_cgesvA, d_Hx_idx, s_phc_coeffs_Hx );
         eval_Homotopy< HT_MAXIMAL_TERMS*HT_MAXIMAL_PARTS >( tx, s_track, r_cgesvB, d_Ht_idx, s_phc_coeffs_Hx );
@@ -301,11 +300,11 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
 
         //> correct the sols
         s_track[tx] -= sB[tx];
-        __syncthreads();
+        magmablas_syncwarp();
 
         r_sqrt_sols = MAGMA_C_REAL(sB[tx])*MAGMA_C_REAL(sB[tx]) + MAGMA_C_IMAG(sB[tx])*MAGMA_C_IMAG(sB[tx]);
         r_sqrt_corr = MAGMA_C_REAL(s_track[tx])*MAGMA_C_REAL(s_track[tx]) + MAGMA_C_IMAG(s_track[tx])*MAGMA_C_IMAG(s_track[tx]);
-        __syncthreads();
+        magmablas_syncwarp();
 
         for (int offset = WARP_SIZE/2; offset > 0; offset /= 2 ) {
             r_sqrt_sols += __shfl_down_sync(__activemask(), r_sqrt_sols, offset);
@@ -335,19 +334,19 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
         s_track[tx] = s_track_last_success[tx];
         s_sols[tx] = s_track_last_success[tx];
         if (tx == 0) sipiv[NUM_OF_VARS] = 0;
-        __syncthreads();
+        magmablas_syncwarp();
         t0 = t_step;
       }
       else {
         if (tx == 0) sipiv[NUM_OF_VARS]++;
         s_track_last_success[tx] = s_track[tx];
         s_sols[tx] = s_track[tx];
-        __syncthreads();
+        magmablas_syncwarp();
         if (sipiv[NUM_OF_VARS] >= HC_NUM_OF_STEPS_TO_INCREASE_DELTA_T) {
           if (tx == 0) sipiv[NUM_OF_VARS] = 0;
           delta_t *= 2;
         }
-        __syncthreads();
+        magmablas_syncwarp();
       }
     }
     else {
@@ -367,7 +366,7 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
 }
 
 real_Double_t
-kernel_HC_Solver_5pt_rel_pos_alg_form_quat(                      
+kernel_HC_Solver_5pt_rel_pos_alg_form_quat(
   magma_queue_t my_queue, \
   magmaFloatComplex** d_startSols_array, magmaFloatComplex** d_Track_array, \
   magma_int_t* d_Hx_idx_array,           magma_int_t* d_Ht_idx_array, \
