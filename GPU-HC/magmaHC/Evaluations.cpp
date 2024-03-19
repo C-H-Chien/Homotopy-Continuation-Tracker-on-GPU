@@ -22,7 +22,7 @@
 #include "Evaluations.hpp"
 
 //> Constructor
-Evaluations::Evaluations( ) {
+Evaluations::Evaluations( std::string Output_Files_Path ): WRITE_FILES_PATH(Output_Files_Path) {
   
   //> Initialize to zeros
   Num_Of_Inf_Sols = 0;
@@ -36,8 +36,6 @@ Evaluations::Evaluations( ) {
   std::string write_sols_file_dir = WRITE_FILES_PATH.append("GPU_Converged_HC_tracks.txt");
   GPUHC_Track_Sols_File.open(write_sols_file_dir);
   if ( !GPUHC_Track_Sols_File.is_open() ) LOG_FILE_ERROR("write_sols_file_dir");
-
-  //> 2) ...
 }
 
 void Evaluations::Write_Converged_Sols( \

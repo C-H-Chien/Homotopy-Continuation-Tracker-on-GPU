@@ -28,7 +28,7 @@ class Evaluations {
     
 public:
     //> Constructor
-    Evaluations();
+    Evaluations( std::string );
 
     //> Destructor
     ~Evaluations();
@@ -58,6 +58,8 @@ private:
     };
 
     std::vector< int > Unique_Sols_Index;
+
+    std::string WRITE_FILES_PATH;
 };
 
 #endif

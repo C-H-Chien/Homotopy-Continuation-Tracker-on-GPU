@@ -41,7 +41,7 @@
 #include "PHC_Coeffs/p2c-5pt_rel_pos_geo_form_quat.h"
 
 //> Constructor
-GPU_HC_Solver::GPU_HC_Solver() {
+GPU_HC_Solver::GPU_HC_Solver(std::string Input_Repo_Path): REPO_PATH(Input_Repo_Path) {
 
     //> Initialization
     magma_init();
@@ -69,11 +69,9 @@ GPU_HC_Solver::GPU_HC_Solver() {
     magmaFloatComplex **d_Start_Sols_array      = NULL;
     magmaFloatComplex **d_Homotopy_Sols_array   = NULL;
 
-    //> Define problem file path for problem data reader
+    //> Define problem file path for problem data reader and output file path for results evaluations
     Problem_File_Path = REPO_PATH + std::string("problems/") + HC_PROBLEM;
-
-    //> Print out the problem name
-
+    Write_Files_Path = REPO_PATH + WRITE_FILES_FOLDER;
 }
 
 void GPU_HC_Solver::Allocate_Arrays() {
@@ -213,7 +211,7 @@ void GPU_HC_Solver::Solve_by_GPU_HC() {
 #endif
 
     //> Object for the Evaluations class
-    Evaluations Evaluate_GPUHC_Sols;
+    Evaluations Evaluate_GPUHC_Sols( Write_Files_Path );
     Evaluate_GPUHC_Sols.Write_Converged_Sols( h_GPU_HC_Track_Sols, h_is_GPU_HC_Sol_Converge );
     Evaluate_GPUHC_Sols.Evaluate_Sols( h_GPU_HC_Track_Sols, h_is_GPU_HC_Sol_Converge, h_is_GPU_HC_Sol_Infinity );
     Evaluate_GPUHC_Sols.Find_Unique_Sols( h_GPU_HC_Track_Sols, h_is_GPU_HC_Sol_Converge );

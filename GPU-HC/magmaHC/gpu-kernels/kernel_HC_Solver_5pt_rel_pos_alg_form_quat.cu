@@ -86,9 +86,11 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
   magmaFloatComplex *s_phc_coeffs_Hx      = sx + NUM_OF_VARS;
   magmaFloatComplex *s_phc_coeffs_Ht      = s_phc_coeffs_Hx + (NUM_OF_COEFFS_FROM_PARAMS+1);
   float* dsx                              = (float*)(s_phc_coeffs_Ht + (NUM_OF_COEFFS_FROM_PARAMS+1));
-  float* s_delta_t_scale                  = dsx + (NUM_OF_VARS);
-  int* sipiv                              = (int*)(s_delta_t_scale + 1);
-  int* s_RK_Coeffs                        = sipiv + (NUM_OF_VARS+1);
+  int* sipiv                              = (int*)(dsx + NUM_OF_VARS);
+#if USE_LOOPY_RUNGE_KUTTA
+  float* s_delta_t_scale                  = (float*)(sipiv + (NUM_OF_VARS+1));
+  int* s_RK_Coeffs                        = (int*)(s_delta_t_scale + 1);
+#endif
 
   s_sols[tx] = d_startSols[tx];
   s_track[tx] = d_track[tx];
@@ -143,7 +145,7 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
       unsigned char scales[3] = {1, 0, 1};
       if (tx == 0) {
         s_delta_t_scale[0] = 0.0;
-        s_RK_Coeffs[0] = 1.0;
+        s_RK_Coeffs[0] = 1;
       }
       magmablas_syncwarp();
 
@@ -403,6 +405,28 @@ kernel_HC_Solver_5pt_rel_pos_alg_form_quat(
   shmem += 1 * sizeof(int);                                             // Loopy Runge-Kutta coefficients
   shmem += 1 * sizeof(float);                                           // Loopy Runge-Kutta delta t
 
+  //> Get max. dynamic shared memory on the GPU
+  int nthreads_max, shmem_max = 0;
+  cudacheck( cudaDeviceGetAttribute(&nthreads_max, cudaDevAttrMaxThreadsPerBlock, 0) );
+#if CUDA_VERSION >= 9000
+  cudacheck( cudaDeviceGetAttribute (&shmem_max, cudaDevAttrMaxSharedMemoryPerBlockOptin, 0) );
+  if (shmem <= shmem_max) {
+    cudacheck( cudaFuncSetAttribute(homotopy_continuation_solver_5pt_rel_pos_alg_form_quat \
+                                    <Full_Parallel_Offset, \
+                                      Partial_Parallel_Thread_Offset, \
+                                      Partial_Parallel_Index_Offset, \
+                                      Max_Order_of_t_Plus_One, \
+                                      Partial_Parallel_Index_Offset_for_Hx, \
+                                      Partial_Parallel_Index_Offset_for_Ht>, \
+                                    cudaFuncAttributeMaxDynamicSharedMemorySize, shmem) );
+  }
+#else
+  cudacheck( cudaDeviceGetAttribute (&shmem_max, cudaDevAttrMaxSharedMemoryPerBlock, 0) );
+#endif
+
+  //> Message of overuse shared memory
+  if ( shmem > shmem_max ) printf("Error: kernel %s requires too many threads or too much shared memory\n", __func__);
+
   void *kernel_args[] = { &d_startSols_array, &d_Track_array, \
                           &d_Hx_idx_array, &d_Ht_idx_array, \
                           &d_phc_coeffs_Hx, &d_phc_coeffs_Ht, \
@@ -410,11 +434,6 @@ kernel_HC_Solver_5pt_rel_pos_alg_form_quat(
                           &d_Debug_Purpose };
 
   gpu_time = magma_sync_wtime( my_queue );
-
-  // float gpu_time_cost;
-  // cudaEvent_t start, stop;
-  // cudacheck( cudaEventCreate(&start) );
-  // cudacheck( cudaEventCreate(&stop) );
 
   // cudacheck( cudaEventRecord(start) );
   e = cudaLaunchKernel((void*)homotopy_continuation_solver_5pt_rel_pos_alg_form_quat \
@@ -426,15 +445,10 @@ kernel_HC_Solver_5pt_rel_pos_alg_form_quat(
                           Partial_Parallel_Index_Offset_for_Ht>, \
                         grid, threads, kernel_args, shmem, my_queue->cuda_stream());
 
-  // cudacheck( cudaEventRecord(stop) );
-  // cudacheck( cudaEventSynchronize(stop) );
-  // cudacheck( cudaEventElapsedTime(&gpu_time_cost, start, stop) );
-
   gpu_time = magma_sync_wtime( my_queue ) - gpu_time;
   if( e != cudaSuccess ) printf("cudaLaunchKernel of homotopy_continuation_solver_5pt_rel_pos_alg_form_quat is not successful!\n");
 
   return gpu_time;
-  // return gpu_time_cost;
 }
 
 #endif
