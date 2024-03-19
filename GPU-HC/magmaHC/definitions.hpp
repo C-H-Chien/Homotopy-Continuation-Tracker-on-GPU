@@ -3,16 +3,16 @@
 //> ======================================================
 
 //> Repository directory
-#if 0
-#define REPO_PATH                               std::string("/oscar/data/bkimia/cchien3/Homotopy-Continuation-Tracker-on-GPU/GPU-HC/")
-#else
-#define REPO_PATH                               std::string("/home/ahmad/hc-gpu/GPU-HC/")
-#endif
+// #if 1
+// #define REPO_PATH                               std::string("/oscar/data/bkimia/cchien3/Homotopy-Continuation-Tracker-on-GPU/GPU-HC/")
+// #else
+// #define REPO_PATH                               std::string("/home/ahmad/hc-gpu/GPU-HC/")
+// #endif
 
 #define USE_LOOPY_RUNGE_KUTTA                   (true)
 
 #define WRITE_FILES_FOLDER                      std::string("Output_Write_Files/")
-#define WRITE_FILES_PATH                        REPO_PATH + WRITE_FILES_FOLDER
+// #define WRITE_FILES_PATH                        REPO_PATH + WRITE_FILES_FOLDER
 
 //> A list of minimal problems (only one of them is true)
 #define TRIFOCAL_2OP1P_30X30                    (false)
@@ -20,7 +20,7 @@
 #define REL_POSE_5PT_GEO_FORM_QUAT              (false)
 
 //> Homotopy Continuation Hyper-Parameters
-#define HC_MAX_STEPS                            (42)    //> Varies from problem to problem. 42 for 5-point algorithm. 100 for trifocal relative pose problem.
+#define HC_MAX_STEPS                            (100)    //> Varies from problem to problem. 42 for 5-point algorithm. 100 for trifocal relative pose problem.
 #define HC_MAX_CORRECTION_STEPS                 (3)     //> Could be fine-tuned
 #define HC_NUM_OF_STEPS_TO_INCREASE_DELTA_T     (4)     //> Could be fine-tuned
 #define APPLY_GAMMA_TRICK                       (false)
@@ -106,7 +106,12 @@
                             }\
                         } while(0)
 
-#define LOG_FILE_ERROR(err_msg)         printf("\033[1;31mERROR: File %s not found!\033[0m\n", err_msg );
-#define LOG_ERROR(err_msg)              printf("\033[1;31mERROR: %s\033[0m\n", err_msg );
-#define LOG_DATA_LOAD_ERROR(err_msg)    printf("\033[1;31mDATA LOAD ERROR: %s not loaded successfully!\033[0m\n", err_msg );
+#define LOG_FILE_ERROR(err_msg)         printf("\033[1;31mERROR: File %s not found!\033[0m\n", std::string(err_msg) );
+#define LOG_ERROR(err_msg)              printf("\033[1;31mERROR: %s\033[0m\n", std::string(err_msg) );
+#define LOG_DATA_LOAD_ERROR(err_msg)    printf("\033[1;31mDATA LOAD ERROR: %s not loaded successfully!\033[0m\n", std::string(err_msg) );
+#define LOG_PRINT_HELP_MESSAGE          printf("Usage: ./magmaHC-main [options] [path]\n\n" \
+                                               "options:\n" \
+                                               "  -h, --help        show this help message and exit\n" \
+                                               "  -d, --directory   repository directory, e.g. /home/chchien/Homotopy-Continuation-Tracker-on-GPU/GPU-HC/\n");
+
 
