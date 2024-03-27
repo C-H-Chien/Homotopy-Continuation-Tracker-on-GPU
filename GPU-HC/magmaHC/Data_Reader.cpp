@@ -23,7 +23,8 @@
 #include "definitions.hpp"
 #include "Data_Reader.hpp"
 
-Data_Reader::Data_Reader(std::string Problem_Filename) {
+Data_Reader::Data_Reader(std::string Problem_Filename, const int Num_Of_Tracks, const int Num_Of_Vars) \
+    : num_of_tracks(Num_Of_Tracks), num_of_variables(Num_Of_Vars) {
 
     //> Define problem file names
     File_Name_Start_Params = Problem_Filename + std::string("/start_params.txt");
@@ -45,17 +46,17 @@ bool Data_Reader::Read_Start_Sols(magmaFloatComplex* &h_Start_Sols, magmaFloatCo
         float s_real, s_imag;
         int d = 0, i = 0; 
         while (File_Start_Sols >> s_real >> s_imag) {
-            (h_Start_Sols + i * (NUM_OF_VARS+1))[d]     = MAGMA_C_MAKE(s_real, s_imag);
-            (h_Homotopy_Sols + i * (NUM_OF_VARS+1))[d]  = MAGMA_C_MAKE(s_real, s_imag);
-            if (d < NUM_OF_VARS-1) d++;
+            (h_Start_Sols + i * (num_of_variables+1))[d]     = MAGMA_C_MAKE(s_real, s_imag);
+            (h_Homotopy_Sols + i * (num_of_variables+1))[d]  = MAGMA_C_MAKE(s_real, s_imag);
+            if (d < num_of_variables-1) d++;
             else {
                 d = 0;
                 i++;
             }
         }
-        for(int k = 0; k < NUM_OF_TRACKS; k++) {
-            (h_Start_Sols + k * (NUM_OF_VARS+1))[NUM_OF_VARS]    = MAGMA_C_MAKE(1.0, 0.0);
-            (h_Homotopy_Sols + k * (NUM_OF_VARS+1))[NUM_OF_VARS] = MAGMA_C_MAKE(1.0, 0.0);
+        for(int k = 0; k < num_of_tracks; k++) {
+            (h_Start_Sols + k * (num_of_variables+1))[num_of_variables]    = MAGMA_C_MAKE(1.0, 0.0);
+            (h_Homotopy_Sols + k * (num_of_variables+1))[num_of_variables] = MAGMA_C_MAKE(1.0, 0.0);
         }
         return true;
     }

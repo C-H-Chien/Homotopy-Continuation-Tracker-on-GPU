@@ -17,9 +17,9 @@
 #include <cstring>
 #include <chrono>
 
-//> MAGMA
 #include "magma_v2.h"
 #include "gpu-kernels/magmaHC-kernels.hpp"
+#include <yaml-cpp/yaml.h>
 
 class GPU_HC_Solver {
     
@@ -65,13 +65,15 @@ class GPU_HC_Solver {
     bool                    *d_is_GPU_HC_Sol_Infinity;
 
 public:
+    bool                    Use_P2C;
+
     //> The timers
     real_Double_t           gpu_time;
     real_Double_t           transfer_h2d_time;
     real_Double_t           transfer_d2h_time;
 
     //> Constructor
-    GPU_HC_Solver( std::string );
+    GPU_HC_Solver( YAML::Node );
     
     //> Member functions
     bool Read_Problem_Data();
@@ -84,9 +86,27 @@ public:
     ~GPU_HC_Solver();
 
 private:
-    std::string REPO_PATH;
+    YAML::Node Problem_Setting_YAML_File;
+    
     std::string Problem_File_Path;
     std::string Write_Files_Path;
+
+    std::string HC_problem;
+    std::string HC_print_problem_name;
+    std::string GPUHC_type;
+    int GPUHC_Max_Steps;
+    int GPUHC_Max_Correction_Steps;
+    int GPUHC_delta_t_incremental_steps;
+    int Num_Of_Vars;
+    int Num_Of_Params;
+    int Num_Of_Tracks;
+    int dHdx_Max_Terms;
+    int dHdx_Max_Parts;
+    int dHdt_Max_Terms;
+    int dHdt_Max_Parts;
+    int Max_Order_Of_T;
+
+    int Num_Of_Coeffs_From_Params;
 };
 
 #endif

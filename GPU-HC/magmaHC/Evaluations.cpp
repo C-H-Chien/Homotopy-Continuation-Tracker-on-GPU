@@ -4,6 +4,7 @@
 //
 // ChangLogs
 //    24-02-05:   Initially created for definitions of functions in the ``Evaluations" class.
+//    24-03-26:   Replace macro definitions of number of tracks and number of variables by passing them as variables
 //
 //> (c) LEMS, Brown University
 //> Chiang-Heng Chien (chiang-heng_chien@brown.edu)
@@ -22,8 +23,9 @@
 #include "Evaluations.hpp"
 
 //> Constructor
-Evaluations::Evaluations( std::string Output_Files_Path ): WRITE_FILES_PATH(Output_Files_Path) {
-  
+Evaluations::Evaluations( std::string Output_Files_Path, int num_of_tracks, int num_of_vars )
+  : WRITE_FILES_PATH(Output_Files_Path), num_of_tracks(num_of_tracks), num_of_variables(num_of_vars) 
+{
   //> Initialize to zeros
   Num_Of_Inf_Sols = 0;
   Num_Of_Coverged_Sols = 0;
@@ -42,14 +44,14 @@ void Evaluations::Write_Converged_Sols( \
     magmaFloatComplex *h_GPU_HC_Track_Sols, \
     bool *h_is_GPU_HC_Sol_Converge ) 
 {
-  for (int bs = 0; bs < NUM_OF_TRACKS; bs++) {
+  for (int bs = 0; bs < num_of_tracks; bs++) {
     GPUHC_Track_Sols_File << std::setprecision(10);
 
     if (h_is_GPU_HC_Sol_Converge[ bs ] == 1) {
       //GPUHC_Track_Sols_File << h_is_GPU_HC_Sol_Converge[ bs ] << "\n";
-      for (int vs = 0; vs < NUM_OF_VARS; vs++) {
-        GPUHC_Track_Sols_File << std::setprecision(20) << MAGMA_C_REAL((h_GPU_HC_Track_Sols + bs * (NUM_OF_VARS+1))[vs]) << "\t" \
-                              << std::setprecision(20) << MAGMA_C_IMAG((h_GPU_HC_Track_Sols + bs * (NUM_OF_VARS+1))[vs]) << "\n";
+      for (int vs = 0; vs < num_of_variables; vs++) {
+        GPUHC_Track_Sols_File << std::setprecision(20) << MAGMA_C_REAL((h_GPU_HC_Track_Sols + bs * (num_of_variables+1))[vs]) << "\t" \
+                              << std::setprecision(20) << MAGMA_C_IMAG((h_GPU_HC_Track_Sols + bs * (num_of_variables+1))[vs]) << "\n";
       }
       GPUHC_Track_Sols_File << "\n";
     }
@@ -62,20 +64,20 @@ void Evaluations::Evaluate_Sols( \
     bool *h_is_GPU_HC_Sol_Infinity ) 
 {
   //> Count the number of converged solutions, the number of infinity failed solutions, and the number of real solutions
-  for (int bs = 0; bs < NUM_OF_TRACKS; bs++) {
+  for (int bs = 0; bs < num_of_tracks; bs++) {
     if ( h_is_GPU_HC_Sol_Converge[ bs ] ) Num_Of_Coverged_Sols++;
     if ( h_is_GPU_HC_Sol_Infinity[ bs ] ) Num_Of_Inf_Sols++;
 
     int Num_Of_Real_Vars = 0;
     if (h_is_GPU_HC_Sol_Converge[ bs ] == 1) {
-      for (int vs = 0; vs < NUM_OF_VARS; vs++) {
-        if (fabs(MAGMA_C_IMAG((h_GPU_HC_Track_Sols + bs * (NUM_OF_VARS+1))[vs])) <= ZERO_IMAG_PART_TOL_FOR_SP) {
+      for (int vs = 0; vs < num_of_variables; vs++) {
+        if (fabs(MAGMA_C_IMAG((h_GPU_HC_Track_Sols + bs * (num_of_variables+1))[vs])) <= ZERO_IMAG_PART_TOL_FOR_SP) {
             Num_Of_Real_Vars++;
         }
       }
     }
 
-    if (Num_Of_Real_Vars == NUM_OF_VARS) Num_Of_Real_Sols++;
+    if (Num_Of_Real_Vars == num_of_variables) Num_Of_Real_Sols++;
   }
 }
 
@@ -83,7 +85,7 @@ void Evaluations::Find_Unique_Sols( magmaFloatComplex *h_GPU_HC_Track_Sols, bool
 
   std::set< int > Duplicate_Sol_Index;
   std::set< int > Skip_Sol_Index;
-  for (int bs = 0; bs < NUM_OF_TRACKS; bs++) {
+  for (int bs = 0; bs < num_of_tracks; bs++) {
 
     //> Make sure that the solution is converged before evaluating its uniqueness
     if ( h_is_GPU_HC_Sol_Converge[ bs ] ) {
@@ -98,10 +100,10 @@ void Evaluations::Find_Unique_Sols( magmaFloatComplex *h_GPU_HC_Track_Sols, bool
         Duplicate_Sol_Index.clear();
       }
 
-      for (int ds = bs+1; ds < NUM_OF_TRACKS; ds++) {
+      for (int ds = bs+1; ds < num_of_tracks; ds++) {
 
         int Num_Of_Duplicate_Vars = 0;
-        for (int vs = 0; vs < NUM_OF_VARS; vs++) {
+        for (int vs = 0; vs < num_of_variables; vs++) {
 
           //> If both the real and imaginery parts are very close
           if ( Var_Diff_In_Real_Part(h_GPU_HC_Track_Sols, h_GPU_HC_Track_Sols, bs, ds, vs) < DUPLICATE_SOL_DIFF_TOL && \
@@ -110,7 +112,7 @@ void Evaluations::Find_Unique_Sols( magmaFloatComplex *h_GPU_HC_Track_Sols, bool
           }
         }
 
-        if (Num_Of_Duplicate_Vars == NUM_OF_VARS) Duplicate_Sol_Index.insert(ds);
+        if (Num_Of_Duplicate_Vars == num_of_variables) Duplicate_Sol_Index.insert(ds);
       }
 
       //> If the duplicate solution index vector is empty

@@ -17,11 +17,9 @@
 #include <iomanip>
 #include <cstring>
 
-// cuda included
 #include <cuda.h>
 #include <cuda_runtime.h>
 
-// magma
 #include "magma_v2.h"
 #include "magma_lapack.h"
 #include "magma_internal.h"
@@ -44,7 +42,10 @@
 #include "../dev-cgesv-batched-small.cuh"
 #include "../dev-get-new-data.cuh"
 
-template< unsigned Full_Parallel_Offset, \
+template< int Num_Of_Vars, int Num_of_Coeffs_from_Params, int Max_Order_of_t, \
+          int dHdx_Max_Terms, int dHdx_Max_Parts, int dHdx_Entry_Offset, int dHdx_Row_Offset, \
+          int dHdt_Max_Terms, int dHdt_Max_Parts, int dHdt_Row_Offset, \
+          unsigned Full_Parallel_Offset, \
           unsigned Partial_Parallel_Thread_Offset, \
           unsigned Partial_Parallel_Index_Offset, \
           unsigned Max_Order_of_t_Plus_One, \
@@ -52,6 +53,7 @@ template< unsigned Full_Parallel_Offset, \
           unsigned Partial_Parallel_Index_Offset_Ht >
 __global__ void
 homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
+  int HC_max_steps, int HC_max_correction_steps, int HC_delta_t_incremental_steps,
   magmaFloatComplex** d_startSols_array, magmaFloatComplex** d_Track_array,
   magma_int_t* d_Hx_indices, magma_int_t* d_Ht_indices,
   magmaFloatComplex_ptr d_phc_coeffs_Hx, magmaFloatComplex_ptr d_phc_coeffs_Ht,
@@ -71,7 +73,7 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
   const magmaFloatComplex* __restrict__ d_const_phc_coeffs_Ht = d_phc_coeffs_Ht;
 
   //> registers declarations
-  magmaFloatComplex r_cgesvA[NUM_OF_VARS] = {MAGMA_C_ZERO};
+  magmaFloatComplex r_cgesvA[Num_Of_Vars] = {MAGMA_C_ZERO};
   magmaFloatComplex r_cgesvB = MAGMA_C_ZERO;
   int linfo = 0, rowid = tx;
   float t0 = 0.0, t_step = 0.0, delta_t = 0.05;
@@ -79,27 +81,27 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
 
   //> shared memory declarations
   magmaFloatComplex *s_sols               = (magmaFloatComplex*)(zdata);
-  magmaFloatComplex *s_track              = s_sols + (NUM_OF_VARS+1);
-  magmaFloatComplex *s_track_last_success = s_track + (NUM_OF_VARS+1);
-  magmaFloatComplex *sB                   = s_track_last_success + (NUM_OF_VARS+1);
-  magmaFloatComplex *sx                   = sB + NUM_OF_VARS;
-  magmaFloatComplex *s_phc_coeffs_Hx      = sx + NUM_OF_VARS;
-  magmaFloatComplex *s_phc_coeffs_Ht      = s_phc_coeffs_Hx + (NUM_OF_COEFFS_FROM_PARAMS+1);
-  float* dsx                              = (float*)(s_phc_coeffs_Ht + (NUM_OF_COEFFS_FROM_PARAMS+1));
-  int* sipiv                              = (int*)(dsx + NUM_OF_VARS);
+  magmaFloatComplex *s_track              = s_sols                   + (Num_Of_Vars+1);
+  magmaFloatComplex *s_track_last_success = s_track                  + (Num_Of_Vars+1);
+  magmaFloatComplex *sB                   = s_track_last_success     + (Num_Of_Vars+1);
+  magmaFloatComplex *sx                   = sB                       + Num_Of_Vars;
+  magmaFloatComplex *s_phc_coeffs_Hx      = sx                       + Num_Of_Vars;
+  magmaFloatComplex *s_phc_coeffs_Ht      = s_phc_coeffs_Hx          + (Num_of_Coeffs_from_Params+1);
+  float* dsx                              = (float*)(s_phc_coeffs_Ht + (Num_of_Coeffs_from_Params+1));
+  int* sipiv                              = (int*)(dsx               + Num_Of_Vars);
 #if USE_LOOPY_RUNGE_KUTTA
-  float* s_delta_t_scale                  = (float*)(sipiv + (NUM_OF_VARS+1));
-  int* s_RK_Coeffs                        = (int*)(s_delta_t_scale + 1);
+  float* s_delta_t_scale                  = (float*)(sipiv           + (Num_Of_Vars+1));
+  int* s_RK_Coeffs                        = (int*)(s_delta_t_scale   + 1);
 #endif
 
   s_sols[tx] = d_startSols[tx];
   s_track[tx] = d_track[tx];
   s_track_last_success[tx] = s_track[tx];
   if (tx == 0) {
-    s_sols[NUM_OF_VARS]               = MAGMA_C_MAKE(1.0, 0.0);
-    s_track[NUM_OF_VARS]              = MAGMA_C_MAKE(1.0, 0.0);
-    s_track_last_success[NUM_OF_VARS] = MAGMA_C_MAKE(1.0, 0.0);
-    sipiv[NUM_OF_VARS]                = 0;
+    s_sols[Num_Of_Vars]               = MAGMA_C_MAKE(1.0, 0.0);
+    s_track[Num_Of_Vars]              = MAGMA_C_MAKE(1.0, 0.0);
+    s_track_last_success[Num_Of_Vars] = MAGMA_C_MAKE(1.0, 0.0);
+    sipiv[Num_Of_Vars]                = 0;
   }
   magmablas_syncwarp();
 
@@ -115,7 +117,7 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
 #endif
 
   //#pragma unroll
-  volatile int hc_max_steps = HC_MAX_STEPS;
+  volatile int hc_max_steps = HC_max_steps;
   for (int step = 0; step <= hc_max_steps; step++) {
     if (t0 < 1.0 && (1.0-t0 > 0.0000001)) {
 
@@ -154,16 +156,16 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
       for (int rk_step = 0; rk_step < 4; rk_step++ ) {
 
         //> Evaluate parameter homotopy
-        eval_parameter_homotopy<float, Full_Parallel_Offset, Partial_Parallel_Thread_Offset, Partial_Parallel_Index_Offset, \
-                                Max_Order_of_t_Plus_One, Partial_Parallel_Index_Offset_Hx, Partial_Parallel_Index_Offset_Ht> \
+        eval_parameter_homotopy< float, Num_Of_Vars, Max_Order_of_t, Full_Parallel_Offset, Partial_Parallel_Thread_Offset, Partial_Parallel_Index_Offset, \
+                                Max_Order_of_t_Plus_One, Partial_Parallel_Index_Offset_Hx, Partial_Parallel_Index_Offset_Ht > \
                                 ( tx, t0, s_phc_coeffs_Hx, s_phc_coeffs_Ht, d_const_phc_coeffs_Hx, d_const_phc_coeffs_Ht );
 
         //> Evaluate dH/dx and dH/dt
-        eval_Jacobian_Hx< HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS, NUM_OF_VARS*HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS>( tx, s_track, r_cgesvA, d_Hx_idx, s_phc_coeffs_Hx );
-        eval_Jacobian_Ht< HT_MAXIMAL_TERMS*HT_MAXIMAL_PARTS >( tx, s_track, r_cgesvB, d_Ht_idx, s_phc_coeffs_Ht );
+        eval_Jacobian_Hx< Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Row_Offset >( tx, s_track, r_cgesvA, d_Hx_idx, s_phc_coeffs_Hx );
+        eval_Jacobian_Ht< dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Row_Offset >( tx, s_track, r_cgesvB, d_Ht_idx, s_phc_coeffs_Ht );
 
         //> linear system solver: solve for k1, k2, k3, or k4
-        cgesv_batched_small_device< NUM_OF_VARS >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
+        cgesv_batched_small_device< Num_Of_Vars >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
         magmablas_syncwarp();
 
         if (rk_step < 3) {
@@ -195,19 +197,19 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
 #endif
         //> get HxHt for k1
 #if APPLY_GAMMA_TRICK
-      eval_parameter_homotopy<magmaFloatComplex, Full_Parallel_Offset, Partial_Parallel_Thread_Offset, Partial_Parallel_Index_Offset, \
+      eval_parameter_homotopy<magmaFloatComplex, Num_Of_Vars, Max_Order_of_t, Full_Parallel_Offset, Partial_Parallel_Thread_Offset, Partial_Parallel_Index_Offset, \
                               Max_Order_of_t_Plus_One, Partial_Parallel_Index_Offset_Hx, Partial_Parallel_Index_Offset_Ht> \
                               ( tx, gammified_t0, s_phc_coeffs_Hx, s_phc_coeffs_Ht, d_const_phc_coeffs_Hx, d_const_phc_coeffs_Ht );
 #else
-      eval_parameter_homotopy<float, Full_Parallel_Offset, Partial_Parallel_Thread_Offset, Partial_Parallel_Index_Offset, \
+      eval_parameter_homotopy<float, Num_Of_Vars, Max_Order_of_t, Full_Parallel_Offset, Partial_Parallel_Thread_Offset, Partial_Parallel_Index_Offset, \
                               Max_Order_of_t_Plus_One, Partial_Parallel_Index_Offset_Hx, Partial_Parallel_Index_Offset_Ht> \
                               ( tx, t0, s_phc_coeffs_Hx, s_phc_coeffs_Ht, d_const_phc_coeffs_Hx, d_const_phc_coeffs_Ht );
 #endif
-      eval_Jacobian_Hx< HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS, NUM_OF_VARS*HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS>( tx, s_track, r_cgesvA, d_Hx_idx, s_phc_coeffs_Hx );
-      eval_Jacobian_Ht< HT_MAXIMAL_TERMS*HT_MAXIMAL_PARTS >( tx, s_track, r_cgesvB, d_Ht_idx, s_phc_coeffs_Ht );
+      eval_Jacobian_Hx< Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Row_Offset >( tx, s_track, r_cgesvA, d_Hx_idx, s_phc_coeffs_Hx );
+      eval_Jacobian_Ht< dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Row_Offset >( tx, s_track, r_cgesvB, d_Ht_idx, s_phc_coeffs_Ht );
 
       //> solve k1
-      cgesv_batched_small_device< NUM_OF_VARS >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
+      cgesv_batched_small_device< Num_Of_Vars >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
       magmablas_syncwarp();
 
         //> compute x for the creation of HxHt for k2 and get HxHt for k2
@@ -215,21 +217,21 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
       magmaFloatComplex gc = GAMMA / (((GAMMA - 1.0) * t0 + 1.0) * ((GAMMA - 1.0) * t0 + 1.0));
       create_x_for_k2( tx, t0, delta_t, one_half_delta_t, s_sols, s_track, sB, gc );
       magmablas_syncwarp();
-      eval_parameter_homotopy<magmaFloatComplex, Full_Parallel_Offset, Partial_Parallel_Thread_Offset, Partial_Parallel_Index_Offset, \
+      eval_parameter_homotopy<magmaFloatComplex, Num_Of_Vars, Max_Order_of_t, Full_Parallel_Offset, Partial_Parallel_Thread_Offset, Partial_Parallel_Index_Offset, \
                               Max_Order_of_t_Plus_One, Partial_Parallel_Index_Offset_Hx, Partial_Parallel_Index_Offset_Ht> \
                               ( tx, gammified_t0_plus_one_half_dt, s_phc_coeffs_Hx, s_phc_coeffs_Ht, d_const_phc_coeffs_Hx, d_const_phc_coeffs_Ht );
 #else
       create_x_for_k2( tx, t0, delta_t, one_half_delta_t, s_sols, s_track, sB, MAGMA_C_ONE );
       magmablas_syncwarp();
-      eval_parameter_homotopy<float, Full_Parallel_Offset, Partial_Parallel_Thread_Offset, Partial_Parallel_Index_Offset, \
+      eval_parameter_homotopy<float, Num_Of_Vars, Max_Order_of_t, Full_Parallel_Offset, Partial_Parallel_Thread_Offset, Partial_Parallel_Index_Offset, \
                               Max_Order_of_t_Plus_One, Partial_Parallel_Index_Offset_Hx, Partial_Parallel_Index_Offset_Ht> \
                               ( tx, t0, s_phc_coeffs_Hx, s_phc_coeffs_Ht, d_const_phc_coeffs_Hx, d_const_phc_coeffs_Ht );
 #endif
-      eval_Jacobian_Hx< HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS, NUM_OF_VARS*HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS>( tx, s_track, r_cgesvA, d_Hx_idx, s_phc_coeffs_Hx );
-      eval_Jacobian_Ht< HT_MAXIMAL_TERMS*HT_MAXIMAL_PARTS >( tx, s_track, r_cgesvB, d_Ht_idx, s_phc_coeffs_Ht );
+      eval_Jacobian_Hx< Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Row_Offset >( tx, s_track, r_cgesvA, d_Hx_idx, s_phc_coeffs_Hx );
+      eval_Jacobian_Ht< dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Row_Offset >( tx, s_track, r_cgesvB, d_Ht_idx, s_phc_coeffs_Ht );
 
       //> solve k2
-      cgesv_batched_small_device< NUM_OF_VARS >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
+      cgesv_batched_small_device< Num_Of_Vars >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
       magmablas_syncwarp();
 
 #if APPLY_GAMMA_TRICK
@@ -241,11 +243,11 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
       magmablas_syncwarp();
 #endif
       //> get HxHt for k3
-      eval_Jacobian_Hx< HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS, NUM_OF_VARS*HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS>( tx, s_track, r_cgesvA, d_Hx_idx, s_phc_coeffs_Hx );
-      eval_Jacobian_Ht< HT_MAXIMAL_TERMS*HT_MAXIMAL_PARTS >( tx, s_track, r_cgesvB, d_Ht_idx, s_phc_coeffs_Ht );
+      eval_Jacobian_Hx< Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Row_Offset >( tx, s_track, r_cgesvA, d_Hx_idx, s_phc_coeffs_Hx );
+      eval_Jacobian_Ht< dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Row_Offset >( tx, s_track, r_cgesvB, d_Ht_idx, s_phc_coeffs_Ht );
 
       //> solve k3
-      cgesv_batched_small_device< NUM_OF_VARS >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
+      cgesv_batched_small_device< Num_Of_Vars >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
       magmablas_syncwarp();
 
       //> compute x for the generation of HxHt for k4
@@ -253,22 +255,22 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
       create_x_for_k4( tx, t0, delta_t, one_half_delta_t, s_sols, s_track, s_track_last_success, sB, gc05 );
       magmablas_syncwarp();
       //> get HxHt for k4
-      eval_parameter_homotopy<magmaFloatComplex, Full_Parallel_Offset, Partial_Parallel_Thread_Offset, Partial_Parallel_Index_Offset, \
+      eval_parameter_homotopy<magmaFloatComplex, Num_Of_Vars, Max_Order_of_t, Full_Parallel_Offset, Partial_Parallel_Thread_Offset, Partial_Parallel_Index_Offset, \
                               Max_Order_of_t_Plus_One, Partial_Parallel_Index_Offset_Hx, Partial_Parallel_Index_Offset_Ht> \
                               ( tx, gammified_t0_plus_dt, s_phc_coeffs_Hx, s_phc_coeffs_Ht, d_const_phc_coeffs_Hx, d_const_phc_coeffs_Ht );
 #else
       create_x_for_k4( tx, t0, delta_t, one_half_delta_t, s_sols, s_track, s_track_last_success, sB, MAGMA_C_ONE );
       magmablas_syncwarp();
       //> get HxHt for k4
-      eval_parameter_homotopy<float, Full_Parallel_Offset, Partial_Parallel_Thread_Offset, Partial_Parallel_Index_Offset, \
+      eval_parameter_homotopy<float, Num_Of_Vars, Max_Order_of_t, Full_Parallel_Offset, Partial_Parallel_Thread_Offset, Partial_Parallel_Index_Offset, \
                               Max_Order_of_t_Plus_One, Partial_Parallel_Index_Offset_Hx, Partial_Parallel_Index_Offset_Ht> \
                               ( tx, t0, s_phc_coeffs_Hx, s_phc_coeffs_Ht, d_const_phc_coeffs_Hx, d_const_phc_coeffs_Ht );
 #endif
-      eval_Jacobian_Hx< HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS, NUM_OF_VARS*HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS>( tx, s_track, r_cgesvA, d_Hx_idx, s_phc_coeffs_Hx );
-      eval_Jacobian_Ht< HT_MAXIMAL_TERMS*HT_MAXIMAL_PARTS >( tx, s_track, r_cgesvB, d_Ht_idx, s_phc_coeffs_Ht );
+      eval_Jacobian_Hx< Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Row_Offset >( tx, s_track, r_cgesvA, d_Hx_idx, s_phc_coeffs_Hx );
+      eval_Jacobian_Ht< dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Row_Offset >( tx, s_track, r_cgesvB, d_Ht_idx, s_phc_coeffs_Ht );
 
       //> solve k4
-      cgesv_batched_small_device< NUM_OF_VARS >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
+      cgesv_batched_small_device< Num_Of_Vars >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
       magmablas_syncwarp();
 
       //> make prediction
@@ -289,15 +291,15 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
       //> Gauss-Newton Corrector
       // ===================================================================
       //#pragma unroll
-      volatile int hc_max_xorrection_steps = HC_MAX_CORRECTION_STEPS;
+      volatile int hc_max_xorrection_steps = HC_max_correction_steps;
       #pragma no unroll
       for(int i = 0; i < hc_max_xorrection_steps; i++) {
 
-        eval_Jacobian_Hx< HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS, NUM_OF_VARS*HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS >( tx, s_track, r_cgesvA, d_Hx_idx, s_phc_coeffs_Hx );
-        eval_Homotopy< HT_MAXIMAL_TERMS*HT_MAXIMAL_PARTS >( tx, s_track, r_cgesvB, d_Ht_idx, s_phc_coeffs_Hx );
+        eval_Jacobian_Hx< Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Row_Offset >( tx, s_track, r_cgesvA, d_Hx_idx, s_phc_coeffs_Hx );
+        eval_Homotopy< dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Row_Offset >( tx, s_track, r_cgesvB, d_Ht_idx, s_phc_coeffs_Hx );
 
         //> G-N corrector first solve
-        cgesv_batched_small_device< NUM_OF_VARS >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
+        cgesv_batched_small_device< Num_Of_Vars >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
         magmablas_syncwarp();
 
         //> correct the sols
@@ -335,17 +337,17 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
         //> should be the last successful tracked sols
         s_track[tx] = s_track_last_success[tx];
         s_sols[tx] = s_track_last_success[tx];
-        if (tx == 0) sipiv[NUM_OF_VARS] = 0;
+        if (tx == 0) sipiv[Num_Of_Vars] = 0;
         magmablas_syncwarp();
         t0 = t_step;
       }
       else {
-        if (tx == 0) sipiv[NUM_OF_VARS]++;
+        if (tx == 0) sipiv[Num_Of_Vars]++;
         s_track_last_success[tx] = s_track[tx];
         s_sols[tx] = s_track[tx];
         magmablas_syncwarp();
-        if (sipiv[NUM_OF_VARS] >= HC_NUM_OF_STEPS_TO_INCREASE_DELTA_T) {
-          if (tx == 0) sipiv[NUM_OF_VARS] = 0;
+        if (sipiv[Num_Of_Vars] >= HC_delta_t_incremental_steps) {
+          if (tx == 0) sipiv[Num_Of_Vars] = 0;
           delta_t *= 2;
         }
         magmablas_syncwarp();
@@ -369,38 +371,59 @@ homotopy_continuation_solver_5pt_rel_pos_alg_form_quat(
 
 real_Double_t
 kernel_HC_Solver_5pt_rel_pos_alg_form_quat(
-  magma_queue_t my_queue, \
-  magmaFloatComplex** d_startSols_array, magmaFloatComplex** d_Track_array, \
-  magma_int_t* d_Hx_idx_array,           magma_int_t* d_Ht_idx_array, \
-  magmaFloatComplex_ptr d_phc_coeffs_Hx, magmaFloatComplex_ptr d_phc_coeffs_Ht, \
-  bool* d_is_GPU_HC_Sol_Converge,        bool* d_is_GPU_HC_Sol_Infinity, \
-  magmaFloatComplex* d_Debug_Purpose
+  magma_queue_t         my_queue,
+  int                   HC_max_steps, 
+  int                   HC_max_correction_steps, 
+  int                   HC_delta_t_incremental_steps,
+  magmaFloatComplex**   d_startSols_array, 
+  magmaFloatComplex**   d_Track_array,
+  magma_int_t*          d_Hx_idx_array,
+  magma_int_t*          d_Ht_idx_array, 
+  magmaFloatComplex_ptr d_phc_coeffs_Hx, 
+  magmaFloatComplex_ptr d_phc_coeffs_Ht,
+  bool*                 d_is_GPU_HC_Sol_Converge,
+  bool*                 d_is_GPU_HC_Sol_Infinity,
+  magmaFloatComplex*    d_Debug_Purpose
 )
 {
+  //> Hard-coded for each problem
+  const int num_of_vars               = 6;
+  const int num_of_tracks             = 40;
+  const int num_of_coeffs_from_params = 75;
+  const int dHdx_Max_Terms            = 12;
+  const int dHdx_Max_Parts            = 4;
+  const int dHdt_Max_Terms            = 30;
+  const int dHdt_Max_Parts            = 5;
+  const int max_order_of_t            = 2;
+
+  const int dHdx_Entry_Offset = dHdx_Max_Terms * dHdx_Max_Parts;
+  const int dHdx_Row_Offset   = num_of_vars * dHdx_Entry_Offset;
+  const int dHdt_Row_Offset   = dHdt_Max_Terms * dHdt_Max_Parts;
+
   real_Double_t gpu_time;
-  dim3 threads(NUM_OF_VARS, 1, 1);
-  dim3 grid(NUM_OF_TRACKS, 1, 1);
+  dim3 threads(num_of_vars, 1, 1);
+  dim3 grid(num_of_tracks, 1, 1);
   cudaError_t e = cudaErrorInvalidValue;
 
   //> Constant values for evaluating the Jacobians, passed as template
-  const unsigned Full_Parallel_Offset                 = (NUM_OF_COEFFS_FROM_PARAMS+1)/(NUM_OF_VARS);
-  const unsigned Partial_Parallel_Thread_Offset       = (NUM_OF_COEFFS_FROM_PARAMS+1) - (NUM_OF_VARS)*(Full_Parallel_Offset);
-  const unsigned Partial_Parallel_Index_Offset        = (NUM_OF_VARS)*(Full_Parallel_Offset);
-  const unsigned Max_Order_of_t_Plus_One              = MAX_ORDER_OF_T + 1;
-  const unsigned Partial_Parallel_Index_Offset_for_Hx = (NUM_OF_VARS-1)*(Max_Order_of_t_Plus_One) + (MAX_ORDER_OF_T) + (Full_Parallel_Offset-1)*(Max_Order_of_t_Plus_One)*(NUM_OF_VARS) + 1;
-  const unsigned Partial_Parallel_Index_Offset_for_Ht = (NUM_OF_VARS-1)*(MAX_ORDER_OF_T) + (MAX_ORDER_OF_T-1) + (Full_Parallel_Offset-1)*(MAX_ORDER_OF_T)*(NUM_OF_VARS) + 1;
+  const unsigned Full_Parallel_Offset                 = (num_of_coeffs_from_params+1)/(num_of_vars);
+  const unsigned Partial_Parallel_Thread_Offset       = (num_of_coeffs_from_params+1) - (num_of_vars)*(Full_Parallel_Offset);
+  const unsigned Partial_Parallel_Index_Offset        = (num_of_vars)*(Full_Parallel_Offset);
+  const unsigned Max_Order_of_t_Plus_One              = max_order_of_t + 1;
+  const unsigned Partial_Parallel_Index_Offset_for_Hx = (num_of_vars-1)*(Max_Order_of_t_Plus_One) + (max_order_of_t) + (Full_Parallel_Offset-1)*(Max_Order_of_t_Plus_One)*(num_of_vars) + 1;
+  const unsigned Partial_Parallel_Index_Offset_for_Ht = (num_of_vars-1)*(max_order_of_t) + (max_order_of_t-1) + (Full_Parallel_Offset-1)*(max_order_of_t)*(num_of_vars) + 1;
 
   //> declare shared memory
   magma_int_t shmem  = 0;
-  shmem += (NUM_OF_VARS+1) * sizeof(magmaFloatComplex);                 // startSols
-  shmem += (NUM_OF_VARS+1) * sizeof(magmaFloatComplex);                 // track
-  shmem += (NUM_OF_VARS+1) * sizeof(magmaFloatComplex);                 // track_pred_init
-  shmem += (NUM_OF_COEFFS_FROM_PARAMS+1) * sizeof(magmaFloatComplex);   //> s_phc_coeffs_Hx
-  shmem += (NUM_OF_COEFFS_FROM_PARAMS+1) * sizeof(magmaFloatComplex);   //> s_phc_coeffs_Ht
-  shmem += NUM_OF_VARS * sizeof(magmaFloatComplex);                     // sB
-  shmem += NUM_OF_VARS * sizeof(magmaFloatComplex);                     // sx
-  shmem += NUM_OF_VARS * sizeof(float);                                 // dsx
-  shmem += NUM_OF_VARS * sizeof(int);                                   // pivot
+  shmem += (num_of_vars+1)               * sizeof(magmaFloatComplex);   // startSols
+  shmem += (num_of_vars+1)               * sizeof(magmaFloatComplex);   // track
+  shmem += (num_of_vars+1)               * sizeof(magmaFloatComplex);   // track_pred_init
+  shmem += (num_of_coeffs_from_params+1) * sizeof(magmaFloatComplex);   // s_phc_coeffs_Hx
+  shmem += (num_of_coeffs_from_params+1) * sizeof(magmaFloatComplex);   // s_phc_coeffs_Ht
+  shmem += num_of_vars                   * sizeof(magmaFloatComplex);   // sB
+  shmem += num_of_vars                   * sizeof(magmaFloatComplex);   // sx
+  shmem += num_of_vars                   * sizeof(float);               // dsx
+  shmem += num_of_vars                   * sizeof(int);                 // pivot
   shmem += 1 * sizeof(int);                                             // predictor_success counter
   shmem += 1 * sizeof(int);                                             // Loopy Runge-Kutta coefficients
   shmem += 1 * sizeof(float);                                           // Loopy Runge-Kutta delta t
@@ -412,7 +435,10 @@ kernel_HC_Solver_5pt_rel_pos_alg_form_quat(
   cudacheck( cudaDeviceGetAttribute (&shmem_max, cudaDevAttrMaxSharedMemoryPerBlockOptin, 0) );
   if (shmem <= shmem_max) {
     cudacheck( cudaFuncSetAttribute(homotopy_continuation_solver_5pt_rel_pos_alg_form_quat \
-                                    <Full_Parallel_Offset, \
+                                    < num_of_vars, num_of_coeffs_from_params, max_order_of_t, \
+                                      dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Row_Offset, \
+                                      dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Row_Offset, \
+                                      Full_Parallel_Offset, \
                                       Partial_Parallel_Thread_Offset, \
                                       Partial_Parallel_Index_Offset, \
                                       Max_Order_of_t_Plus_One, \
@@ -427,7 +453,8 @@ kernel_HC_Solver_5pt_rel_pos_alg_form_quat(
   //> Message of overuse shared memory
   if ( shmem > shmem_max ) printf("Error: kernel %s requires too many threads or too much shared memory\n", __func__);
 
-  void *kernel_args[] = { &d_startSols_array, &d_Track_array, \
+  void *kernel_args[] = { &HC_max_steps, &HC_max_correction_steps, &HC_delta_t_incremental_steps, \
+                          &d_startSols_array, &d_Track_array, \
                           &d_Hx_idx_array, &d_Ht_idx_array, \
                           &d_phc_coeffs_Hx, &d_phc_coeffs_Ht, \
                           &d_is_GPU_HC_Sol_Converge, &d_is_GPU_HC_Sol_Infinity, \
@@ -437,7 +464,10 @@ kernel_HC_Solver_5pt_rel_pos_alg_form_quat(
 
   // cudacheck( cudaEventRecord(start) );
   e = cudaLaunchKernel((void*)homotopy_continuation_solver_5pt_rel_pos_alg_form_quat \
-                        <Full_Parallel_Offset, \
+                        < num_of_vars, num_of_coeffs_from_params, max_order_of_t, \
+                          dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Row_Offset, \
+                          dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Row_Offset, \
+                          Full_Parallel_Offset, \
                           Partial_Parallel_Thread_Offset, \
                           Partial_Parallel_Index_Offset, \
                           Max_Order_of_t_Plus_One, \

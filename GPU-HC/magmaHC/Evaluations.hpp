@@ -28,7 +28,7 @@ class Evaluations {
     
 public:
     //> Constructor
-    Evaluations( std::string );
+    Evaluations( std::string, int, int );
 
     //> Destructor
     ~Evaluations();
@@ -51,15 +51,18 @@ private:
     std::ofstream GPUHC_Track_Sols_File;
 
     float Var_Diff_In_Real_Part( magmaFloatComplex *Sol1, magmaFloatComplex *Sol2, int sol1_offset, int sol2_offset, int var_index ) {
-        return std::fabs(MAGMA_C_REAL((Sol1 + sol1_offset*(NUM_OF_VARS+1))[var_index]) - MAGMA_C_REAL((Sol2 + sol2_offset*(NUM_OF_VARS+1))[var_index]));
+        return std::fabs(MAGMA_C_REAL((Sol1 + sol1_offset*(num_of_variables+1))[var_index]) - MAGMA_C_REAL((Sol2 + sol2_offset*(num_of_variables+1))[var_index]));
     };
     float Var_Diff_In_Imag_Part( magmaFloatComplex *Sol1, magmaFloatComplex *Sol2, int sol1_offset, int sol2_offset, int var_index ) {
-        return std::fabs(MAGMA_C_IMAG((Sol1 + sol1_offset*(NUM_OF_VARS+1))[var_index]) - MAGMA_C_IMAG((Sol2 + sol2_offset*(NUM_OF_VARS+1))[var_index]));
+        return std::fabs(MAGMA_C_IMAG((Sol1 + sol1_offset*(num_of_variables+1))[var_index]) - MAGMA_C_IMAG((Sol2 + sol2_offset*(num_of_variables+1))[var_index]));
     };
 
     std::vector< int > Unique_Sols_Index;
 
     std::string WRITE_FILES_PATH;
+
+    const int num_of_tracks;
+    const int num_of_variables;
 };
 
 #endif

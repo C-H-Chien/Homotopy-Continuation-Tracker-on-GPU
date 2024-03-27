@@ -48,6 +48,21 @@ if(DEFINED ICL_BUILD)
 else()
     set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native" CACHE STRING "" FORCE)
 
+    # build for volta arch. (compute capability 70)
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode arch=compute_70,code=sm_70")
+
+    # build for ampere arch. (compute capability 80)
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode arch=compute_80,code=sm_80")
+
+    # build for ampere arch. (compute capability 90)
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode arch=compute_90,code=sm_90")
+
+    # add the DADD_ option to nvcc
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -DADD_")
+
+    # this option lets nvcc give some info about register usage/spills
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xptxas -v")
+
 endif()
 
 
@@ -149,12 +164,21 @@ set(PROJ_INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_PREFIX}/include/)
 # -- include necessary libraries in the commands / executables file --
 include_directories(${PROJ_INCLUDE_DIRS})
 
-include_directories( ${MAGMADIR}/include )
-include_directories( ${MAGMADIR}/testing )
-include_directories( ${MAGMADIR}/control )
-include_directories( ${MAGMADIR}/magmablas )
-link_directories(${MAGMADIR}/lib)
-link_directories(${OPENBLASDIR})
+if(DEFINED ICL_BUILD)
+  include_directories( ${MAGMADIR}/include )
+  include_directories( ${MAGMADIR}/testing )
+  include_directories( ${MAGMADIR}/control )
+  include_directories( ${MAGMADIR}/magmablas )
+  link_directories(${MAGMADIR}/lib)
+  link_directories(${OPENBLASDIR})
+else()
+  include_directories( "/users/cchien3/data/cchien3/magma-2.5.4/include" )
+  include_directories( "/users/cchien3/data/cchien3/magma-2.5.4/testing" )
+  include_directories( "/users/cchien3/data/cchien3/magma/control" )
+  include_directories( "/users/cchien3/data/cchien3/magma/magmablas" )
+  include_directories( "/gpfs/data/bkimia/cchien3/yaml-cpp/bin/include" )
+  link_directories(/gpfs/data/bkimia/cchien3/yaml-cpp/bin/lib64)
+endif()
 
 if(DEFINED ICL_BUILD)
     link_directories("/apps/spacks/2023-11-15/opt/spack/linux-rocky9-x86_64/gcc-11.3.1/gcc-7.5.0-aembyabek5wcmaengfp7yn6c22xe6bq7/lib64/")
