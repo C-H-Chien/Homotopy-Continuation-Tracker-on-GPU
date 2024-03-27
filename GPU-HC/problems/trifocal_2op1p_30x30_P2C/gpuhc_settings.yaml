@@ -1,0 +1,25 @@
+%YAML:1.0
+
+#> Problem Name (must be the same as the problem folder name)
+problem_name: trifocal_2op1p_30x30_P2C
+problem_print_out_name: Trifocal Relative Pose Problem (Chicago 30x30) P2C
+
+#> GPU-HC Settings
+GPUHC_Type: P2C
+GPUHC_Max_Steps: 100
+GPUHC_Max_Correction_Steps: 3
+GPUHC_Num_Of_Steps_to_Increase_Delta_t: 4
+
+#> Problem spec
+Num_Of_Vars: 30
+Num_Of_Params: 33
+Num_Of_Tracks: 312
+Num_Of_Coeffs_From_Params: 37
+dHdx_Max_Terms: 8
+dHdx_Max_Parts: 4
+dHdt_Max_Terms: 16
+dHdt_Max_Parts: 5
+Max_Order_Of_T: 2
+
+
+
