@@ -25,7 +25,7 @@ class Data_Reader {
 
 public:
     //> Constructor
-    Data_Reader(std::string);
+    Data_Reader(std::string, const int, const int);
 
     bool Read_Start_Params( magmaFloatComplex* &h_Start_Params );
     bool Read_Target_Params( magmaFloatComplex* &h_Target_Params );
@@ -48,6 +48,9 @@ private:
     std::fstream File_Start_Sols;
     std::fstream File_dHdx_Indices;
     std::fstream File_dHdt_Indices;
+
+    const int num_of_tracks;
+    const int num_of_variables;
 };
 
 #endif

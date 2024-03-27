@@ -16,21 +16,23 @@
 //    Chien  23-10-20    Add gamma trick and trifocal relative pose from lines at points problem
 //    Chien  23-12-27    Add definitions.hpp placing all Macros
 //    Chien  24-02-26    Shift most of the code to GPU_HC_Solver class. Make main code clean.
+//    Chien  24-03-26    Use yaml-cpp to parse data from problem yaml files so that no recompilation is needed when switching problems
 //
 //> (c) LEMS, Brown University
 //> Chiang-Heng Chien (chiang-heng_chien@brown.edu)
 // =======================================================================================================
 
-//> Macros
 #include "magmaHC/definitions.hpp"
 #include "magmaHC/GPU_HC_Solver.hpp"
 
-int main(int argc, char **argv) {
+#include <yaml-cpp/yaml.h>
 
+int main(int argc, char **argv) {
+  //> Get input argument
   --argc; ++argv;
   std::string arg;
   int argIndx = 0, argTotal = 4;
-  std::string REPO_PATH;
+  std::string PROBLEM_NAME;
 
   if (argc) {
     arg = std::string(*argv);
@@ -40,10 +42,10 @@ int main(int argc, char **argv) {
     }
     else if (argc <= argTotal) {
       while(argIndx <= argTotal-1) {
-        if (arg == "-d" || arg == "--directory") {
+        if (arg == "-p" || arg == "--problem") {
           argv++;
           arg = std::string(*argv);
-          REPO_PATH = arg;
+          PROBLEM_NAME = arg;
           argIndx+=2;
           break;
         }
@@ -66,11 +68,23 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  //> Assertion failed if HC problem is undefined
-  assert(UNDEFINE_HC_PROBLEM == true);
+  //> Path to GPU-HC problem settings yaml file
+  std::string Problem_Path = "../../problems/" + PROBLEM_NAME + "/gpuhc_settings.yaml";
+
+  YAML::Node Problem_Settings_Map;
+  try {
+		Problem_Settings_Map = YAML::LoadFile(Problem_Path);
+#if SHOW_PROBLEM_SETTINGS
+		std::cout << std::endl << Problem_Settings_Map << std::endl << std::endl;
+#endif
+	}
+	catch (const std::exception& e) {
+		std::cerr << "Exception: " << e.what() << std::endl;
+    return 0;
+	}
 
   //> Initialization from GPU-HC constructor
-  GPU_HC_Solver GPU_HC_( REPO_PATH );
+  GPU_HC_Solver GPU_HC_( Problem_Settings_Map );
 
   //> (1) Allocate CPU and GPU arrays
   GPU_HC_.Allocate_Arrays();
@@ -80,8 +94,8 @@ int main(int argc, char **argv) {
 
   if (pass_Data_Read_Test) {
     
-    //> (4) Compute and assign parameter homotopy coefficients
-    GPU_HC_.Construct_Coeffs_From_Params();
+    //> (4) Compute and assign parameter homotopy coefficients, if neccessary
+    if (GPU_HC_.Use_P2C) GPU_HC_.Construct_Coeffs_From_Params();
 
     //> (5) Transfer data from CPU to GPU
     GPU_HC_.Data_Transfer_From_Host_To_Device();
@@ -89,8 +103,6 @@ int main(int argc, char **argv) {
     //> (6) Solve the problem by GPU-HC
     GPU_HC_.Solve_by_GPU_HC();
   }
-
-  
 
   return 0;
 }

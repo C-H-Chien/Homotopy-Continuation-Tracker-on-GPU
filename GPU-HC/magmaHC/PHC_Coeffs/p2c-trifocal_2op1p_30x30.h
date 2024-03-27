@@ -287,7 +287,6 @@ namespace magmaHCWrapper {
     h_phc_coeffs_Ht[73]= MAGMA_C_ZERO;
     h_phc_coeffs_Ht[74]= MAGMA_C_ONE;
     h_phc_coeffs_Ht[75]= MAGMA_C_ZERO;
-
   }
 } // end of namespace
 

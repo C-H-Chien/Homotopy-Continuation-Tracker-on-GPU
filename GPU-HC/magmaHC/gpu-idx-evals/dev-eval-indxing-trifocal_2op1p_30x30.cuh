@@ -40,7 +40,7 @@
 //namespace GPU_Device {
 
     //> compute the parameter homotopy
-    template < typename T >
+    template < typename T, int Num_Of_Vars >
     __device__ __inline__ void
     compute_param_homotopy(
       const int tx, T t,
@@ -55,67 +55,46 @@
         s_param_homotopy[ tx ] = s_target_params[ tx ] * t + s_start_params[ tx ] * (1.0-t);
 
         if (tx < 3) {
-          s_param_homotopy[ tx + NUM_OF_VARS ] = s_target_params[ tx + NUM_OF_VARS ] * t + s_start_params[ tx + NUM_OF_VARS ] * (1.0-t);
+          s_param_homotopy[ tx + Num_Of_Vars ] = s_target_params[ tx + Num_Of_Vars ] * t + s_start_params[ tx + Num_Of_Vars ] * (1.0-t);
         }
     }
 
     //> Jacobian \partial H / \partial x parallel evaluation
-    template< int max_terms_parts >
+    template< int Num_Of_Vars, int dHdx_Max_Terms, int dHdx_Max_Parts, int dHdx_Entry_Offset >
     __device__ __inline__ void
     eval_Jacobian_Hx(
-        const int tx,                //> thread id
-        magmaFloatComplex r_cgesvA[NUM_OF_VARS],        //> each row of the Jacobian matrix
-        magmaFloatComplex *s_vars,            //> variables
-        magmaFloatComplex *s_start_params,    //> start parameters
-        magmaFloatComplex *s_target_params,   //> target parameters
-        magmaFloatComplex *s_param_homotopy,  //> parameter homotopy
-        const int* __restrict__ d_Hx_indices//, //> indices for the Jacobian Hx matrix
+        const int tx,                                   //> thread id
+        magmaFloatComplex r_cgesvA[Num_Of_Vars],        //> each row of the Jacobian matrix
+        magmaFloatComplex *s_vars,                      //> variables
+        magmaFloatComplex *s_start_params,              //> start parameters
+        magmaFloatComplex *s_target_params,             //> target parameters
+        magmaFloatComplex *s_param_homotopy,            //> parameter homotopy
+        const int* __restrict__ d_Hx_indices            //> indices for the Jacobian Hx matrix
     )
     {
       //> Full, explicit form of evaluation
       #pragma unroll
-      for(int i = 0; i < NUM_OF_VARS; i++) {
+      for(int i = 0; i < Num_Of_Vars; i++) {
 
         //> initialize to zero
         r_cgesvA[i] = MAGMA_C_ZERO;
 
-        //> Should I do transpose?????
-        //> Without transpose...
-        /*#pragma unroll
-        for(int j = 0; j < max_terms; j++) {
-
-          //> access the indices of parameters (should be access in a coalesced fashion)
-          p1_indx = d_Hx_indices[ i*max_terms*max_parts + j*max_parts + tx*NUM_OF_VARS*max_terms*max_parts + 1 ];
-          p2_indx = d_Hx_indices[ i*max_terms*max_parts + j*max_parts + tx*NUM_OF_VARS*max_terms*max_parts + 2 ];
-
-          //> access the indices of variables (should also be access in a coalesced fashion)
-          v1_indx = d_Hx_indices[ i*max_terms*max_parts + j*max_parts + tx*NUM_OF_VARS*max_terms*max_parts + 3 ];
-          v2_indx = d_Hx_indices[ i*max_terms*max_parts + j*max_parts + tx*NUM_OF_VARS*max_terms*max_parts + 4 ];
-
-
-          //> compute the element of the Jacobian matrix Hx
-          r_cgesvA[i] += d_Hx_indices[ i*max_terms*max_parts + j*max_parts + tx*NUM_OF_VARS*max_terms*max_parts ]
-                       * s_param_homotopy[ p1_indx ]
-                       * s_param_homotopy[ p2_indx ]
-                       * (s_vars[ v1_indx ])
-                       * (s_vars[ v2_indx ]);
-        }*/
-
         //> With transpose...
         #pragma unroll
-        for(int j = 0; j < HX_MAXIMAL_TERMS; j++) {
+        for(int j = 0; j < dHdx_Max_Terms; j++) {
 
           //> compute the element of the Jacobian matrix Hx
-          r_cgesvA[i] += d_Hx_indices[(i*max_terms_parts)*NUM_OF_VARS + j*HX_MAXIMAL_PARTS*NUM_OF_VARS + tx]
-                       * s_param_homotopy[ d_Hx_indices[ (i*max_terms_parts)*NUM_OF_VARS + (j*HX_MAXIMAL_PARTS+1)*NUM_OF_VARS + tx ] ]
-                       * s_param_homotopy[ d_Hx_indices[ (i*max_terms_parts)*NUM_OF_VARS + (j*HX_MAXIMAL_PARTS+2)*NUM_OF_VARS + tx ] ]
-                       * (s_vars[ d_Hx_indices[ (i*max_terms_parts)*NUM_OF_VARS + (j*HX_MAXIMAL_PARTS+3)*NUM_OF_VARS + tx ] ])
-                       * (s_vars[ d_Hx_indices[ (i*max_terms_parts)*NUM_OF_VARS + (j*HX_MAXIMAL_PARTS+4)*NUM_OF_VARS + tx ] ]);
+          r_cgesvA[i] += d_Hx_indices[(i*dHdx_Entry_Offset)*Num_Of_Vars + j*dHdx_Max_Parts*Num_Of_Vars + tx]
+                       * s_param_homotopy[ d_Hx_indices[ (i*dHdx_Entry_Offset)*Num_Of_Vars + (j*dHdx_Max_Parts + 1)*Num_Of_Vars + tx ] ]
+                       * s_param_homotopy[ d_Hx_indices[ (i*dHdx_Entry_Offset)*Num_Of_Vars + (j*dHdx_Max_Parts + 2)*Num_Of_Vars + tx ] ]
+                       * s_vars[           d_Hx_indices[ (i*dHdx_Entry_Offset)*Num_Of_Vars + (j*dHdx_Max_Parts + 3)*Num_Of_Vars + tx ] ]
+                       * s_vars[           d_Hx_indices[ (i*dHdx_Entry_Offset)*Num_Of_Vars + (j*dHdx_Max_Parts + 4)*Num_Of_Vars + tx ] ];
         }
       }
     }
 
     //> Jacobian \partial H / \partial t parallel evaluation
+    template< int Num_Of_Vars, int dHdt_Max_Terms, int dHdt_Max_Parts >
     __device__ __inline__ void
     eval_Jacobian_Ht(
         const int tx,                //> thread id
@@ -133,21 +112,22 @@
       r_cgesvB = MAGMA_C_ZERO;
 
       #pragma unroll
-      for (int i = 0; i < HT_MAXIMAL_TERMS; i++) {
+      for (int i = 0; i < dHdt_Max_Terms; i++) {
 
         //> With transpose...
-        r_cgesvB -= d_Ht_indices[i*HT_MAXIMAL_PARTS*NUM_OF_VARS + tx]
-                  * (s_diffParams[d_Ht_indices[ (i*HT_MAXIMAL_PARTS+1)*NUM_OF_VARS + tx ]] * s_param_homotopy[ d_Ht_indices[ (i*HT_MAXIMAL_PARTS+2)*NUM_OF_VARS + tx ] ]
-                   + s_diffParams[d_Ht_indices[ (i*HT_MAXIMAL_PARTS+2)*NUM_OF_VARS + tx ]] * s_param_homotopy[ d_Ht_indices[ (i*HT_MAXIMAL_PARTS+1)*NUM_OF_VARS + tx ] ] )
-                  * (s_vars[ d_Ht_indices[ (i*HT_MAXIMAL_PARTS+3)*NUM_OF_VARS + tx ] ])
-                  * (s_vars[ d_Ht_indices[ (i*HT_MAXIMAL_PARTS+4)*NUM_OF_VARS + tx ] ])
-                  * (s_vars[ d_Ht_indices[ (i*HT_MAXIMAL_PARTS+5)*NUM_OF_VARS + tx ] ]);
+        r_cgesvB -= d_Ht_indices[i*dHdt_Max_Parts*Num_Of_Vars + tx]
+                  * (s_diffParams[d_Ht_indices[ (i*dHdt_Max_Parts + 1)*Num_Of_Vars + tx ]] * s_param_homotopy[ d_Ht_indices[ (i*dHdt_Max_Parts + 2)*Num_Of_Vars + tx ] ]
+                   + s_diffParams[d_Ht_indices[ (i*dHdt_Max_Parts + 2)*Num_Of_Vars + tx ]] * s_param_homotopy[ d_Ht_indices[ (i*dHdt_Max_Parts + 1)*Num_Of_Vars + tx ] ] )
+                  * s_vars[       d_Ht_indices[ (i*dHdt_Max_Parts + 3)*Num_Of_Vars + tx ] ]
+                  * s_vars[       d_Ht_indices[ (i*dHdt_Max_Parts + 4)*Num_Of_Vars + tx ] ]
+                  * s_vars[       d_Ht_indices[ (i*dHdt_Max_Parts + 5)*Num_Of_Vars + tx ] ];
       }
     }
 
-    //> parameter homotopy evaluation
+    //> Homotopy evaluation
+    template< int Num_Of_Vars, int dHdt_Max_Terms, int dHdt_Max_Parts >
     __device__ __inline__ void
-    eval_Parameter_Homotopy(
+    eval_Homotopy(
         const int tx,                         //> thread id
         magmaFloatComplex &r_cgesvB,          //> each row of the parameter homotopy
         magmaFloatComplex *s_vars,            //> variables
@@ -161,14 +141,14 @@
       r_cgesvB = MAGMA_C_ZERO;
 
       #pragma unroll
-      for (int i = 0; i < HT_MAXIMAL_TERMS; i++) {
+      for (int i = 0; i < dHdt_Max_Terms; i++) {
         
-        r_cgesvB += d_Ht_indices[i*HT_MAXIMAL_PARTS*NUM_OF_VARS + tx]
-                  * s_param_homotopy[ d_Ht_indices[ (i*HT_MAXIMAL_PARTS+1)*NUM_OF_VARS + tx ] ]
-                  * s_param_homotopy[ d_Ht_indices[ (i*HT_MAXIMAL_PARTS+2)*NUM_OF_VARS + tx ] ]
-                  * (s_vars[ d_Ht_indices[ (i*HT_MAXIMAL_PARTS+3)*NUM_OF_VARS + tx ] ])
-                  * (s_vars[ d_Ht_indices[ (i*HT_MAXIMAL_PARTS+4)*NUM_OF_VARS + tx ] ])
-                  * (s_vars[ d_Ht_indices[ (i*HT_MAXIMAL_PARTS+5)*NUM_OF_VARS + tx ] ]);
+        r_cgesvB += d_Ht_indices[i*dHdt_Max_Parts*Num_Of_Vars + tx]
+                  * s_param_homotopy[ d_Ht_indices[ (i*dHdt_Max_Parts + 1)*Num_Of_Vars + tx ] ]
+                  * s_param_homotopy[ d_Ht_indices[ (i*dHdt_Max_Parts + 2)*Num_Of_Vars + tx ] ]
+                  * s_vars[           d_Ht_indices[ (i*dHdt_Max_Parts + 3)*Num_Of_Vars + tx ] ]
+                  * s_vars[           d_Ht_indices[ (i*dHdt_Max_Parts + 4)*Num_Of_Vars + tx ] ]
+                  * s_vars[           d_Ht_indices[ (i*dHdt_Max_Parts + 5)*Num_Of_Vars + tx ] ];
       }
     }
 //}

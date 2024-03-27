@@ -50,9 +50,14 @@
 #include "../dev-cgesv-batched-small.cuh"
 #include "../dev-get-new-data.cuh"
 
-
+template< int Num_Of_Vars,    int Num_Of_Params, \
+          int dHdx_Max_Terms, int dHdx_Max_Parts, int dHdx_Entry_Offset, \
+          int dHdt_Max_Terms, int dHdt_Max_Parts >
 __global__ void
 HC_solver_trifocal_2op1p_30x30(
+  const int           HC_max_steps, 
+  const int           HC_max_correction_steps, 
+  const int           HC_delta_t_incremental_steps,
   magmaFloatComplex** d_startSols_array,
   magmaFloatComplex** d_Track_array,
   magmaFloatComplex*  d_startParams,
@@ -75,7 +80,7 @@ HC_solver_trifocal_2op1p_30x30(
   magmaFloatComplex* d_track        = d_Track_array[batchid];
 
   //> declarations of registers
-  magmaFloatComplex r_cgesvA[NUM_OF_VARS] = {MAGMA_C_ZERO};
+  magmaFloatComplex r_cgesvA[Num_Of_Vars] = {MAGMA_C_ZERO};
   magmaFloatComplex r_cgesvB              = MAGMA_C_ZERO;
   int linfo = 0, rowid = tx;
   float t0 = 0.0, t_step = 0.0, delta_t = 0.01;
@@ -85,24 +90,20 @@ HC_solver_trifocal_2op1p_30x30(
   magmaFloatComplex gc;
 #endif
 
-  if (tx == 0 && batchid == 0) {
-    printf("Inside the kernel, test ...\n");
-  }
-
   //> declarations of shared memories
   magmaFloatComplex *s_startParams        = (magmaFloatComplex*)(zdata);
-  magmaFloatComplex *s_targetParams       = s_startParams + (NUM_OF_PARAMS + 1);
-  magmaFloatComplex *s_diffParams         = s_targetParams + (NUM_OF_PARAMS + 1);
-  magmaFloatComplex *s_param_homotopy     = s_diffParams + (NUM_OF_PARAMS + 1);
-  magmaFloatComplex *s_sols               = s_param_homotopy + (NUM_OF_PARAMS + 1);
-  magmaFloatComplex *s_track              = s_sols + (NUM_OF_VARS+1);
-  magmaFloatComplex *s_track_last_success = s_track + (NUM_OF_VARS+1);
-  magmaFloatComplex *sB                   = s_track_last_success + (NUM_OF_VARS+1);
-  magmaFloatComplex *sx                   = sB + NUM_OF_VARS;
-  float* dsx                              = (float*)(sx + NUM_OF_VARS);
-  int* sipiv                              = (int*)(dsx + NUM_OF_VARS);
+  magmaFloatComplex *s_targetParams       = s_startParams        + (Num_Of_Params + 1);
+  magmaFloatComplex *s_diffParams         = s_targetParams       + (Num_Of_Params + 1);
+  magmaFloatComplex *s_param_homotopy     = s_diffParams         + (Num_Of_Params + 1);
+  magmaFloatComplex *s_sols               = s_param_homotopy     + (Num_Of_Params + 1);
+  magmaFloatComplex *s_track              = s_sols               + (Num_Of_Vars+1);
+  magmaFloatComplex *s_track_last_success = s_track              + (Num_Of_Vars+1);
+  magmaFloatComplex *sB                   = s_track_last_success + (Num_Of_Vars+1);
+  magmaFloatComplex *sx                   = sB                   + Num_Of_Vars;
+  float* dsx                              = (float*)(sx          + Num_Of_Vars);
+  int* sipiv                              = (int*)(dsx           + Num_Of_Vars);
 #if USE_LOOPY_RUNGE_KUTTA
-  float* s_delta_t_scale                  = (float*)(sipiv + (NUM_OF_VARS+1));
+  float* s_delta_t_scale                  = (float*)(sipiv       + (Num_Of_Vars+1));
   int* s_RK_Coeffs                        = (int*)(s_delta_t_scale + 1);
 #endif
 
@@ -120,18 +121,18 @@ HC_solver_trifocal_2op1p_30x30(
   if (tx == 0) {
     //> the rest of the start and target parameters
     #pragma unroll
-    for(int i = NUM_OF_VARS; i <= NUM_OF_PARAMS; i++) {
+    for(int i = Num_Of_Vars; i <= Num_Of_Params; i++) {
       s_startParams[i]  = d_startParams[i];
       s_targetParams[i] = d_targetParams[i];
       s_diffParams[i]   = d_diffParams[i];
     }
-    s_sols[NUM_OF_VARS]               = MAGMA_C_MAKE(1.0, 0.0);
-    s_track[NUM_OF_VARS]              = MAGMA_C_MAKE(1.0, 0.0);
-    s_track_last_success[NUM_OF_VARS] = MAGMA_C_MAKE(1.0, 0.0);
-    s_param_homotopy[NUM_OF_PARAMS]   = MAGMA_C_ONE;
-    sipiv[NUM_OF_VARS]                = 0;
+    s_sols[Num_Of_Vars]               = MAGMA_C_MAKE(1.0, 0.0);
+    s_track[Num_Of_Vars]              = MAGMA_C_MAKE(1.0, 0.0);
+    s_track_last_success[Num_Of_Vars] = MAGMA_C_MAKE(1.0, 0.0);
+    s_param_homotopy[Num_Of_Params]   = MAGMA_C_ONE;
+    sipiv[Num_Of_Vars]                = 0;
   }
-  __syncthreads();
+  magmablas_syncwarp();
 
   //> 1/2 \Delta t
   float one_half_delta_t;
@@ -140,14 +141,8 @@ HC_solver_trifocal_2op1p_30x30(
   bool r_isSuccessful;
   bool r_isInfFail;
 
-#if USE_LOOPY_RUNGE_KUTTA
-  bool scales[3];
-  scales[0] = 1;
-  scales[1] = 0;
-  scales[2] = 1;
-#endif
-
-  for (int step = 0; step <= HC_MAX_STEPS; step++) {
+  volatile int hc_max_steps = HC_max_steps;
+  for (int step = 0; step <= hc_max_steps; step++) {
     if (t0 < 1.0 && (1.0-t0 > 0.0000001)) {
 
       // ===================================================================
@@ -172,24 +167,25 @@ HC_solver_trifocal_2op1p_30x30(
       // Prediction: 4-th order Runge-Kutta method
       // ===================================================================
 #if USE_LOOPY_RUNGE_KUTTA
+      unsigned char scales[3] = {1, 0, 1};
       if (tx == 0) {
         s_delta_t_scale[0] = 0.0;
         s_RK_Coeffs[0] = 1;
       }
-      __syncthreads();
+      magmablas_syncwarp();
 
       //> For simplicity, let's stay with no gamma-trick mode
       for (int rk_step = 0; rk_step < 4; rk_step++ ) {
 
         //> Evaluate parameter homotopy
-        compute_param_homotopy< float >( tx, t0, s_param_homotopy, s_startParams, s_targetParams );
+        compute_param_homotopy< float, Num_Of_Vars >( tx, t0, s_param_homotopy, s_startParams, s_targetParams );
 
         //> Evaluate dH/dx and dH/dt
-        eval_Jacobian_Hx< HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, d_Hx_indices );
-        eval_Jacobian_Ht( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, d_Ht_indices, s_diffParams );
+        eval_Jacobian_Hx< Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, d_Hx_indices );
+        eval_Jacobian_Ht< Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts >( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, d_Ht_indices, s_diffParams );
 
         //> linear system solver: solve for k1, k2, k3, or k4
-        cgesv_batched_small_device< NUM_OF_VARS >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
+        cgesv_batched_small_device< Num_Of_Vars >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
         magmablas_syncwarp();
 
         if (rk_step < 3) {
@@ -201,7 +197,7 @@ HC_solver_trifocal_2op1p_30x30(
             s_delta_t_scale[0] += scales[rk_step] * one_half_delta_t;
             s_RK_Coeffs[0] = s_RK_Coeffs[0] << scales[rk_step];           //> Shift one bit
           }
-          __syncthreads();
+          magmablas_syncwarp();
 
           sB[tx] *= s_delta_t_scale[0];
           s_track[tx] += sB[tx];
@@ -212,20 +208,20 @@ HC_solver_trifocal_2op1p_30x30(
       //> Make prediction
       s_sols[tx] += sB[tx] * delta_t * 1.0/6.0;
       s_track[tx] = s_sols[tx];
-      __syncthreads();
+      magmablas_syncwarp();
 #else
       //> get HxHt for k1
 #if APPLY_GAMMA_TRICK
       gammified_t0 = GAMMA * t0 / (MAGMA_C_ONE + GAMMA_MINUS_ONE * t0);                                      //> t0
-      compute_param_homotopy< magmaFloatComplex >( tx, gammified_t0, s_param_homotopy, s_startParams, s_targetParams );
+      compute_param_homotopy< magmaFloatComplex, Num_Of_Vars >( tx, gammified_t0, s_param_homotopy, s_startParams, s_targetParams );
 #else
-      compute_param_homotopy< float >( tx, t0, s_param_homotopy, s_startParams, s_targetParams );
+      compute_param_homotopy< float, Num_Of_Vars >( tx, t0, s_param_homotopy, s_startParams, s_targetParams );
 #endif
-      eval_Jacobian_Hx< HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, d_Hx_indices );
-      eval_Jacobian_Ht( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, d_Ht_indices, s_diffParams );
+      eval_Jacobian_Hx< Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, d_Hx_indices );
+      eval_Jacobian_Ht< Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts >( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, d_Ht_indices, s_diffParams );
       
       //> solve k1
-      cgesv_batched_small_device< NUM_OF_VARS >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
+      cgesv_batched_small_device< Num_Of_Vars >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
       magmablas_syncwarp();
 
       //> compute x for the creation of HxHt for k2 and get HxHt for k2
@@ -234,17 +230,17 @@ HC_solver_trifocal_2op1p_30x30(
       create_x_for_k2( tx, t0, delta_t, one_half_delta_t, s_sols, s_track, sB, gc );
       gammified_t0 = GAMMA * t0 / (MAGMA_C_ONE + GAMMA_MINUS_ONE * t0); //> After create_x_for_k2, this t0 is actually (t0 + one_half_delta_t)
       magmablas_syncwarp();
-      compute_param_homotopy< magmaFloatComplex >( tx, gammified_t0, s_param_homotopy, s_startParams, s_targetParams );
+      compute_param_homotopy< magmaFloatComplex, Num_Of_Vars >( tx, gammified_t0, s_param_homotopy, s_startParams, s_targetParams );
 #else
       create_x_for_k2( tx, t0, delta_t, one_half_delta_t, s_sols, s_track, sB, MAGMA_C_ONE );
       magmablas_syncwarp();
-      compute_param_homotopy< float >( tx, t0, s_param_homotopy, s_startParams, s_targetParams );
+      compute_param_homotopy< float, Num_Of_Vars >( tx, t0, s_param_homotopy, s_startParams, s_targetParams );
 #endif
-      eval_Jacobian_Hx< HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, d_Hx_indices );
-      eval_Jacobian_Ht( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, d_Ht_indices, s_diffParams );
+      eval_Jacobian_Hx< Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, d_Hx_indices );
+      eval_Jacobian_Ht< Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts >( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, d_Ht_indices, s_diffParams );
 
       //> solve k2
-      cgesv_batched_small_device< NUM_OF_VARS >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
+      cgesv_batched_small_device< Num_Of_Vars >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
       magmablas_syncwarp();
 
       //> compute x for the generation of HxHt for k3 and get HxHt for k3
@@ -257,11 +253,11 @@ HC_solver_trifocal_2op1p_30x30(
       create_x_for_k3( tx, delta_t, one_half_delta_t, s_sols, s_track, s_track_last_success, sB, MAGMA_C_ONE );
       magmablas_syncwarp();
 #endif
-      eval_Jacobian_Hx< HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, d_Hx_indices );
-      eval_Jacobian_Ht( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, d_Ht_indices, s_diffParams );
+      eval_Jacobian_Hx< Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, d_Hx_indices );
+      eval_Jacobian_Ht< Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts >( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, d_Ht_indices, s_diffParams );
 
       //> solve k3
-      cgesv_batched_small_device< NUM_OF_VARS >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
+      cgesv_batched_small_device< Num_Of_Vars >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
       magmablas_syncwarp();
 
       //> compute x for the generation of HxHt for k4 and get HxHt for k4
@@ -269,17 +265,17 @@ HC_solver_trifocal_2op1p_30x30(
       create_x_for_k4( tx, t0, delta_t, one_half_delta_t, s_sols, s_track, s_track_last_success, sB, gc );
       gammified_t0 = GAMMA * t0 / (MAGMA_C_ONE + GAMMA_MINUS_ONE * t0); //> After create_x_for_k4, this t0 is actually (t0 + delta_t)
       magmablas_syncwarp();
-      compute_param_homotopy< magmaFloatComplex >( tx, gammified_t0, s_param_homotopy, s_startParams, s_targetParams );
+      compute_param_homotopy< magmaFloatComplex, Num_Of_Vars >( tx, gammified_t0, s_param_homotopy, s_startParams, s_targetParams );
 #else
       create_x_for_k4( tx, t0, delta_t, one_half_delta_t, s_sols, s_track, s_track_last_success, sB, MAGMA_C_ONE );
       magmablas_syncwarp();
-      compute_param_homotopy< float >( tx, t0, s_param_homotopy, s_startParams, s_targetParams );
+      compute_param_homotopy< float, Num_Of_Vars >( tx, t0, s_param_homotopy, s_startParams, s_targetParams );
 #endif
-      eval_Jacobian_Hx< HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, d_Hx_indices );
-      eval_Jacobian_Ht( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, d_Ht_indices, s_diffParams );
+      eval_Jacobian_Hx< Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, d_Hx_indices );
+      eval_Jacobian_Ht< Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts >( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, d_Ht_indices, s_diffParams );
 
       //> solve k4
-      cgesv_batched_small_device< NUM_OF_VARS >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
+      cgesv_batched_small_device< Num_Of_Vars >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
       magmablas_syncwarp();
 
       //> make prediction
@@ -287,11 +283,11 @@ HC_solver_trifocal_2op1p_30x30(
       gc = GAMMA / ((GAMMA_MINUS_ONE * t0 + 1.0) * (GAMMA_MINUS_ONE * t0 + 1.0));
       s_sols[tx] += sB[tx] * delta_t * gc * 1.0/6.0;
       s_track[tx] = s_sols[tx];
-      __syncthreads();
+      magmablas_syncwarp();
 #else
       s_sols[tx] += sB[tx] * delta_t * 1.0/6.0;
       s_track[tx] = s_sols[tx];
-      __syncthreads();
+      magmablas_syncwarp();
 #endif
 
 #endif  //> USE_LOOPY_RUNGE_KUTTA
@@ -300,23 +296,24 @@ HC_solver_trifocal_2op1p_30x30(
       //> Gauss-Newton Corrector
       // ===================================================================
       //#pragma unroll
-      for(int i = 0; i < HC_MAX_CORRECTION_STEPS; i++) {
+      volatile int hc_max_correction_steps = HC_max_correction_steps;
+      for(int i = 0; i < hc_max_correction_steps; i++) {
 
         //> evaluate the Jacobian Hx and the parameter homotopy
-        eval_Jacobian_Hx<HX_MAXIMAL_TERMS*HX_MAXIMAL_PARTS>( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, d_Hx_indices );
-        eval_Parameter_Homotopy( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, d_Ht_indices );
+        eval_Jacobian_Hx< Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, d_Hx_indices );
+        eval_Homotopy< Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts >( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, d_Ht_indices );
 
-        //> G-NUM_OF_VARS corrector first solve
-        cgesv_batched_small_device< NUM_OF_VARS >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
+        //> G-Num_Of_Vars corrector first solve
+        cgesv_batched_small_device< Num_Of_Vars >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
         magmablas_syncwarp();
 
         //> correct the sols
         s_track[tx] -= sB[tx];
-        __syncthreads();
+        magmablas_syncwarp();
 
         r_sqrt_sols = MAGMA_C_REAL(sB[tx])*MAGMA_C_REAL(sB[tx]) + MAGMA_C_IMAG(sB[tx])*MAGMA_C_IMAG(sB[tx]);
         r_sqrt_corr = MAGMA_C_REAL(s_track[tx])*MAGMA_C_REAL(s_track[tx]) + MAGMA_C_IMAG(s_track[tx])*MAGMA_C_IMAG(s_track[tx]);
-        __syncthreads();
+        magmablas_syncwarp();
 
         for (int offset = WARP_SIZE/2; offset > 0; offset /= 2 ) {
             r_sqrt_sols += __shfl_down_sync(__activemask(), r_sqrt_sols, offset);
@@ -345,17 +342,17 @@ HC_solver_trifocal_2op1p_30x30(
         //> should be the last successful tracked sols
         s_track[tx] = s_track_last_success[tx];
         s_sols[tx] = s_track_last_success[tx];
-        if (tx == 0) sipiv[NUM_OF_VARS] = 0;
-        __syncthreads();
+        if (tx == 0) sipiv[Num_Of_Vars] = 0;
+        magmablas_syncwarp();
         t0 = t_step;
       }
       else {
-        if (tx == 0) sipiv[NUM_OF_VARS]++;
+        if (tx == 0) sipiv[Num_Of_Vars]++;
         s_track_last_success[tx] = s_track[tx];
         s_sols[tx] = s_track[tx];
-        __syncthreads();
-        if (sipiv[NUM_OF_VARS] >= HC_NUM_OF_STEPS_TO_INCREASE_DELTA_T) {
-          if (tx == 0) sipiv[NUM_OF_VARS] = 0;
+        magmablas_syncwarp();
+        if (sipiv[Num_Of_Vars] >= HC_delta_t_incremental_steps) {
+          if (tx == 0) sipiv[Num_Of_Vars] = 0;
           delta_t *= 2;
         }
       }
@@ -377,7 +374,10 @@ HC_solver_trifocal_2op1p_30x30(
 
 real_Double_t
 kernel_HC_Solver_trifocal_2op1p_30x30(
-  magma_queue_t my_queue,
+  magma_queue_t       my_queue,
+  int                 HC_max_steps, 
+  int                 HC_max_correction_steps, 
+  int                 HC_delta_t_incremental_steps,
   magmaFloatComplex** d_startSols_array, 
   magmaFloatComplex** d_Track_array,
   magmaFloatComplex*  d_startParams,
@@ -390,24 +390,34 @@ kernel_HC_Solver_trifocal_2op1p_30x30(
   magmaFloatComplex*  d_Debug_Purpose
 )
 {
+  //> Hard-coded for each problem
+  const int num_of_params   = 33;
+  const int num_of_vars     = 30;
+  const int num_of_tracks   = 312;
+  const int dHdx_Max_Terms  = 8;
+  const int dHdx_Max_Parts  = 5;
+  const int dHdt_Max_Terms  = 16;
+  const int dHdt_Max_Parts  = 6;
+  const int dHdx_Entry_Offset = dHdx_Max_Terms * dHdx_Max_Parts;
+
   real_Double_t gpu_time;
-  dim3 threads(NUM_OF_VARS, 1, 1);
-  dim3 grid(NUM_OF_TRACKS, 1, 1);
+  dim3 threads(num_of_vars, 1, 1);
+  dim3 grid(num_of_tracks, 1, 1);
   cudaError_t e = cudaErrorInvalidValue;
 
   //> declare the amount of shared memory for the use of the kernel
   magma_int_t shmem  = 0;
-  shmem += (NUM_OF_PARAMS+1) * sizeof(magmaFloatComplex);           //> start parameters
-  shmem += (NUM_OF_PARAMS+1) * sizeof(magmaFloatComplex);           //> target parameters
-  shmem += (NUM_OF_PARAMS+1) * sizeof(magmaFloatComplex);           //> difference of start and target parameters
-  shmem += (NUM_OF_PARAMS+1) * sizeof(magmaFloatComplex);           //> parameter homotopy used when t is changed
-  shmem += (NUM_OF_VARS+1)   * sizeof(magmaFloatComplex);           //> start solutions
-  shmem += (NUM_OF_VARS+1)   * sizeof(magmaFloatComplex);           //> intermediate solutions
-  shmem += (NUM_OF_VARS+1)   * sizeof(magmaFloatComplex);           //> last successful intermediate solutions
-  shmem += (NUM_OF_VARS)     * sizeof(magmaFloatComplex);           //> linear system solution
-  shmem += (NUM_OF_VARS)     * sizeof(magmaFloatComplex);           //> intermediate varaible for cgesv
-  shmem += (NUM_OF_VARS)     * sizeof(float);                       //> intermediate varaible for cgesv
-  shmem += (NUM_OF_VARS+1)   * sizeof(int);                         //> sipiv
+  shmem += (num_of_params+1) * sizeof(magmaFloatComplex);           //> start parameters
+  shmem += (num_of_params+1) * sizeof(magmaFloatComplex);           //> target parameters
+  shmem += (num_of_params+1) * sizeof(magmaFloatComplex);           //> difference of start and target parameters
+  shmem += (num_of_params+1) * sizeof(magmaFloatComplex);           //> parameter homotopy used when t is changed
+  shmem += (num_of_vars+1)   * sizeof(magmaFloatComplex);           //> start solutions
+  shmem += (num_of_vars+1)   * sizeof(magmaFloatComplex);           //> intermediate solutions
+  shmem += (num_of_vars+1)   * sizeof(magmaFloatComplex);           //> last successful intermediate solutions
+  shmem += (num_of_vars)     * sizeof(magmaFloatComplex);           //> linear system solution
+  shmem += (num_of_vars)     * sizeof(magmaFloatComplex);           //> intermediate varaible for cgesv
+  shmem += (num_of_vars)     * sizeof(float);                       //> intermediate varaible for cgesv
+  shmem += (num_of_vars+1)   * sizeof(int);                         //> sipiv
   shmem += (1)               * sizeof(int);                         //> predictor successes counter
   shmem += (1)               * sizeof(int);                         //> Loopy Runge-Kutta coefficients
   shmem += (1)               * sizeof(float);                       //> Loopy Runge-Kutta delta t
@@ -418,7 +428,8 @@ kernel_HC_Solver_trifocal_2op1p_30x30(
 #if CUDA_VERSION >= 9000
   cudacheck( cudaDeviceGetAttribute (&shmem_max, cudaDevAttrMaxSharedMemoryPerBlockOptin, 0) );
   if (shmem <= shmem_max) {
-    cudacheck( cudaFuncSetAttribute(HC_solver_trifocal_2op1p_30x30, \
+    cudacheck( cudaFuncSetAttribute(HC_solver_trifocal_2op1p_30x30 \
+                                    <num_of_vars, num_of_params, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdt_Max_Terms, dHdt_Max_Parts>, \
                                     cudaFuncAttributeMaxDynamicSharedMemorySize, shmem) );
   }
 #else
@@ -429,7 +440,10 @@ kernel_HC_Solver_trifocal_2op1p_30x30(
   if ( shmem > shmem_max ) printf("Error: kernel %s requires too many threads or too much shared memory\n", __func__);
 
   //> declare kernel arguments  
-  void *kernel_args[] = {&d_startSols_array, &d_Track_array,
+  void *kernel_args[] = { &HC_max_steps, 
+                          &HC_max_correction_steps, 
+                          &HC_delta_t_incremental_steps,
+                          &d_startSols_array, &d_Track_array,
                           &d_startParams, &d_targetParams, &d_diffParams,
                           &d_Hx_indx, &d_Ht_indx,
                           &d_is_GPU_HC_Sol_Converge,
@@ -440,7 +454,8 @@ kernel_HC_Solver_trifocal_2op1p_30x30(
   gpu_time = magma_sync_wtime( my_queue );
 
   //> launch the GPU kernel
-  e = cudaLaunchKernel((void*)HC_solver_trifocal_2op1p_30x30, \
+  e = cudaLaunchKernel((void*)HC_solver_trifocal_2op1p_30x30 \
+                        <num_of_vars, num_of_params, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdt_Max_Terms, dHdt_Max_Parts>, \
                         grid, threads, kernel_args, shmem, my_queue->cuda_stream());
 
   gpu_time = magma_sync_wtime( my_queue ) - gpu_time;
