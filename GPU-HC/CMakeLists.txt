@@ -8,6 +8,7 @@ endif()
 
 set(MAGMADIR    "/home/ahmad/magma-openblas")
 set(OPENBLASDIR "/home/ahmad/openblas")
+set(YAMLCPP_DIR "/home/ahmad/yaml-cpp")
 
 # this is for custom options on ICL machines
 set(ICL_BUILD 1)
@@ -169,8 +170,10 @@ if(DEFINED ICL_BUILD)
   include_directories( ${MAGMADIR}/testing )
   include_directories( ${MAGMADIR}/control )
   include_directories( ${MAGMADIR}/magmablas )
+  include_directories( ${YAMLCPP_DIR}/include )
   link_directories(${MAGMADIR}/lib)
   link_directories(${OPENBLASDIR})
+  link_directories(${YAMLCPP_DIR}/build)
 else()
   include_directories( "/users/cchien3/data/cchien3/magma-2.5.4/include" )
   include_directories( "/users/cchien3/data/cchien3/magma-2.5.4/testing" )
