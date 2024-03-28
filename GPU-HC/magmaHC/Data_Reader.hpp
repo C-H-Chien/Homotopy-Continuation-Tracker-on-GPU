@@ -31,8 +31,11 @@ public:
     bool Read_Target_Params( magmaFloatComplex* &h_Target_Params );
     bool Read_Start_Sols( magmaFloatComplex* &h_Start_Sols, magmaFloatComplex* &h_Homotopy_Sols );
 
-    bool Read_dHdx_Indices( int* &h_dHdx_Index );
-    bool Read_dHdt_Indices( int* &h_dHdt_Index );
+    template< typename T >
+    bool Read_dHdx_Indices( T* &h_dHdx_Index );
+
+    template< typename T >
+    bool Read_dHdt_Indices( T* &h_dHdt_Index );
 
 private:
     //> File names

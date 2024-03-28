@@ -60,7 +60,7 @@
     }
 
     //> Jacobian \partial H / \partial x parallel evaluation
-    template< int Num_Of_Vars, int dHdx_Max_Terms, int dHdx_Max_Parts, int dHdx_Entry_Offset >
+    template< typename T, int Num_Of_Vars, int dHdx_Max_Terms, int dHdx_Max_Parts, int dHdx_Entry_Offset >
     __device__ __inline__ void
     eval_Jacobian_Hx(
         const int tx,                                   //> thread id
@@ -69,7 +69,7 @@
         magmaFloatComplex *s_start_params,              //> start parameters
         magmaFloatComplex *s_target_params,             //> target parameters
         magmaFloatComplex *s_param_homotopy,            //> parameter homotopy
-        const int* __restrict__ d_Hx_indices            //> indices for the Jacobian Hx matrix
+        const T* __restrict__ d_Hx_indices            //> indices for the Jacobian Hx matrix
     )
     {
       //> Full, explicit form of evaluation
@@ -94,7 +94,7 @@
     }
 
     //> Jacobian \partial H / \partial t parallel evaluation
-    template< int Num_Of_Vars, int dHdt_Max_Terms, int dHdt_Max_Parts >
+    template< typename T, int Num_Of_Vars, int dHdt_Max_Terms, int dHdt_Max_Parts >
     __device__ __inline__ void
     eval_Jacobian_Ht(
         const int tx,                //> thread id
@@ -103,7 +103,7 @@
         magmaFloatComplex *s_start_params,    //> start parameters
         magmaFloatComplex *s_target_params,   //> target parameters
         magmaFloatComplex *s_param_homotopy,  //> parameter homotopy
-        const int* __restrict__ d_Ht_indices,  //> indices for the Jacobian Hx matrix
+        const T* __restrict__ d_Ht_indices,  //> indices for the Jacobian Hx matrix
         //const int* d_Ht_indices,  //> indices for the Jacobian Hx matrix
         magmaFloatComplex *s_diffParams
     )
@@ -125,7 +125,7 @@
     }
 
     //> Homotopy evaluation
-    template< int Num_Of_Vars, int dHdt_Max_Terms, int dHdt_Max_Parts >
+    template< typename T, int Num_Of_Vars, int dHdt_Max_Terms, int dHdt_Max_Parts >
     __device__ __inline__ void
     eval_Homotopy(
         const int tx,                         //> thread id
@@ -134,7 +134,7 @@
         magmaFloatComplex *s_start_params,    //> start parameters
         magmaFloatComplex *s_target_params,   //> target parameters
         magmaFloatComplex *s_param_homotopy,  //> parameter homotopy
-        const int* __restrict__ d_Ht_indices  //> indices for the Jacobian Ht matrix
+        const T* __restrict__ d_Ht_indices  //> indices for the Jacobian Ht matrix
     )
     {
       //> initialize each element to 0

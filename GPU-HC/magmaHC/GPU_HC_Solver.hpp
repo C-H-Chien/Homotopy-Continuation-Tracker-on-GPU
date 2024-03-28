@@ -21,6 +21,7 @@
 #include "gpu-kernels/magmaHC-kernels.hpp"
 #include <yaml-cpp/yaml.h>
 
+template< typename T_index_mat >
 class GPU_HC_Solver {
     
     magma_device_t cdev;       // variable to indicate current gpu id
@@ -44,8 +45,10 @@ class GPU_HC_Solver {
     magmaFloatComplex       *h_Target_Params;
     magmaFloatComplex       *h_dHdx_PHC_Coeffs;
     magmaFloatComplex       *h_dHdt_PHC_Coeffs;
-    magma_int_t             *h_dHdx_Index;
-    magma_int_t             *h_dHdt_Index;
+    // magma_int_t             *h_dHdx_Index;
+    // magma_int_t             *h_dHdt_Index;
+    T_index_mat             *h_dHdx_Index;
+    T_index_mat             *h_dHdt_Index;
     magmaFloatComplex       *h_Debug_Purpose;
     bool                    *h_is_GPU_HC_Sol_Converge;
     bool                    *h_is_GPU_HC_Sol_Infinity;
@@ -55,8 +58,10 @@ class GPU_HC_Solver {
     magmaFloatComplex_ptr   d_Start_Params, d_Target_Params;
     magmaFloatComplex_ptr   d_dHdx_PHC_Coeffs;
     magmaFloatComplex_ptr   d_dHdt_PHC_Coeffs;
-    magma_int_t             *d_dHdx_Index;
-    magma_int_t             *d_dHdt_Index;
+    // magma_int_t             *d_dHdx_Index;
+    // magma_int_t             *d_dHdt_Index;
+    T_index_mat             *d_dHdx_Index;
+    T_index_mat             *d_dHdt_Index;
     magmaFloatComplex       **d_Start_Sols_array;
     magmaFloatComplex       **d_Homotopy_Sols_array;
     magmaFloatComplex       *d_diffParams;
