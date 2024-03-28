@@ -84,8 +84,8 @@ int main(int argc, char **argv) {
 	}
 
   //> Initialization from GPU-HC constructor
-  //> Here, changing the typename as "unsigned char" is not working 
-  GPU_HC_Solver<int> GPU_HC_( Problem_Settings_Map );
+  //> Here, changing the typename as "char" is not working 
+  GPU_HC_Solver<char> GPU_HC_( Problem_Settings_Map );
 
   //> (1) Allocate CPU and GPU arrays
   GPU_HC_.Allocate_Arrays();
