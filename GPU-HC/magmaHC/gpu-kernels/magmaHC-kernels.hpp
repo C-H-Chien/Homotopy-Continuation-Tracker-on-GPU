@@ -82,8 +82,8 @@ real_Double_t kernel_HC_Solver_trifocal_2op1p_30x30(
   magmaFloatComplex*    d_startParams,      
   magmaFloatComplex*    d_targetParams,
   magmaFloatComplex*    d_diffParams,
-  unsigned char*        d_Hx_indx, 
-  unsigned char*        d_Ht_indx,
+  char*        d_Hx_indx, 
+  char*        d_Ht_indx,
   bool*                 d_is_GPU_HC_Sol_Converge,        
   bool*                 d_is_GPU_HC_Sol_Infinity,
   magmaFloatComplex*    d_Debug_Purpose

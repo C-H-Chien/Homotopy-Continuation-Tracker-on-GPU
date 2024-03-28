@@ -279,8 +279,6 @@ void GPU_HC_Solver<T_index_mat>::Solve_by_GPU_HC() {
     std::cout << " - Number of Real Solutions:            " << Evaluate_GPUHC_Sols.Num_Of_Real_Sols << std::endl;
     std::cout << " - Number of Infinity Failed Solutions: " << Evaluate_GPUHC_Sols.Num_Of_Inf_Sols << std::endl;
     std::cout << " - Number of Unique Solutions:          " << Evaluate_GPUHC_Sols.Num_Of_Unique_Sols << std::endl;
-
-
 }
 
 template< typename T_index_mat >
@@ -329,6 +327,6 @@ GPU_HC_Solver<T_index_mat>::~GPU_HC_Solver() {
 }
 
 template class GPU_HC_Solver<int>;
-template class GPU_HC_Solver<unsigned char>;
+template class GPU_HC_Solver<char>;
 
 #endif
