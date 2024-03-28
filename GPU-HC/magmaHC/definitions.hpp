@@ -6,10 +6,9 @@
 
 #define WRITE_FILES_FOLDER                      std::string("Output_Write_Files/")
 
-//> Settings for GPU -HC Kernel
+//> Settings for GPU-HC Kernel
 #define APPLY_GAMMA_TRICK                       (false)
 #define USE_DOUBLE_PRECISION                    (false)
-#define GPU_DEBUG                               (false)
 
 //> Evaluation macros
 #define DUPLICATE_SOL_DIFF_TOL                  (1e-4)
@@ -26,7 +25,10 @@
     #define GAMMA_MINUS_ONE                     MAGMA_C_MAKE(-0.292786421, 0.707213579)
 #endif
 
+//> Settings for Debugging
 #define SHOW_PROBLEM_SETTINGS                   (true)
+#define GPU_DEBUG                               (false)
+#define DATA_READER_DEBUG                       (false)
 
 //> [DO NOT CHANGE] The following macros are constant. They are used for shuffle operation in a warp level.
 #define FULL_MASK                               (0xffffffff)

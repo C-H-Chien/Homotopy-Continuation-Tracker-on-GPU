@@ -96,7 +96,8 @@ bool Data_Reader::Read_Start_Params(magmaFloatComplex* &h_Start_Params) {
     }
 }
 
-bool Data_Reader::Read_dHdx_Indices( int* &h_dHdx_Index ) {
+template< typename T >
+bool Data_Reader::Read_dHdx_Indices( T* &h_dHdx_Index ) {
     int index, d = 0;
     File_dHdx_Indices.open(File_Name_dHdx_Indx, std::ios_base::in);
     if (!File_dHdx_Indices) {
@@ -105,14 +106,20 @@ bool Data_Reader::Read_dHdx_Indices( int* &h_dHdx_Index ) {
     }
     else {
         while (File_dHdx_Indices >> index) {
-            (h_dHdx_Index)[d] = index;
+            (h_dHdx_Index)[d] = (T)index;
             d++;
         }
+#if DATA_READER_DEBUG
+    std::cout << "Printing h_dHdx_Index ..." << std::endl;
+    for (int i = 0; i < 10; i++) printf("%d\t", (int)h_dHdx_Index[i]);
+    std::cout << std::endl;
+#endif
         return true;
     }
 }
 
-bool Data_Reader::Read_dHdt_Indices( int* &h_dHdt_Index ) {
+template< typename T >
+bool Data_Reader::Read_dHdt_Indices( T* &h_dHdt_Index ) {
     int index, d = 0;
     File_dHdt_Indices.open(File_Name_dHdt_Indx, std::ios_base::in);
     if (!File_dHdt_Indices) {
@@ -121,11 +128,22 @@ bool Data_Reader::Read_dHdt_Indices( int* &h_dHdt_Index ) {
     }
     else {
         while (File_dHdt_Indices >> index) {
-            (h_dHdt_Index)[d] = index;
+            (h_dHdt_Index)[d] = (T)index;
             d++;
         }
+#if DATA_READER_DEBUG
+    std::cout << "Printing h_dHdt_Index ..." << std::endl;
+    for (int i = 0; i < 10; i++) printf("%d\t", (int)h_dHdt_Index[i]);
+    std::cout << std::endl;
+#endif
         return true;
     }
 }
+
+template bool Data_Reader::Read_dHdx_Indices< int >( int* & );
+template bool Data_Reader::Read_dHdx_Indices< unsigned char >( unsigned char* & );
+
+template bool Data_Reader::Read_dHdt_Indices< int >( int* & );
+template bool Data_Reader::Read_dHdt_Indices< unsigned char >( unsigned char* & );
 
 #endif

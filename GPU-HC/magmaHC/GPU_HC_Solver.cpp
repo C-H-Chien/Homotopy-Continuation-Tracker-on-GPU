@@ -43,7 +43,8 @@
 #include "PHC_Coeffs/p2c-5pt_rel_pos_geo_form_quat.h"
 
 //> Constructor
-GPU_HC_Solver::GPU_HC_Solver(YAML::Node Problem_Settings_File): Problem_Setting_YAML_File(Problem_Settings_File) {
+template< typename T_index_mat >
+GPU_HC_Solver<T_index_mat>::GPU_HC_Solver(YAML::Node Problem_Settings_File): Problem_Setting_YAML_File(Problem_Settings_File) {
 
     //> Parse data from the YAML file
     //> (1) Problem Name and GPU-HC Type
@@ -89,8 +90,8 @@ GPU_HC_Solver::GPU_HC_Solver(YAML::Node Problem_Settings_File): Problem_Setting_
     ldd_phc_Params_Hx     = magma_roundup( dHdx_PHC_Coeffs_Size, 32 );  // multiple of 32 by default
     ldd_phc_Params_Ht     = magma_roundup( dHdt_PHC_Coeffs_Size, 32 );  // multiple of 32 by default
 
-    printf("dHdx_Index_Size      = %5.2f KB\n", (double)(dHdx_Index_Size     *sizeof(magma_int_t))       / 1024.);
-    printf("dHdt_Index_Size      = %5.2f KB\n", (double)(dHdt_Index_Size     *sizeof(magma_int_t))       / 1024.);
+    printf("dHdx_Index_Size      = %5.2f KB\n", (double)(dHdx_Index_Size     *sizeof(T_index_mat))       / 1024.);
+    printf("dHdt_Index_Size      = %5.2f KB\n", (double)(dHdt_Index_Size     *sizeof(T_index_mat))       / 1024.);
     printf("dHdx_PHC_Coeffs_Size = %5.2f KB\n", (double)(dHdx_PHC_Coeffs_Size*sizeof(magmaFloatComplex)) / 1024.);
     printf("dHdt_PHC_Coeffs_Size = %5.2f KB\n", (double)(dHdt_PHC_Coeffs_Size*sizeof(magmaFloatComplex)) / 1024.);
 
@@ -102,7 +103,8 @@ GPU_HC_Solver::GPU_HC_Solver(YAML::Node Problem_Settings_File): Problem_Setting_
     Write_Files_Path = std::string("../../") + WRITE_FILES_FOLDER;
 }
 
-void GPU_HC_Solver::Allocate_Arrays() {
+template< typename T_index_mat >
+void GPU_HC_Solver<T_index_mat>::Allocate_Arrays() {
     //> CPU Allocations
     magma_cmalloc_cpu( &h_Start_Sols,           Num_Of_Tracks*(Num_Of_Vars+1) );
     magma_cmalloc_cpu( &h_Homotopy_Sols,        Num_Of_Tracks*(Num_Of_Vars+1) );
@@ -110,12 +112,14 @@ void GPU_HC_Solver::Allocate_Arrays() {
     magma_cmalloc_cpu( &h_Target_Params,        Num_Of_Params );
     magma_cmalloc_cpu( &h_dHdx_PHC_Coeffs,      dHdx_PHC_Coeffs_Size );
     magma_cmalloc_cpu( &h_dHdt_PHC_Coeffs,      dHdt_PHC_Coeffs_Size );
-    magma_imalloc_cpu( &h_dHdx_Index,           dHdx_Index_Size );
-    magma_imalloc_cpu( &h_dHdt_Index,           dHdt_Index_Size );
+    // magma_imalloc_cpu( &h_dHdx_Index,           dHdx_Index_Size );
+    // magma_imalloc_cpu( &h_dHdt_Index,           dHdt_Index_Size );
     magma_cmalloc_cpu( &h_diffParams,           Num_Of_Params+1 );
     magma_cmalloc_cpu( &h_GPU_HC_Track_Sols,    (Num_Of_Vars+1)*Num_Of_Tracks );
     magma_cmalloc_cpu( &h_Debug_Purpose,        Num_Of_Tracks );
 
+    h_dHdx_Index             = new T_index_mat[ dHdx_Index_Size ];
+    h_dHdt_Index             = new T_index_mat[ dHdt_Index_Size ];
     h_is_GPU_HC_Sol_Converge = new bool[ Num_Of_Tracks ];
     h_is_GPU_HC_Sol_Infinity = new bool[ Num_Of_Tracks ];
 
@@ -126,10 +130,13 @@ void GPU_HC_Solver::Allocate_Arrays() {
     magma_cmalloc( &d_Target_Params,            ldd_params );
     magma_cmalloc( &d_dHdx_PHC_Coeffs,          ldd_phc_Params_Hx );
     magma_cmalloc( &d_dHdt_PHC_Coeffs,          ldd_phc_Params_Ht );
-    magma_imalloc( &d_dHdx_Index,               dHdx_Index_Size );
-    magma_imalloc( &d_dHdt_Index,               dHdt_Index_Size );
+    // magma_imalloc( &d_dHdx_Index,               dHdx_Index_Size );
+    // magma_imalloc( &d_dHdt_Index,               dHdt_Index_Size );
     magma_cmalloc( &d_diffParams,               ldd_params );
-    magma_cmalloc( &d_Debug_Purpose,            Num_Of_Tracks );    
+    magma_cmalloc( &d_Debug_Purpose,            Num_Of_Tracks );
+
+    cudacheck( cudaMalloc( &d_dHdx_Index,       dHdx_Index_Size *sizeof(T_index_mat)) );
+    cudacheck( cudaMalloc( &d_dHdt_Index,       dHdt_Index_Size *sizeof(T_index_mat)) );
 
     magma_malloc( (void**) &d_Start_Sols_array,     (Num_Of_Tracks) * sizeof(magmaFloatComplex*) );
     magma_malloc( (void**) &d_Homotopy_Sols_array,  (Num_Of_Tracks) * sizeof(magmaFloatComplex*) );
@@ -138,7 +145,8 @@ void GPU_HC_Solver::Allocate_Arrays() {
     cudacheck( cudaMalloc( &d_is_GPU_HC_Sol_Infinity, Num_Of_Tracks * sizeof(bool) ));
 }
 
-bool GPU_HC_Solver::Read_Problem_Data() {
+template< typename T_index_mat >
+bool GPU_HC_Solver<T_index_mat>::Read_Problem_Data() {
 
     //> Load problem data to arrays
     bool is_Data_Read_Successfully = false;
@@ -157,23 +165,25 @@ bool GPU_HC_Solver::Read_Problem_Data() {
     if (!is_Data_Read_Successfully) { LOG_DATA_LOAD_ERROR("Start Solutions"); return false; }
 
     //> (4) dH/dx evaluation indices
-    is_Data_Read_Successfully = Load_Problem_Data.Read_dHdx_Indices( h_dHdx_Index );
+    is_Data_Read_Successfully = Load_Problem_Data.Read_dHdx_Indices<T_index_mat>( h_dHdx_Index );
     if (!is_Data_Read_Successfully) { LOG_DATA_LOAD_ERROR("dH/dx Evaluation Indices"); return false; }
 
     //> (5) dH/dt evaluation indices
-    is_Data_Read_Successfully = Load_Problem_Data.Read_dHdt_Indices( h_dHdt_Index );
+    is_Data_Read_Successfully = Load_Problem_Data.Read_dHdt_Indices<T_index_mat>( h_dHdt_Index );
     if (!is_Data_Read_Successfully) { LOG_DATA_LOAD_ERROR("dH/dt Evaluation Indices"); return false; }
 
     return true;
 }
 
-void GPU_HC_Solver::Construct_Coeffs_From_Params() {
+template< typename T_index_mat >
+void GPU_HC_Solver<T_index_mat>::Construct_Coeffs_From_Params() {
     if (HC_problem == "5pt_rel_pos_geo_form_quat")      magmaHCWrapper::p2c_5pt_rel_pos_geo_form_quat(h_Target_Params, h_Start_Params, h_dHdx_PHC_Coeffs, h_dHdt_PHC_Coeffs);
     else if (HC_problem == "5pt_rel_pos_alg_form_quat") magmaHCWrapper::p2c_5pt_rel_pos_alg_form_quat(h_Target_Params, h_Start_Params, h_dHdx_PHC_Coeffs, h_dHdt_PHC_Coeffs);
     else if (HC_problem == "trifocal_2op1p_30x30_P2C")  magmaHCWrapper::p2c_trifocal_2op1p_30x30(h_Target_Params, h_Start_Params, h_dHdx_PHC_Coeffs, h_dHdt_PHC_Coeffs);
 }
 
-void GPU_HC_Solver::Data_Transfer_From_Host_To_Device() {
+template< typename T_index_mat >
+void GPU_HC_Solver<T_index_mat>::Data_Transfer_From_Host_To_Device() {
 
     //> Compute difference of start and target parameters
     //  (This is used only in the trifocal relative pose problem, i.e., TRIFOCAL_2OP1P_30X30)
@@ -183,11 +193,14 @@ void GPU_HC_Solver::Data_Transfer_From_Host_To_Device() {
     transfer_h2d_time = magma_sync_wtime( my_queue );
     magma_csetmatrix( Num_Of_Vars+1,        Num_Of_Tracks, h_Start_Sols,        (Num_Of_Vars+1),      d_Start_Sols,       (Num_Of_Vars+1),   my_queue );
     magma_csetmatrix( Num_Of_Vars+1,        Num_Of_Tracks, h_Homotopy_Sols,     (Num_Of_Vars+1),      d_Homotopy_Sols,    (Num_Of_Vars+1),   my_queue );
-    magma_isetmatrix( dHdx_Index_Size,      (1),           h_dHdx_Index,        dHdx_Index_Size,      d_dHdx_Index,       dHdx_Index_Size,   my_queue );
-    magma_isetmatrix( dHdt_Index_Size,      (1),           h_dHdt_Index,        dHdt_Index_Size,      d_dHdt_Index,       dHdt_Index_Size,   my_queue );
+    // magma_isetmatrix( dHdx_Index_Size,      (1),           h_dHdx_Index,        dHdx_Index_Size,      d_dHdx_Index,       dHdx_Index_Size,   my_queue );
+    // magma_isetmatrix( dHdt_Index_Size,      (1),           h_dHdt_Index,        dHdt_Index_Size,      d_dHdt_Index,       dHdt_Index_Size,   my_queue );
     magma_csetmatrix( Num_Of_Params+1,      (1),           h_diffParams,        Num_Of_Params+1,      d_diffParams,       ldd_params,        my_queue );
     magma_csetmatrix( Num_Of_Params,        (1),           h_Start_Params,      Num_Of_Params,        d_Start_Params,     ldd_params,        my_queue );
     magma_csetmatrix( Num_Of_Params,        (1),           h_Target_Params,     Num_Of_Params,        d_Target_Params,    ldd_params,        my_queue );
+    cudacheck( cudaMemcpy( d_dHdx_Index, h_dHdx_Index,     dHdx_Index_Size * sizeof(T_index_mat), cudaMemcpyHostToDevice) );
+    cudacheck( cudaMemcpy( d_dHdt_Index, h_dHdt_Index,     dHdt_Index_Size * sizeof(T_index_mat), cudaMemcpyHostToDevice) );
+
     if (Use_P2C) {
         magma_csetmatrix( dHdx_PHC_Coeffs_Size, (1),       h_dHdx_PHC_Coeffs,   dHdx_PHC_Coeffs_Size, d_dHdx_PHC_Coeffs,  ldd_phc_Params_Hx, my_queue );
         magma_csetmatrix( dHdt_PHC_Coeffs_Size, (1),       h_dHdt_PHC_Coeffs,   dHdt_PHC_Coeffs_Size, d_dHdt_PHC_Coeffs,  ldd_phc_Params_Ht, my_queue );
@@ -199,31 +212,33 @@ void GPU_HC_Solver::Data_Transfer_From_Host_To_Device() {
     transfer_h2d_time = magma_sync_wtime( my_queue ) - transfer_h2d_time;
 }
 
-void GPU_HC_Solver::Solve_by_GPU_HC() {
+template< typename T_index_mat >
+void GPU_HC_Solver<T_index_mat>::Solve_by_GPU_HC() {
     std::cout << "GPU computing ..." << std::endl << std::endl;
 
-    if (HC_problem == "5pt_rel_pos_geo_form_quat") {
-        gpu_time = kernel_HC_Solver_5pt_rel_pos_geo_form_quat
-                   (my_queue, GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
-                    d_Start_Sols_array, d_Homotopy_Sols_array, \
-                    d_dHdx_Index, d_dHdt_Index, d_dHdx_PHC_Coeffs, d_dHdt_PHC_Coeffs, \
-                    d_is_GPU_HC_Sol_Converge, d_is_GPU_HC_Sol_Infinity, d_Debug_Purpose);
-    }
-    else if (HC_problem == "5pt_rel_pos_alg_form_quat") {
-        gpu_time = kernel_HC_Solver_5pt_rel_pos_alg_form_quat
-                   (my_queue, GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
-                    d_Start_Sols_array, d_Homotopy_Sols_array, \
-                    d_dHdx_Index, d_dHdt_Index, d_dHdx_PHC_Coeffs, d_dHdt_PHC_Coeffs, \
-                    d_is_GPU_HC_Sol_Converge, d_is_GPU_HC_Sol_Infinity, d_Debug_Purpose);
-    }
-    else if (HC_problem == "trifocal_2op1p_30x30_P2C") {
-        gpu_time = kernel_HC_Solver_trifocal_2op1p_30x30_P2C \
-                   (my_queue, GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
-                    d_Start_Sols_array, d_Homotopy_Sols_array, \
-                    d_dHdx_Index, d_dHdt_Index, d_dHdx_PHC_Coeffs, d_dHdt_PHC_Coeffs, \
-                    d_is_GPU_HC_Sol_Converge, d_is_GPU_HC_Sol_Infinity, d_Debug_Purpose);
-    }
-    else if (HC_problem == "trifocal_2op1p_30x30") {
+    // if (HC_problem == "5pt_rel_pos_geo_form_quat") {
+    //     gpu_time = kernel_HC_Solver_5pt_rel_pos_geo_form_quat
+    //                (my_queue, GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
+    //                 d_Start_Sols_array, d_Homotopy_Sols_array, \
+    //                 d_dHdx_Index, d_dHdt_Index, d_dHdx_PHC_Coeffs, d_dHdt_PHC_Coeffs, \
+    //                 d_is_GPU_HC_Sol_Converge, d_is_GPU_HC_Sol_Infinity, d_Debug_Purpose);
+    // }
+    // else if (HC_problem == "5pt_rel_pos_alg_form_quat") {
+    //     gpu_time = kernel_HC_Solver_5pt_rel_pos_alg_form_quat
+    //                (my_queue, GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
+    //                 d_Start_Sols_array, d_Homotopy_Sols_array, \
+    //                 d_dHdx_Index, d_dHdt_Index, d_dHdx_PHC_Coeffs, d_dHdt_PHC_Coeffs, \
+    //                 d_is_GPU_HC_Sol_Converge, d_is_GPU_HC_Sol_Infinity, d_Debug_Purpose);
+    // }
+    // else if (HC_problem == "trifocal_2op1p_30x30_P2C") {
+    //     gpu_time = kernel_HC_Solver_trifocal_2op1p_30x30_P2C \
+    //                (my_queue, GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
+    //                 d_Start_Sols_array, d_Homotopy_Sols_array, \
+    //                 d_dHdx_Index, d_dHdt_Index, d_dHdx_PHC_Coeffs, d_dHdt_PHC_Coeffs, \
+    //                 d_is_GPU_HC_Sol_Converge, d_is_GPU_HC_Sol_Infinity, d_Debug_Purpose);
+    // }
+    // else 
+    if (HC_problem == "trifocal_2op1p_30x30") {
         gpu_time = kernel_HC_Solver_trifocal_2op1p_30x30 \
                    (my_queue, GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
                     d_Start_Sols_array,  d_Homotopy_Sols_array, \
@@ -268,7 +283,8 @@ void GPU_HC_Solver::Solve_by_GPU_HC() {
 
 }
 
-GPU_HC_Solver::~GPU_HC_Solver() {
+template< typename T_index_mat >
+GPU_HC_Solver<T_index_mat>::~GPU_HC_Solver() {
 
     magma_queue_destroy( my_queue );
 
@@ -281,8 +297,10 @@ GPU_HC_Solver::~GPU_HC_Solver() {
     magma_free_cpu( h_Target_Params );
     magma_free_cpu( h_dHdx_PHC_Coeffs );
     magma_free_cpu( h_dHdt_PHC_Coeffs );
-    magma_free_cpu( h_dHdx_Index );
-    magma_free_cpu( h_dHdt_Index );
+    // magma_free_cpu( h_dHdx_Index );
+    // magma_free_cpu( h_dHdt_Index );
+    delete [] h_dHdx_Index;
+    delete [] h_dHdt_Index;
 
     magma_free_cpu( h_GPU_HC_Track_Sols );
     magma_free_cpu( h_Debug_Purpose );
@@ -296,16 +314,21 @@ GPU_HC_Solver::~GPU_HC_Solver() {
     magma_free( d_Homotopy_Sols );
     magma_free( d_Start_Params );
     magma_free( d_Target_Params );
-    magma_free( d_dHdx_Index );
-    magma_free( d_dHdt_Index );
+    // magma_free( d_dHdx_Index );
+    // magma_free( d_dHdt_Index );
     magma_free( d_dHdx_PHC_Coeffs );
     magma_free( d_dHdt_PHC_Coeffs );
     magma_free( d_Debug_Purpose );
+
+    cudacheck( cudaFree( d_dHdx_Index ) );
+    cudacheck( cudaFree( d_dHdt_Index ) );
 
     fflush( stdout );
     printf( "\n" );
     magma_finalize();
 }
 
+template class GPU_HC_Solver<int>;
+template class GPU_HC_Solver<unsigned char>;
 
 #endif
