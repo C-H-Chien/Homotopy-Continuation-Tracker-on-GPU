@@ -112,8 +112,6 @@ void GPU_HC_Solver<T_index_mat>::Allocate_Arrays() {
     magma_cmalloc_cpu( &h_Target_Params,        Num_Of_Params );
     magma_cmalloc_cpu( &h_dHdx_PHC_Coeffs,      dHdx_PHC_Coeffs_Size );
     magma_cmalloc_cpu( &h_dHdt_PHC_Coeffs,      dHdt_PHC_Coeffs_Size );
-    // magma_imalloc_cpu( &h_dHdx_Index,           dHdx_Index_Size );
-    // magma_imalloc_cpu( &h_dHdt_Index,           dHdt_Index_Size );
     magma_cmalloc_cpu( &h_diffParams,           Num_Of_Params+1 );
     magma_cmalloc_cpu( &h_GPU_HC_Track_Sols,    (Num_Of_Vars+1)*Num_Of_Tracks );
     magma_cmalloc_cpu( &h_Debug_Purpose,        Num_Of_Tracks );
@@ -130,8 +128,6 @@ void GPU_HC_Solver<T_index_mat>::Allocate_Arrays() {
     magma_cmalloc( &d_Target_Params,            ldd_params );
     magma_cmalloc( &d_dHdx_PHC_Coeffs,          ldd_phc_Params_Hx );
     magma_cmalloc( &d_dHdt_PHC_Coeffs,          ldd_phc_Params_Ht );
-    // magma_imalloc( &d_dHdx_Index,               dHdx_Index_Size );
-    // magma_imalloc( &d_dHdt_Index,               dHdt_Index_Size );
     magma_cmalloc( &d_diffParams,               ldd_params );
     magma_cmalloc( &d_Debug_Purpose,            Num_Of_Tracks );
 
@@ -326,7 +322,7 @@ GPU_HC_Solver<T_index_mat>::~GPU_HC_Solver() {
     magma_finalize();
 }
 
-template class GPU_HC_Solver<int>;
+// template class GPU_HC_Solver<int>;
 template class GPU_HC_Solver<char>;
 
 #endif
