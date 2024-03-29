@@ -55,22 +55,22 @@ real_Double_t kernel_HC_Solver_5pt_rel_pos_alg_form_quat(
 );
 
 //> Trifocal Relative Pose from Lines at Points (30x30 Form)
-real_Double_t kernel_HC_Solver_trifocal_2op1p_30x30(
-  magma_queue_t         my_queue,
-  int                   HC_max_steps, 
-  int                   HC_max_correction_steps, 
-  int                   HC_delta_t_incremental_steps,
-  magmaFloatComplex**   d_startSols_array,  
-  magmaFloatComplex**   d_Track_array,
-  magmaFloatComplex*    d_startParams,      
-  magmaFloatComplex*    d_targetParams,
-  magmaFloatComplex*    d_diffParams,
-  int*                  d_Hx_indx, 
-  int*                  d_Ht_indx,
-  bool*                 d_is_GPU_HC_Sol_Converge,        
-  bool*                 d_is_GPU_HC_Sol_Infinity,
-  magmaFloatComplex*    d_Debug_Purpose
-);
+// real_Double_t kernel_HC_Solver_trifocal_2op1p_30x30(
+//   magma_queue_t         my_queue,
+//   int                   HC_max_steps, 
+//   int                   HC_max_correction_steps, 
+//   int                   HC_delta_t_incremental_steps,
+//   magmaFloatComplex**   d_startSols_array,  
+//   magmaFloatComplex**   d_Track_array,
+//   magmaFloatComplex*    d_startParams,      
+//   magmaFloatComplex*    d_targetParams,
+//   magmaFloatComplex*    d_diffParams,
+//   int*                  d_dHdx_indx, 
+//   int*                  d_dHdt_indx,
+//   bool*                 d_is_GPU_HC_Sol_Converge,        
+//   bool*                 d_is_GPU_HC_Sol_Infinity,
+//   magmaFloatComplex*    d_Debug_Purpose
+// );
 
 real_Double_t kernel_HC_Solver_trifocal_2op1p_30x30(
   magma_queue_t         my_queue,
@@ -82,8 +82,8 @@ real_Double_t kernel_HC_Solver_trifocal_2op1p_30x30(
   magmaFloatComplex*    d_startParams,      
   magmaFloatComplex*    d_targetParams,
   magmaFloatComplex*    d_diffParams,
-  char*        d_Hx_indx, 
-  char*        d_Ht_indx,
+  char*                 d_dHdx_indx, 
+  char*                 d_dHdt_indx,
   bool*                 d_is_GPU_HC_Sol_Converge,        
   bool*                 d_is_GPU_HC_Sol_Infinity,
   magmaFloatComplex*    d_Debug_Purpose

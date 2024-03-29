@@ -140,10 +140,10 @@ bool Data_Reader::Read_dHdt_Indices( T* &h_dHdt_Index ) {
     }
 }
 
-template bool Data_Reader::Read_dHdx_Indices< int >( int* & );
+// template bool Data_Reader::Read_dHdx_Indices< int >( int* & );
 template bool Data_Reader::Read_dHdx_Indices< char >( char* & );
 
-template bool Data_Reader::Read_dHdt_Indices< int >( int* & );
+// template bool Data_Reader::Read_dHdt_Indices< int >( int* & );
 template bool Data_Reader::Read_dHdt_Indices< char >( char* & );
 
 #endif
