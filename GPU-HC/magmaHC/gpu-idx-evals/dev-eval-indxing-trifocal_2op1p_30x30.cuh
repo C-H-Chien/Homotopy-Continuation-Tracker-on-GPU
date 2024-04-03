@@ -1,12 +1,12 @@
 #ifndef dev_eval_indxing_trifocal_2op1p_30_direct_param_homotopy_cuh_
 #define dev_eval_indxing_trifocal_2op1p_30_direct_param_homotopy_cuh_
 // ===============================================================================================
-// Code Description: Device function for evaluating the parallel indexing of the Jacobians w.r.t. 
+// Code Description: Device function for evaluating the parallel indexing of the Jacobians w.r.t.
 //                   the unknowns x (Hx), the variable t (Ht), and the homotopy itself
 // the trifocal 2op1p 30x30 problem
 //
 // Major Modifications
-//    Chiang-Heng Chien  22-10-03:   Edited from the first version 
+//    Chiang-Heng Chien  22-10-03:   Edited from the first version
 //                                   (dev-eval-indexing-trifocal_2op1p_30.cuh)
 //
 // ===============================================================================================
@@ -36,13 +36,13 @@
 
 //> compute the parameter homotopy
 template < typename T, int Num_Of_Vars >
-__device__ __inline__ void
+__device__ __noinline__ void
 compute_param_homotopy(
   const int tx, T t,
   magmaFloatComplex *s_param_homotopy,
   magmaFloatComplex *s_start_params,
   magmaFloatComplex *s_target_params
-) 
+)
 {
     //> 30 threads with 33 parameters
     //> floor(33/30) = 1
@@ -56,7 +56,7 @@ compute_param_homotopy(
 
 //> Jacobian \partial H / \partial x parallel evaluation
 template< typename T, int Num_Of_Vars, int dHdx_Max_Terms, int dHdx_Max_Parts, int dHdx_Entry_Offset, int dHdx_Index_Matrix_Size >
-__device__ __inline__ void
+__device__ __noinline__ void
 eval_Jacobian_Hx(
     const int tx,                                   //> thread id
     magmaFloatComplex r_cgesvA[Num_Of_Vars],        //> each row of the Jacobian matrix
@@ -76,7 +76,7 @@ eval_Jacobian_Hx(
     r_cgesvA[i] = MAGMA_C_ZERO;
 
     //> With transpose...
-    #pragma unroll
+    #pragma unroll 2
     for(int j = 0; j < dHdx_Max_Terms; j++) {
 
       //> compute the element of the Jacobian matrix Hx
@@ -91,7 +91,7 @@ eval_Jacobian_Hx(
 
 //> Jacobian \partial H / \partial t parallel evaluation
 template< typename T, int Num_Of_Vars, int dHdt_Max_Terms, int dHdt_Max_Parts, int dHdt_Index_Matrix_Size >
-__device__ __inline__ void
+__device__ __noinline__ void
 eval_Jacobian_Ht(
     const int tx,                //> thread id
     magmaFloatComplex &r_cgesvB,          //> each row of the Jacobian matrix
@@ -107,13 +107,13 @@ eval_Jacobian_Ht(
   //> initialize each element to 0
   r_cgesvB = MAGMA_C_ZERO;
 
-  #pragma unroll
+  #pragma unroll 2
   for (int i = 0; i < dHdt_Max_Terms; i++) {
 
     //> With transpose...
     r_cgesvB -= s_dHdt_indices[i*dHdt_Max_Parts*Num_Of_Vars + tx]
               * (s_diffParams[s_dHdt_indices[ (i*dHdt_Max_Parts + 1)*Num_Of_Vars + tx ]] * s_param_homotopy[ s_dHdt_indices[ (i*dHdt_Max_Parts + 2)*Num_Of_Vars + tx ] ]
-                + s_diffParams[s_dHdt_indices[ (i*dHdt_Max_Parts + 2)*Num_Of_Vars + tx ]] * s_param_homotopy[ s_dHdt_indices[ (i*dHdt_Max_Parts + 1)*Num_Of_Vars + tx ] ] )
+               + s_diffParams[s_dHdt_indices[ (i*dHdt_Max_Parts + 2)*Num_Of_Vars + tx ]] * s_param_homotopy[ s_dHdt_indices[ (i*dHdt_Max_Parts + 1)*Num_Of_Vars + tx ] ] )
               * s_vars[       s_dHdt_indices[ (i*dHdt_Max_Parts + 3)*Num_Of_Vars + tx ] ]
               * s_vars[       s_dHdt_indices[ (i*dHdt_Max_Parts + 4)*Num_Of_Vars + tx ] ]
               * s_vars[       s_dHdt_indices[ (i*dHdt_Max_Parts + 5)*Num_Of_Vars + tx ] ];
@@ -122,7 +122,7 @@ eval_Jacobian_Ht(
 
 //> Homotopy evaluation
 template< typename T, int Num_Of_Vars, int dHdt_Max_Terms, int dHdt_Max_Parts, int dHdt_Index_Matrix_Size >
-__device__ __inline__ void
+__device__ __noinline__ void
 eval_Homotopy(
     const int tx,                         //> thread id
     magmaFloatComplex &r_cgesvB,          //> each row of the parameter homotopy
@@ -137,9 +137,9 @@ eval_Homotopy(
   //> initialize each element to 0
   r_cgesvB = MAGMA_C_ZERO;
 
-  #pragma unroll
+  #pragma unroll 2
   for (int i = 0; i < dHdt_Max_Terms; i++) {
-    
+
     r_cgesvB += s_dHdt_indices[i*dHdt_Max_Parts*Num_Of_Vars + tx]
               * s_param_homotopy[ s_dHdt_indices[ (i*dHdt_Max_Parts + 1)*Num_Of_Vars + tx ] ]
               * s_param_homotopy[ s_dHdt_indices[ (i*dHdt_Max_Parts + 2)*Num_Of_Vars + tx ] ]
