@@ -84,8 +84,12 @@ int main(int argc, char **argv) {
 	}
 
   //> Initialization from GPU-HC constructor
-  //> Here, changing the typename as "char" is not working 
+#if USE_8BIT_IN_SHARED_MEM
   GPU_HC_Solver<char> GPU_HC_( Problem_Settings_Map );
+#else
+  //> the templated data type can be changed here for either "int" or "char"
+  GPU_HC_Solver<int> GPU_HC_( Problem_Settings_Map );
+#endif
 
   //> (1) Allocate CPU and GPU arrays
   GPU_HC_.Allocate_Arrays();

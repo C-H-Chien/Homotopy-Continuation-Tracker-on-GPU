@@ -9,6 +9,7 @@
 //> Settings for GPU-HC Kernel
 #define APPLY_GAMMA_TRICK                       (false)
 #define USE_DOUBLE_PRECISION                    (false)
+#define USE_8BIT_IN_SHARED_MEM                  (false)
 
 //> Evaluation macros
 #define DUPLICATE_SOL_DIFF_TOL                  (1e-4)
