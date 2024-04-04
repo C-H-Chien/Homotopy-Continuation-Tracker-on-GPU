@@ -64,8 +64,11 @@ eval_Jacobian_Hx(
     magmaFloatComplex *s_start_params,              //> start parameters
     magmaFloatComplex *s_target_params,             //> target parameters
     magmaFloatComplex *s_param_homotopy,            //> parameter homotopy
-    T                 s_dHdx_indices[dHdx_Index_Matrix_Size]
-    //const T* __restrict__ d_Hx_indices            //> indices for the Jacobian Hx matrix
+#if USE_8BIT_IN_SHARED_MEM
+    T                 dHdx_indices[dHdx_Index_Matrix_Size]
+#else
+    const T* __restrict__ dHdx_indices            //> indices for the Jacobian Hx matrix
+#endif
 )
 {
   //> Full, explicit form of evaluation
@@ -80,11 +83,11 @@ eval_Jacobian_Hx(
     for(int j = 0; j < dHdx_Max_Terms; j++) {
 
       //> compute the element of the Jacobian matrix Hx
-      r_cgesvA[i] += s_dHdx_indices[(i*dHdx_Entry_Offset)*Num_Of_Vars + j*dHdx_Max_Parts*Num_Of_Vars + tx]
-                    * s_param_homotopy[ s_dHdx_indices[ (i*dHdx_Entry_Offset)*Num_Of_Vars + (j*dHdx_Max_Parts + 1)*Num_Of_Vars + tx ] ]
-                    * s_param_homotopy[ s_dHdx_indices[ (i*dHdx_Entry_Offset)*Num_Of_Vars + (j*dHdx_Max_Parts + 2)*Num_Of_Vars + tx ] ]
-                    * s_vars[           s_dHdx_indices[ (i*dHdx_Entry_Offset)*Num_Of_Vars + (j*dHdx_Max_Parts + 3)*Num_Of_Vars + tx ] ]
-                    * s_vars[           s_dHdx_indices[ (i*dHdx_Entry_Offset)*Num_Of_Vars + (j*dHdx_Max_Parts + 4)*Num_Of_Vars + tx ] ];
+      r_cgesvA[i] += dHdx_indices[(i*dHdx_Entry_Offset)*Num_Of_Vars + j*dHdx_Max_Parts*Num_Of_Vars + tx]
+                    * s_param_homotopy[ dHdx_indices[ (i*dHdx_Entry_Offset)*Num_Of_Vars + (j*dHdx_Max_Parts + 1)*Num_Of_Vars + tx ] ]
+                    * s_param_homotopy[ dHdx_indices[ (i*dHdx_Entry_Offset)*Num_Of_Vars + (j*dHdx_Max_Parts + 2)*Num_Of_Vars + tx ] ]
+                    * s_vars[           dHdx_indices[ (i*dHdx_Entry_Offset)*Num_Of_Vars + (j*dHdx_Max_Parts + 3)*Num_Of_Vars + tx ] ]
+                    * s_vars[           dHdx_indices[ (i*dHdx_Entry_Offset)*Num_Of_Vars + (j*dHdx_Max_Parts + 4)*Num_Of_Vars + tx ] ];
     }
   }
 }
@@ -99,8 +102,11 @@ eval_Jacobian_Ht(
     magmaFloatComplex *s_start_params,    //> start parameters
     magmaFloatComplex *s_target_params,   //> target parameters
     magmaFloatComplex *s_param_homotopy,  //> parameter homotopy
-    T                 s_dHdt_indices[dHdt_Index_Matrix_Size],
-    //const T* __restrict__ d_Ht_indices,  //> indices for the Jacobian Hx matrix
+#if USE_8BIT_IN_SHARED_MEM
+    T                 dHdt_indices[dHdt_Index_Matrix_Size],
+#else
+    const T* __restrict__ dHdt_indices,  //> indices for the Jacobian Hx matrix
+#endif
     magmaFloatComplex *s_diffParams
 )
 {
@@ -111,12 +117,12 @@ eval_Jacobian_Ht(
   for (int i = 0; i < dHdt_Max_Terms; i++) {
 
     //> With transpose...
-    r_cgesvB -= s_dHdt_indices[i*dHdt_Max_Parts*Num_Of_Vars + tx]
-              * (s_diffParams[s_dHdt_indices[ (i*dHdt_Max_Parts + 1)*Num_Of_Vars + tx ]] * s_param_homotopy[ s_dHdt_indices[ (i*dHdt_Max_Parts + 2)*Num_Of_Vars + tx ] ]
-               + s_diffParams[s_dHdt_indices[ (i*dHdt_Max_Parts + 2)*Num_Of_Vars + tx ]] * s_param_homotopy[ s_dHdt_indices[ (i*dHdt_Max_Parts + 1)*Num_Of_Vars + tx ] ] )
-              * s_vars[       s_dHdt_indices[ (i*dHdt_Max_Parts + 3)*Num_Of_Vars + tx ] ]
-              * s_vars[       s_dHdt_indices[ (i*dHdt_Max_Parts + 4)*Num_Of_Vars + tx ] ]
-              * s_vars[       s_dHdt_indices[ (i*dHdt_Max_Parts + 5)*Num_Of_Vars + tx ] ];
+    r_cgesvB -= dHdt_indices[i*dHdt_Max_Parts*Num_Of_Vars + tx]
+              * (s_diffParams[dHdt_indices[ (i*dHdt_Max_Parts + 1)*Num_Of_Vars + tx ]] * s_param_homotopy[ dHdt_indices[ (i*dHdt_Max_Parts + 2)*Num_Of_Vars + tx ] ]
+               + s_diffParams[dHdt_indices[ (i*dHdt_Max_Parts + 2)*Num_Of_Vars + tx ]] * s_param_homotopy[ dHdt_indices[ (i*dHdt_Max_Parts + 1)*Num_Of_Vars + tx ] ] )
+              * s_vars[       dHdt_indices[ (i*dHdt_Max_Parts + 3)*Num_Of_Vars + tx ] ]
+              * s_vars[       dHdt_indices[ (i*dHdt_Max_Parts + 4)*Num_Of_Vars + tx ] ]
+              * s_vars[       dHdt_indices[ (i*dHdt_Max_Parts + 5)*Num_Of_Vars + tx ] ];
   }
 }
 
@@ -130,8 +136,11 @@ eval_Homotopy(
     magmaFloatComplex *s_start_params,    //> start parameters
     magmaFloatComplex *s_target_params,   //> target parameters
     magmaFloatComplex *s_param_homotopy,  //> parameter homotopy
-    T                 s_dHdt_indices[dHdt_Index_Matrix_Size]
-    //const T* __restrict__ d_Ht_indices  //> indices for the Jacobian Ht matrix
+#if USE_8BIT_IN_SHARED_MEM
+    T                 dHdt_indices[dHdt_Index_Matrix_Size]
+#else
+    const T* __restrict__ dHdt_indices  //> indices for the Jacobian Ht matrix
+#endif
 )
 {
   //> initialize each element to 0
@@ -140,12 +149,12 @@ eval_Homotopy(
   #pragma unroll 2
   for (int i = 0; i < dHdt_Max_Terms; i++) {
 
-    r_cgesvB += s_dHdt_indices[i*dHdt_Max_Parts*Num_Of_Vars + tx]
-              * s_param_homotopy[ s_dHdt_indices[ (i*dHdt_Max_Parts + 1)*Num_Of_Vars + tx ] ]
-              * s_param_homotopy[ s_dHdt_indices[ (i*dHdt_Max_Parts + 2)*Num_Of_Vars + tx ] ]
-              * s_vars[           s_dHdt_indices[ (i*dHdt_Max_Parts + 3)*Num_Of_Vars + tx ] ]
-              * s_vars[           s_dHdt_indices[ (i*dHdt_Max_Parts + 4)*Num_Of_Vars + tx ] ]
-              * s_vars[           s_dHdt_indices[ (i*dHdt_Max_Parts + 5)*Num_Of_Vars + tx ] ];
+    r_cgesvB += dHdt_indices[i*dHdt_Max_Parts*Num_Of_Vars + tx]
+              * s_param_homotopy[ dHdt_indices[ (i*dHdt_Max_Parts + 1)*Num_Of_Vars + tx ] ]
+              * s_param_homotopy[ dHdt_indices[ (i*dHdt_Max_Parts + 2)*Num_Of_Vars + tx ] ]
+              * s_vars[           dHdt_indices[ (i*dHdt_Max_Parts + 3)*Num_Of_Vars + tx ] ]
+              * s_vars[           dHdt_indices[ (i*dHdt_Max_Parts + 4)*Num_Of_Vars + tx ] ]
+              * s_vars[           dHdt_indices[ (i*dHdt_Max_Parts + 5)*Num_Of_Vars + tx ] ];
   }
 }
 

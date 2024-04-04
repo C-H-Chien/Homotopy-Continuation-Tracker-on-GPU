@@ -322,7 +322,9 @@ GPU_HC_Solver<T_index_mat>::~GPU_HC_Solver() {
     magma_finalize();
 }
 
-// template class GPU_HC_Solver<int>;
+#if USE_8BIT_IN_SHARED_MEM == false
+template class GPU_HC_Solver<int>;
+#endif
 template class GPU_HC_Solver<char>;
 
 #endif

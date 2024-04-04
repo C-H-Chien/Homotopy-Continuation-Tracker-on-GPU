@@ -140,10 +140,12 @@ bool Data_Reader::Read_dHdt_Indices( T* &h_dHdt_Index ) {
     }
 }
 
-// template bool Data_Reader::Read_dHdx_Indices< int >( int* & );
-template bool Data_Reader::Read_dHdx_Indices< char >( char* & );
+#if USE_8BIT_IN_SHARED_MEM == false
+template bool Data_Reader::Read_dHdx_Indices< int >( int* & );
+template bool Data_Reader::Read_dHdt_Indices< int >( int* & );
+#endif
 
-// template bool Data_Reader::Read_dHdt_Indices< int >( int* & );
+template bool Data_Reader::Read_dHdx_Indices< char >( char* & );
 template bool Data_Reader::Read_dHdt_Indices< char >( char* & );
 
 #endif
