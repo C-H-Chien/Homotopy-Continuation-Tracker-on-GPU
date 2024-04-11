@@ -78,14 +78,15 @@ eval_Jacobian_Hx(
 )
 {
   //> Full, explicit form of evaluation
-  // #pragma unroll
+  #pragma unroll
   for(int i = 0; i < Num_Of_Vars; i++) {
 
     //> initialize to zero
     r_cgesvA[i] = MAGMA_C_ZERO;
 
     //> With transpose...
-    // #pragma unroll 2
+    #pragma unroll 2
+    // #pragma unroll
     for(int j = 0; j < dHdx_Max_Terms; j++) {
 
       //> compute the element of the Jacobian matrix Hx
@@ -119,7 +120,8 @@ eval_Jacobian_Ht(
   //> initialize each element to 0
   r_cgesvB = MAGMA_C_ZERO;
 
-  // #pragma unroll 2
+  #pragma unroll 2
+  // #pragma unroll
   for (int i = 0; i < dHdt_Max_Terms; i++) {
 
     //> With transpose...
@@ -152,7 +154,8 @@ eval_Homotopy(
   //> initialize each element to 0
   r_cgesvB = MAGMA_C_ZERO;
 
-  // #pragma unroll 2
+  #pragma unroll 2
+  // #pragma unroll
   for (int i = 0; i < dHdt_Max_Terms; i++) {
 
     r_cgesvB += dHdt_indices[i*dHdt_Max_Parts*Num_Of_Vars + tx]
