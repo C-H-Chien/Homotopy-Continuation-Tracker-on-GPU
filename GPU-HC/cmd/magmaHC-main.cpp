@@ -88,6 +88,7 @@ int main(int argc, char **argv) {
   GPU_HC_Solver<char> GPU_HC_( Problem_Settings_Map );
 #else
   //> the templated data type can be changed here for either "int" or "char"
+  //> Here the index matrices live in the global memory
   GPU_HC_Solver<int> GPU_HC_( Problem_Settings_Map );
 #endif
 
@@ -96,18 +97,20 @@ int main(int argc, char **argv) {
 
   //> (2) Read Problem-Specific Data
   bool pass_Data_Read_Test = GPU_HC_.Read_Problem_Data();
+  if (!pass_Data_Read_Test) return 0;
 
-  if (pass_Data_Read_Test) {
-    
-    //> (4) Compute and assign parameter homotopy coefficients, if neccessary
-    if (GPU_HC_.Use_P2C) GPU_HC_.Construct_Coeffs_From_Params();
+  //> (3) Read RANSAC Data
+  pass_Data_Read_Test = GPU_HC_.Read_RANSAC_Data();
+  if (!pass_Data_Read_Test) return 0;
 
-    //> (5) Transfer data from CPU to GPU
-    GPU_HC_.Data_Transfer_From_Host_To_Device();
+  //> (4) Convert from triplet edgels to target parameters
+  GPU_HC_.Prepare_Target_Params();
 
-    //> (6) Solve the problem by GPU-HC
-    GPU_HC_.Solve_by_GPU_HC();
-  }
+  //> (5) Transfer data from CPU to GPU
+  GPU_HC_.Data_Transfer_From_Host_To_Device();
+
+  //> (6) Solve the problem by GPU-HC
+  GPU_HC_.Solve_by_GPU_HC();
 
   return 0;
 }

@@ -2,14 +2,6 @@
 #define kernel_HC_Solver_trifocal_2op1p_30x30_cu
 // ===========================================================================================
 // GPU homotopy continuation solver for the trifocal 2op1p 30x30 problem
-// Version 2: Direct evaluation of parameter homotopy. The coefficient 
-//            part of each polynomial is not expanded to an uni-variable 
-//            polynomial. Rather, depending on the order of t, the parameter 
-//            homotopy formulation is explicitly hard-coded such that we do not 
-//            need to compute coefficients from parameters first then use 
-//            index-based to evaluate the Jacobians. The required amount of data 
-//            to be stored in a kernel in this method is reduced which expects 
-//            to speedup over the first version.
 //
 // Major Modifications
 //    Chiang-Heng Chien  22-10-03:   Edited from the first version 
@@ -74,11 +66,13 @@ HC_solver_trifocal_2op1p_30x30(
 {
   extern __shared__ magmaFloatComplex zdata[];
   const int tx = threadIdx.x;
-  const int batchid = blockIdx.x ;
+  const int batchid = blockIdx.x;
+  const int recurrent_batchid = batchid % 312;
+  const int ransac_id = batchid / 312;
   unsigned ACTIVE_MASK = __activemask();
 
   //> define pointers to the arrays
-  magmaFloatComplex* d_startSols    = d_startSols_array[batchid];
+  magmaFloatComplex* d_startSols    = d_startSols_array[recurrent_batchid];
   magmaFloatComplex* d_track        = d_Track_array[batchid];
 
   //> declarations of registers
@@ -87,10 +81,6 @@ HC_solver_trifocal_2op1p_30x30(
   int linfo = 0, rowid = tx;
   float t0 = 0.0, t_step = 0.0, delta_t = 0.01;
   bool end_zone = 0;
-#if APPLY_GAMMA_TRICK
-  magmaFloatComplex gammified_t0;
-  magmaFloatComplex gc;
-#endif
 
   //> Dynamic allocated shared memories
   magmaFloatComplex *s_startParams        = (magmaFloatComplex*)(zdata);
@@ -132,8 +122,8 @@ HC_solver_trifocal_2op1p_30x30(
   //> start and target parameters
   //>>>>>>>>>>>>>>>>>>>>>>>>>>>>> REUSE MEMORY? >>>>>>>>>>>>>>>>>>>>>>>
   s_startParams[tx]  = d_startParams[tx];
-  s_targetParams[tx] = d_targetParams[tx];
-  s_diffParams[tx]   = d_diffParams[tx];
+  s_targetParams[tx] = d_targetParams[tx + ransac_id*(Num_Of_Params+1)];
+  s_diffParams[tx]   = d_diffParams[tx + ransac_id*(Num_Of_Params+1)];
 
   if (tx == 0) {
     //> the rest of the start and target parameters
@@ -150,6 +140,11 @@ HC_solver_trifocal_2op1p_30x30(
     sipiv[Num_Of_Vars]                = 0;
   }
   magmablas_syncwarp();
+
+#if NUM_OF_RANSAC_ITERATIONS > 1
+  bool are_Depths_All_Positive = false;
+  bool check_depths_sign = true;
+#endif
 
   //> 1/2 \Delta t
   float one_half_delta_t;
@@ -169,6 +164,15 @@ HC_solver_trifocal_2op1p_30x30(
         end_zone = true;
       }
 
+#if NUM_OF_RANSAC_ITERATIONS > 1
+      if (check_depths_sign) {
+        are_Depths_All_Positive = (MAGMA_C_REAL(s_track[0]) > 0) && (MAGMA_C_REAL(s_track[1]) > 0) && (MAGMA_C_REAL(s_track[2]) > 0) && (MAGMA_C_REAL(s_track[3]) > 0) &&
+                                  (MAGMA_C_REAL(s_track[4]) > 0) && (MAGMA_C_REAL(s_track[5]) > 0) && (MAGMA_C_REAL(s_track[6]) > 0) && (MAGMA_C_REAL(s_track[7]) > 0);
+        if (t0 > 0) check_depths_sign = are_Depths_All_Positive ? false : true;
+      }
+      if (t0 > 0.95 && check_depths_sign) break;
+#endif
+
       if (end_zone) {
         if (delta_t > fabs(1 - t0))
           delta_t = fabs(1 - t0);
@@ -183,7 +187,6 @@ HC_solver_trifocal_2op1p_30x30(
       // ===================================================================
       // Prediction: 4-th order Runge-Kutta method
       // ===================================================================
-#if USE_LOOPY_RUNGE_KUTTA
       unsigned char scales[3] = {1, 0, 1};
       if (tx == 0) {
         s_delta_t_scale[0] = 0.0;
@@ -226,88 +229,6 @@ HC_solver_trifocal_2op1p_30x30(
       s_sols[tx] += sB[tx] * delta_t * 1.0/6.0;
       s_track[tx] = s_sols[tx];
       magmablas_syncwarp();
-#else
-      //> get HxHt for k1
-#if APPLY_GAMMA_TRICK
-      gammified_t0 = GAMMA * t0 / (MAGMA_C_ONE + GAMMA_MINUS_ONE * t0);                                      //> t0
-      compute_param_homotopy< magmaFloatComplex, Num_Of_Vars >( tx, gammified_t0, s_param_homotopy, s_startParams, s_targetParams );
-#else
-      compute_param_homotopy< float, Num_Of_Vars >( tx, t0, s_param_homotopy, s_startParams, s_targetParams );
-#endif
-      eval_Jacobian_Hx< T_index_mat, Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Index_Matrix_Size >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdx_indices );
-      eval_Jacobian_Ht< T_index_mat, Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Index_Matrix_Size >( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdt_indices, s_diffParams );
-      
-      //> solve k1
-      cgesv_batched_small_device< Num_Of_Vars >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
-      magmablas_syncwarp();
-
-      //> compute x for the creation of HxHt for k2 and get HxHt for k2
-#if APPLY_GAMMA_TRICK
-      gc = GAMMA / ((GAMMA_MINUS_ONE * t0 + 1.0) * (GAMMA_MINUS_ONE * t0 + 1.0));
-      create_x_for_k2( tx, t0, delta_t, one_half_delta_t, s_sols, s_track, sB, gc );
-      gammified_t0 = GAMMA * t0 / (MAGMA_C_ONE + GAMMA_MINUS_ONE * t0); //> After create_x_for_k2, this t0 is actually (t0 + one_half_delta_t)
-      magmablas_syncwarp();
-      compute_param_homotopy< magmaFloatComplex, Num_Of_Vars >( tx, gammified_t0, s_param_homotopy, s_startParams, s_targetParams );
-#else
-      create_x_for_k2( tx, t0, delta_t, one_half_delta_t, s_sols, s_track, sB, MAGMA_C_ONE );
-      magmablas_syncwarp();
-      compute_param_homotopy< float, Num_Of_Vars >( tx, t0, s_param_homotopy, s_startParams, s_targetParams );
-#endif
-      eval_Jacobian_Hx< T_index_mat, Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Index_Matrix_Size >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdx_indices );
-      eval_Jacobian_Ht< T_index_mat, Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Index_Matrix_Size >( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdt_indices, s_diffParams );
-
-      //> solve k2
-      cgesv_batched_small_device< Num_Of_Vars >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
-      magmablas_syncwarp();
-
-      //> compute x for the generation of HxHt for k3 and get HxHt for k3
-#if APPLY_GAMMA_TRICK
-      //gc = GAMMA / (((GAMMA - 1.0) * (t0 + one_half_delta_t) + 1.0) * ((GAMMA - 1.0) * (t0 + one_half_delta_t) + 1.0));
-      gc = GAMMA / ((GAMMA_MINUS_ONE * t0 + 1.0) * (GAMMA_MINUS_ONE * t0 + 1.0));
-      create_x_for_k3( tx, delta_t, one_half_delta_t, s_sols, s_track, s_track_last_success, sB, gc );
-      magmablas_syncwarp();
-#else
-      create_x_for_k3( tx, delta_t, one_half_delta_t, s_sols, s_track, s_track_last_success, sB, MAGMA_C_ONE );
-      magmablas_syncwarp();
-#endif
-      eval_Jacobian_Hx< T_index_mat, Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Index_Matrix_Size >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdx_indices );
-      eval_Jacobian_Ht< T_index_mat, Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Index_Matrix_Size >( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdt_indices, s_diffParams );
-
-      //> solve k3
-      cgesv_batched_small_device< Num_Of_Vars >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
-      magmablas_syncwarp();
-
-      //> compute x for the generation of HxHt for k4 and get HxHt for k4
-#if APPLY_GAMMA_TRICK
-      create_x_for_k4( tx, t0, delta_t, one_half_delta_t, s_sols, s_track, s_track_last_success, sB, gc );
-      gammified_t0 = GAMMA * t0 / (MAGMA_C_ONE + GAMMA_MINUS_ONE * t0); //> After create_x_for_k4, this t0 is actually (t0 + delta_t)
-      magmablas_syncwarp();
-      compute_param_homotopy< magmaFloatComplex, Num_Of_Vars >( tx, gammified_t0, s_param_homotopy, s_startParams, s_targetParams );
-#else
-      create_x_for_k4( tx, t0, delta_t, one_half_delta_t, s_sols, s_track, s_track_last_success, sB, MAGMA_C_ONE );
-      magmablas_syncwarp();
-      compute_param_homotopy< float, Num_Of_Vars >( tx, t0, s_param_homotopy, s_startParams, s_targetParams );
-#endif
-      eval_Jacobian_Hx< T_index_mat, Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Index_Matrix_Size >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdx_indices );
-      eval_Jacobian_Ht< T_index_mat, Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Index_Matrix_Size >( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdt_indices, s_diffParams );
-
-      //> solve k4
-      cgesv_batched_small_device< Num_Of_Vars >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
-      magmablas_syncwarp();
-
-      //> make prediction
-#if APPLY_GAMMA_TRICK
-      gc = GAMMA / ((GAMMA_MINUS_ONE * t0 + 1.0) * (GAMMA_MINUS_ONE * t0 + 1.0));
-      s_sols[tx] += sB[tx] * delta_t * gc * 1.0/6.0;
-      s_track[tx] = s_sols[tx];
-      magmablas_syncwarp();
-#else
-      s_sols[tx] += sB[tx] * delta_t * 1.0/6.0;
-      s_track[tx] = s_sols[tx];
-      magmablas_syncwarp();
-#endif
-
-#endif  //> USE_LOOPY_RUNGE_KUTTA
 
       // ===================================================================
       //> Gauss-Newton Corrector
@@ -419,12 +340,10 @@ kernel_HC_Solver_trifocal_2op1p_30x30(
   const int dHdx_Entry_Offset = dHdx_Max_Terms * dHdx_Max_Parts;
   const int dHdx_Index_Matrix_Size = num_of_vars * num_of_vars * dHdx_Max_Terms * dHdx_Max_Parts;
   const int dHdt_Index_Matrix_Size = num_of_vars * dHdt_Max_Terms * dHdt_Max_Parts;
-  // const int dHdx_Num_Of_Read_Loops = dHdx_Index_Matrix_Size / num_of_vars;
-  // const int dHdt_Num_Of_Read_Loops = dHdt_Index_Matrix_Size / num_of_vars;
 
   real_Double_t gpu_time;
   dim3 threads(num_of_vars, 1, 1);
-  dim3 grid(num_of_tracks, 1, 1);
+  dim3 grid(num_of_tracks*NUM_OF_RANSAC_ITERATIONS, 1, 1);
   cudaError_t e = cudaErrorInvalidValue;
 
   //> declare the amount of shared memory for the use of the kernel

@@ -17,7 +17,6 @@ set (control_sources
   gpu-kernels/kernel_HC_Solver_5pt_rel_pos_geo_form_quat.cu
   gpu-kernels/kernel_HC_Solver_5pt_rel_pos_alg_form_quat.cu
   gpu-kernels/kernel_HC_Solver_trifocal_2op1p_30x30.cu
-  gpu-kernels/kernel_HC_Solver_trifocal_2op1p_30x30_P2C.cu
 
   #>  device function
   dev-cgesv-batched-small.cuh
@@ -26,12 +25,14 @@ set (control_sources
   gpu-idx-evals/dev-eval-indxing-5pt_rel_pos_geo_form_quat.cuh
   gpu-idx-evals/dev-eval-indxing-5pt_rel_pos_alg_form_quat.cuh
   gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30.cuh
-  gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_P2C.cuh
 
   #>  p2c constant matrix
   PHC_Coeffs/p2c-5pt_rel_pos_alg_form_quat.h
   PHC_Coeffs/p2c-5pt_rel_pos_geo_form_quat.h
   PHC_Coeffs/p2c-trifocal_2op1p_30x30.h
+
+  #> Utilities
+  util.hpp
 )
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})

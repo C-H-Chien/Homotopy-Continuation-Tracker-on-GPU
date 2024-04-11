@@ -16,10 +16,19 @@
 #include <iomanip>
 #include <cstring>
 #include <chrono>
+#include <memory>
 
 #include "magma_v2.h"
 #include "gpu-kernels/magmaHC-kernels.hpp"
+#include "Data_Reader.hpp"
+#include "Evaluations.hpp"
 #include <yaml-cpp/yaml.h>
+
+#define h_Triplet_Edge_Locations(i,j)    h_Triplet_Edge_Locations[(i) * 6 + (j)]
+#define h_Triplet_Edge_Tangents(i,j)     h_Triplet_Edge_Tangents[(i) * 6 + (j)]
+
+class Data_Reader;
+class Evaluations;
 
 template< typename T_index_mat >
 class GPU_HC_Solver {
@@ -28,7 +37,6 @@ class GPU_HC_Solver {
     magma_queue_t my_queue;    // magma queue variable, internally holds a cuda stream and a cublas handle
 
     //> Varaibles as sizes of arrays
-    magma_int_t             ldda, lddb, ldd_params;
     magma_int_t             dHdx_Index_Size;
     magma_int_t             dHdt_Index_Size;
     magma_int_t             dHdx_PHC_Coeffs_Size;
@@ -45,21 +53,22 @@ class GPU_HC_Solver {
     magmaFloatComplex       *h_Target_Params;
     magmaFloatComplex       *h_dHdx_PHC_Coeffs;
     magmaFloatComplex       *h_dHdt_PHC_Coeffs;
-    // magma_int_t             *h_dHdx_Index;
-    // magma_int_t             *h_dHdt_Index;
     T_index_mat             *h_dHdx_Index;
     T_index_mat             *h_dHdt_Index;
+    float                   *h_Triplet_Edge_Locations;      //> in metrics
+    float                   *h_Triplet_Edge_Tangents;       //> in metrics
     magmaFloatComplex       *h_Debug_Purpose;
     bool                    *h_is_GPU_HC_Sol_Converge;
     bool                    *h_is_GPU_HC_Sol_Infinity;
+    float                   h_Camera_Intrinsic_Matrix[9];
+    float                   h_Camera_Pose21[12];
+    float                   h_Camera_Pose31[12];
 
     //> Variables and arrays on the GPU side
     magmaFloatComplex_ptr   d_Start_Sols, d_Homotopy_Sols;
     magmaFloatComplex_ptr   d_Start_Params, d_Target_Params;
     magmaFloatComplex_ptr   d_dHdx_PHC_Coeffs;
     magmaFloatComplex_ptr   d_dHdt_PHC_Coeffs;
-    // magma_int_t             *d_dHdx_Index;
-    // magma_int_t             *d_dHdt_Index;
     T_index_mat             *d_dHdx_Index;
     T_index_mat             *d_dHdt_Index;
     magmaFloatComplex       **d_Start_Sols_array;
@@ -82,8 +91,9 @@ public:
     
     //> Member functions
     bool Read_Problem_Data();
+    bool Read_RANSAC_Data();
     void Allocate_Arrays();
-    void Construct_Coeffs_From_Params();
+    void Prepare_Target_Params();
     void Data_Transfer_From_Host_To_Device();
     void Solve_by_GPU_HC();
 
@@ -91,9 +101,12 @@ public:
     ~GPU_HC_Solver();
 
 private:
+    std::shared_ptr<Data_Reader> Load_Problem_Data = nullptr;
+    std::shared_ptr<Evaluations> Evaluate_GPUHC_Sols = nullptr;
     YAML::Node Problem_Setting_YAML_File;
     
     std::string Problem_File_Path;
+    std::string RANSAC_Data_File_Path;
     std::string Write_Files_Path;
 
     std::string HC_problem;
@@ -111,6 +124,9 @@ private:
     int dHdt_Max_Parts;
     int Max_Order_Of_T;
 
+    //> RANSAC data
+    int Num_Of_Triplet_Edgels;
+    
     int Num_Of_Coeffs_From_Params;
 };
 
