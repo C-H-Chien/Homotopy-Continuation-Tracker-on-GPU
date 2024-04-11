@@ -36,7 +36,7 @@
 
 //> compute the parameter homotopy
 template < typename T, int Num_Of_Vars >
-__device__ __noinline__ void
+__device__ __inline__ void
 compute_param_homotopy(
   const int tx, T t,
   magmaFloatComplex *s_param_homotopy,
@@ -56,7 +56,7 @@ compute_param_homotopy(
 
 //> Jacobian \partial H / \partial x parallel evaluation
 template< typename T, int Num_Of_Vars, int dHdx_Max_Terms, int dHdx_Max_Parts, int dHdx_Entry_Offset, int dHdx_Index_Matrix_Size >
-__device__ __noinline__ void
+__device__ __inline__ void
 eval_Jacobian_Hx(
     const int tx,                                   //> thread id
     magmaFloatComplex r_cgesvA[Num_Of_Vars],        //> each row of the Jacobian matrix
@@ -72,14 +72,14 @@ eval_Jacobian_Hx(
 )
 {
   //> Full, explicit form of evaluation
-  #pragma unroll
+  // #pragma unroll
   for(int i = 0; i < Num_Of_Vars; i++) {
 
     //> initialize to zero
     r_cgesvA[i] = MAGMA_C_ZERO;
 
     //> With transpose...
-    #pragma unroll 2
+    // #pragma unroll 2
     for(int j = 0; j < dHdx_Max_Terms; j++) {
 
       //> compute the element of the Jacobian matrix Hx
@@ -94,7 +94,7 @@ eval_Jacobian_Hx(
 
 //> Jacobian \partial H / \partial t parallel evaluation
 template< typename T, int Num_Of_Vars, int dHdt_Max_Terms, int dHdt_Max_Parts, int dHdt_Index_Matrix_Size >
-__device__ __noinline__ void
+__device__ __inline__ void
 eval_Jacobian_Ht(
     const int tx,                //> thread id
     magmaFloatComplex &r_cgesvB,          //> each row of the Jacobian matrix
@@ -113,7 +113,7 @@ eval_Jacobian_Ht(
   //> initialize each element to 0
   r_cgesvB = MAGMA_C_ZERO;
 
-  #pragma unroll 2
+  // #pragma unroll 2
   for (int i = 0; i < dHdt_Max_Terms; i++) {
 
     //> With transpose...
@@ -128,7 +128,7 @@ eval_Jacobian_Ht(
 
 //> Homotopy evaluation
 template< typename T, int Num_Of_Vars, int dHdt_Max_Terms, int dHdt_Max_Parts, int dHdt_Index_Matrix_Size >
-__device__ __noinline__ void
+__device__ __inline__ void
 eval_Homotopy(
     const int tx,                         //> thread id
     magmaFloatComplex &r_cgesvB,          //> each row of the parameter homotopy
@@ -146,7 +146,7 @@ eval_Homotopy(
   //> initialize each element to 0
   r_cgesvB = MAGMA_C_ZERO;
 
-  #pragma unroll 2
+  // #pragma unroll 2
   for (int i = 0; i < dHdt_Max_Terms; i++) {
 
     r_cgesvB += dHdt_indices[i*dHdt_Max_Parts*Num_Of_Vars + tx]

@@ -6,6 +6,12 @@
 
 #define WRITE_FILES_FOLDER                      std::string("Output_Write_Files/")
 
+//> RANSAC Settings
+#define NUM_OF_RANSAC_ITERATIONS                (1)
+#define IMAG_PART_TOL                           (1e-5)
+#define ROT_RESIDUAL_TOL                        (1e-1)
+#define TRANSL_RESIDUAL_TOL                     (1e-1)
+
 //> Settings for GPU-HC Kernel
 #define APPLY_GAMMA_TRICK                       (false)
 #define USE_DOUBLE_PRECISION                    (false)
@@ -16,6 +22,7 @@
 #define ZERO_IMAG_PART_TOL_FOR_SP               (1e-4)
 #define ZERO_IMAG_PART_TOL_FOR_DP               (1e-8)
 #define DEBUG_EVALUATOR                         (false)
+#define IS_SO3_DET_R_TOL                        (1e-5)
 
 //> Define a random complex numbner gamma used in the gamma-trick
 #if USE_DOUBLE_PRECISION
@@ -30,6 +37,7 @@
 #define SHOW_PROBLEM_SETTINGS                   (true)
 #define GPU_DEBUG                               (false)
 #define DATA_READER_DEBUG                       (false)
+#define RANSAC_DEBUG                            (false)
 
 //> [DO NOT CHANGE] The following macros are constant. They are used for shuffle operation in a warp level.
 #define FULL_MASK                               (0xffffffff)
