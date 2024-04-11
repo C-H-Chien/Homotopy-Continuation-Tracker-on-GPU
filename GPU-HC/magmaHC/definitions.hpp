@@ -7,7 +7,7 @@
 #define WRITE_FILES_FOLDER                      std::string("Output_Write_Files/")
 
 //> RANSAC Settings
-#define NUM_OF_RANSAC_ITERATIONS                (1)
+#define NUM_OF_RANSAC_ITERATIONS                (100)
 #define IMAG_PART_TOL                           (1e-5)
 #define ROT_RESIDUAL_TOL                        (1e-1)
 #define TRANSL_RESIDUAL_TOL                     (1e-1)
