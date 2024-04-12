@@ -26,8 +26,6 @@
 #include "definitions.hpp"
 #include "util.hpp"
 
-#define K(i,j)      K[(i) * 3 + (j)]
-
 class util;
 
 class Evaluations {
@@ -48,7 +46,7 @@ public:
     void Find_Unique_Sols( magmaFloatComplex *h_GPU_HC_Track_Sols, bool *h_is_GPU_HC_Sol_Converge );
 
     //> Evaluate RANSAC solutions with the ground-truths
-    void Transform_GPUHC_Sols_to_Trifocal_Relative_Pose( magmaFloatComplex *h_GPU_HC_Track_Sols, bool *h_is_GPU_HC_Sol_Converge );
+    void Transform_GPUHC_Sols_to_Trifocal_Relative_Pose( magmaFloatComplex *h_GPU_HC_Track_Sols, bool *h_is_GPU_HC_Sol_Converge, float IntrinsicMatrix[9] );
     float get_Rotation_Residual( float* GT_R, std::array<float, 9> Sol_R );
     float get_Translation_Residual( float* GT_Transl, std::array<float, 3> Sol_Transl );
     void Measure_Relative_Pose_Error( float GT_Pose21[12], float GT_Pose31[12] );
@@ -106,13 +104,15 @@ private:
     std::vector<std::array<float, 3>> normalized_t31s;
     std::vector<std::array<float, 9>> normalized_R21s;
     std::vector<std::array<float, 9>> normalized_R31s;
-    // std::vector<float *> F21s;
-    // std::vector<float *> F31s;
+    std::vector<std::array<float, 9>> F21s;
+    std::vector<std::array<float, 9>> F31s;
 
     std::array<float, 3> normalized_t21;
     std::array<float, 3> normalized_t31;
     std::array<float, 9> normalized_R21;
     std::array<float, 9> normalized_R31;
+    std::array<float, 9> FundMatrix21;
+    std::array<float, 9> FundMatrix31;
 
     float* R_gt_R;
     float* Sols_R_;

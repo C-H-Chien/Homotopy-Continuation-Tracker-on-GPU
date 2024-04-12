@@ -178,75 +178,86 @@ void Evaluations::Find_Unique_Sols( magmaFloatComplex *h_GPU_HC_Track_Sols, bool
 }
 
 void Evaluations::Transform_GPUHC_Sols_to_Trifocal_Relative_Pose( \
-  magmaFloatComplex *h_GPU_HC_Track_Sols, bool *h_is_GPU_HC_Sol_Converge ) {
+  magmaFloatComplex *h_GPU_HC_Track_Sols, bool *h_is_GPU_HC_Sol_Converge, float IntrinsicMatrix[9] ) {
 //> ----------------------------------------------------------------------------------
 //> !!Note!! This function is specifically desgined for trifocal 2op1p 30x30 problem
 //> ----------------------------------------------------------------------------------
 
+  for (int i = 0; i < 9; i++) K[i] = IntrinsicMatrix[i];
+
   float norm_t21, norm_t31;
   unsigned RANSAC_loop_index;
+  unsigned track_index_in_one_RANSAC;
 
   //> Loop over all paths
   for (int bs = 0; bs < num_of_tracks*NUM_OF_RANSAC_ITERATIONS; bs++) {
 
     //> Current RANSAC loop index
     RANSAC_loop_index = std::floor(bs / num_of_tracks);
-
+    track_index_in_one_RANSAC = bs - RANSAC_loop_index*num_of_tracks;
+    
     //> if the solution converges
     if ( (h_is_GPU_HC_Sol_Converge + num_of_tracks * RANSAC_loop_index)[ bs ] ) {
 
       //> solution index offset under a RANSAC loop
-      unsigned RANSAC_Sol_Offset = num_of_tracks * (num_of_variables+1) * RANSAC_loop_index;
+      unsigned RANSAC_Sol_Offset = num_of_tracks * (num_of_variables+1) * RANSAC_loop_index + track_index_in_one_RANSAC * (num_of_variables+1);
       int small_imag_part_counter = 0;
       int positive_depth_counter = 0;
 
       //> Check the imaginary part of the two relative rotations
       for (int vi = 0; vi < 6; vi++) {
-          if ( fabs(MAGMA_C_IMAG((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset + bs * (num_of_variables+1))[24 + vi])) < IMAG_PART_TOL ) 
+          if ( fabs(MAGMA_C_IMAG((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset)[24 + vi])) < IMAG_PART_TOL ) 
             small_imag_part_counter++;
       }
       if ( small_imag_part_counter < 6 ) continue;
 
       //> Check whether the depths are all positive
       for (int di = 0; di < 8; di++) {
-          if ( MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset + bs * (num_of_variables+1))[di]) >= 0 ) positive_depth_counter++;
+          if ( MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset)[di]) >= 0 ) positive_depth_counter++;
       }
       if (positive_depth_counter < 8) continue;
 
       //> \transl_{21}
-      Transl21[0] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset + bs * (num_of_variables+1))[18]);
-      Transl21[1] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset + bs * (num_of_variables+1))[19]);
-      Transl21[2] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset + bs * (num_of_variables+1))[20]);
+      Transl21[0] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset)[18]);
+      Transl21[1] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset)[19]);
+      Transl21[2] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset)[20]);
       MVG_Utility->Normalize_Translation_Vector( Transl21 );
       std::copy(Transl21, Transl21 + 3, begin(normalized_t21));
       normalized_t21s.push_back( normalized_t21 );
 
       //> \transl_{31}
-      Transl31[0] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset + bs * (num_of_variables+1))[21]);
-      Transl31[1] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset + bs * (num_of_variables+1))[22]);
-      Transl31[2] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset + bs * (num_of_variables+1))[23]);
+      Transl31[0] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset)[21]);
+      Transl31[1] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset)[22]);
+      Transl31[2] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset)[23]);
       MVG_Utility->Normalize_Translation_Vector( Transl31 );
       std::copy(Transl31, Transl31 + 3, begin(normalized_t31));
       normalized_t31s.push_back( normalized_t31 );
 
       //> \rot_{21}
-      Rot21[0] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset + bs * (num_of_variables+1))[24]);
-      Rot21[1] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset + bs * (num_of_variables+1))[25]);
-      Rot21[2] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset + bs * (num_of_variables+1))[26]);
+      Rot21[0] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset)[24]);
+      Rot21[1] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset)[25]);
+      Rot21[2] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset)[26]);
       MVG_Utility->Cayley_To_Rotation_Matrix( Rot21, Sol_Rotm_21 );
       std::copy(Sol_Rotm_21, Sol_Rotm_21 + 9, begin(normalized_R21));
       normalized_R21s.push_back( normalized_R21 );
 
       //> \rot_{31}
-      Rot31[0] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset + bs * (num_of_variables+1))[27]);
-      Rot31[1] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset + bs * (num_of_variables+1))[28]);
-      Rot31[2] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset + bs * (num_of_variables+1))[29]);
+      Rot31[0] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset)[27]);
+      Rot31[1] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset)[28]);
+      Rot31[2] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset)[29]);
       MVG_Utility->Cayley_To_Rotation_Matrix( Rot31, Sol_Rotm_31 );
       std::copy(Sol_Rotm_31, Sol_Rotm_31 + 9, begin(normalized_R31));
       normalized_R31s.push_back( normalized_R31 );
 
       //> Compute the fundamental matrix used to find the maximal inliers support
-      //> TODO ...
+      //> F21 and F31
+      MVG_Utility->get_Fundamental_Matrix( K, Rot21, Transl21 );
+      std::copy( MVG_Utility->F, MVG_Utility->F + 9, begin(FundMatrix21));
+      F21s.push_back( FundMatrix21 );
+      MVG_Utility->get_Fundamental_Matrix( K, Rot31, Transl31 );
+      std::copy( MVG_Utility->F, MVG_Utility->F + 9, begin(FundMatrix31));
+      F31s.push_back( FundMatrix31 );
+
     }
   }
 }
