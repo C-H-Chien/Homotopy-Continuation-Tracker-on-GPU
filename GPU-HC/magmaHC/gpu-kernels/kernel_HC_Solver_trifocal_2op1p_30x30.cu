@@ -141,7 +141,7 @@ HC_solver_trifocal_2op1p_30x30(
   }
   magmablas_syncwarp();
 
-#if NUM_OF_RANSAC_ITERATIONS > 1
+#if USE_DEPTH_TO_TRUNCATE_PATH
   bool are_Depths_All_Positive = false;
   bool check_depths_sign = true;
 #endif
@@ -164,7 +164,7 @@ HC_solver_trifocal_2op1p_30x30(
         end_zone = true;
       }
 
-#if NUM_OF_RANSAC_ITERATIONS > 1
+#if USE_DEPTH_TO_TRUNCATE_PATH
       if (check_depths_sign) {
         are_Depths_All_Positive = (MAGMA_C_REAL(s_track[0]) > 0) && (MAGMA_C_REAL(s_track[1]) > 0) && (MAGMA_C_REAL(s_track[2]) > 0) && (MAGMA_C_REAL(s_track[3]) > 0) &&
                                   (MAGMA_C_REAL(s_track[4]) > 0) && (MAGMA_C_REAL(s_track[5]) > 0) && (MAGMA_C_REAL(s_track[6]) > 0) && (MAGMA_C_REAL(s_track[7]) > 0);
