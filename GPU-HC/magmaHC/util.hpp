@@ -179,11 +179,14 @@ public:
         delete [] inv_K;
     }
 
+public:
+    float *F;
+
 private:
     float *T_x;     //> skew symmetric matrix
     float *E;
     float *inv_K;
-    float *F;
+    
 };
 
 
