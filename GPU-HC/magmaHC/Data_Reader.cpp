@@ -23,7 +23,7 @@
 #include "Data_Reader.hpp"
 
 Data_Reader::Data_Reader(std::string Problem_Filename, std::string RANSAC_Data_File_Path, const int Num_Of_Tracks, const int Num_Of_Vars, const int Num_Of_Params) \
-    : num_of_tracks(Num_Of_Tracks), num_of_variables(Num_Of_Vars), num_of_params(Num_Of_Params) {
+    : num_of_tracks(Num_Of_Tracks), num_of_variables(Num_Of_Vars), num_of_params(Num_Of_Params), RANSAC_Data_Path_(RANSAC_Data_File_Path) {
 
     //> Define problem file names
     File_Name_Start_Params = Problem_Filename + std::string("/start_params.txt");
@@ -33,10 +33,7 @@ Data_Reader::Data_Reader(std::string Problem_Filename, std::string RANSAC_Data_F
     File_Name_dHdx_Indx = Problem_Filename + std::string("/dHdx_indx.txt");
     File_Name_dHdt_Indx = Problem_Filename + std::string("/dHdt_indx.txt");
 
-    File_Name_Intrinsic_Matrix = RANSAC_Data_File_Path + std::string("/Synthetic_Intrinsic_Matrix.txt");
-    File_Name_Pose21           = RANSAC_Data_File_Path + std::string("/Synthetic_GT_Poses21.txt");
-    File_Name_Pose31           = RANSAC_Data_File_Path + std::string("/Synthetic_GT_Poses31.txt");
-    File_Name_Triplet_Edgels   = RANSAC_Data_File_Path + std::string("/Synthetic_Triplet_Edgels.txt");
+    File_Name_Intrinsic_Matrix = RANSAC_Data_Path_ + std::string("/Intrinsic_Matrix.txt");
 }
 
 bool Data_Reader::Read_Start_Sols(magmaFloatComplex* &h_Start_Sols, magmaFloatComplex* &h_Homotopy_Sols) {
@@ -107,6 +104,7 @@ bool Data_Reader::Read_Target_Params(magmaFloatComplex* &h_Target_Params) {
 bool Data_Reader::Read_Start_Params(magmaFloatComplex* &h_Start_Params) {
     int d = 0;
     File_Start_Params.open(File_Name_Start_Params, std::ios_base::in);
+    // LOG_INFOR_MESG("Start params file name: " + File_Name_Start_Params);
     if (!File_Start_Params) {
         LOG_FILE_ERROR(File_Name_Start_Params);
         return false;
@@ -166,7 +164,15 @@ bool Data_Reader::Read_dHdt_Indices( T* &h_dHdt_Index ) {
     }
 }
 
-bool Data_Reader::Read_Camera_Matrices( float Pose21[12], float Pose31[12], float K[9] ) {
+bool Data_Reader::Read_Camera_Matrices( float Pose21[12], float Pose31[12], float K[9], int tp_index ) {
+
+    //> Create padded file index
+    std::string str_File_Index = std::to_string(tp_index);
+    int min_str_length = (3 < str_File_Index.length()) ? 3 : str_File_Index.length();
+    auto padded_Index = std::string(3 - min_str_length, '0') + str_File_Index;
+    File_Name_Pose21  = RANSAC_Data_Path_ + "/GT_Poses21/GT_Poses21_" + padded_Index + ".txt";
+    File_Name_Pose31  = RANSAC_Data_Path_ + "/GT_Poses31/GT_Poses31_" + padded_Index + ".txt";
+
     //> Intrinsic matrix
     File_Intrinsic_Matrix.open(File_Name_Intrinsic_Matrix, std::ios_base::in);
     if (!File_Intrinsic_Matrix) {
@@ -236,50 +242,72 @@ bool Data_Reader::Read_Camera_Matrices( float Pose21[12], float Pose31[12], floa
     return true;
 }
 
-bool Data_Reader::Read_Triplet_Edgels( float* &Triplet_Edge_Locations, float* &Triplet_Edge_Tangents ) {
+//> Read triplet edgel correspondences file. Return number of triplet edgels.
+int Data_Reader::get_Num_Of_Triplet_Edgels( int tp_index ) {
+
+    //> Create padded file index
+    std::string str_File_Index = std::to_string(tp_index);
+    int min_str_length = (3 < str_File_Index.length()) ? 3 : str_File_Index.length();
+    auto padded_Index = std::string(3 - min_str_length, '0') + str_File_Index;
+
+    File_Name_Triplet_Edgels = RANSAC_Data_Path_ + "/Triplet_Edgels/Triplet_Edgels_" + padded_Index + ".txt";
     File_Triplet_Edgels.open(File_Name_Triplet_Edgels, std::ios_base::in);
     if (!File_Triplet_Edgels) {
         LOG_FILE_ERROR(File_Name_Triplet_Edgels);
-        return false;
+        return 0;
     }
     else {
-        int edge_d = 0, tgt_d = 0;
         float edge1_x, edge1_y, tgt1_x, tgt1_y, edge2_x, edge2_y, tgt2_x, tgt2_y, edge3_x, edge3_y, tgt3_x, tgt3_y;
         while (File_Triplet_Edgels >> edge1_x >> edge1_y >> tgt1_x >> tgt1_y >> \
                                       edge2_x >> edge2_y >> tgt2_x >> tgt2_y >> \
                                       edge3_x >> edge3_y >> tgt3_x >> tgt3_y) {
-            //> Edge locations
-            Triplet_Edge_Locations(edge_d, 0) = edge1_x;
-            Triplet_Edge_Locations(edge_d, 1) = edge1_y;
-            Triplet_Edge_Locations(edge_d, 2) = edge2_x;
-            Triplet_Edge_Locations(edge_d, 3) = edge2_y;
-            Triplet_Edge_Locations(edge_d, 4) = edge3_x;
-            Triplet_Edge_Locations(edge_d, 5) = edge3_y;
-            edge_d++;
 
-            //> edge tangents
-            Triplet_Edge_Tangents(tgt_d, 0) = tgt1_x;
-            Triplet_Edge_Tangents(tgt_d, 1) = tgt1_y;
-            Triplet_Edge_Tangents(tgt_d, 2) = tgt2_x;
-            Triplet_Edge_Tangents(tgt_d, 3) = tgt2_y;
-            Triplet_Edge_Tangents(tgt_d, 4) = tgt3_x;
-            Triplet_Edge_Tangents(tgt_d, 5) = tgt3_y;
-            tgt_d++;
+            auto edge1 = std::make_pair(edge1_x, edge1_y);
+            auto edge2 = std::make_pair(edge2_x, edge2_y);
+            auto edge3 = std::make_pair(edge3_x, edge3_y);
+            auto tangent1 = std::make_pair(tgt1_x, tgt1_y);
+            auto tangent2 = std::make_pair(tgt2_x, tgt2_y);
+            auto tangent3 = std::make_pair(tgt3_x, tgt3_y);
+
+            data_read_triplet_edgles_locations.push_back( std::make_tuple(edge1, edge2, edge3) );
+            data_read_triplet_edgles_tangents.push_back( std::make_tuple(tangent1, tangent2, tangent3) );
         }
-#if DATA_READER_DEBUG
-        std::cout << "Number of triplet edgels = " << edge_d << std::endl;
-        std::cout << std::endl << "Printing Triplet_Edge_Locations ..." << std::endl;
-        for (int i = 0; i < 2; i++)
-            for (int j = 0; j < 6; j++)
-                printf("%.6f\t", Triplet_Edge_Locations[i*6 + j]);
-        std::cout << std::endl;
-        std::cout << "Printing Triplet_Edge_Tangents ..." << std::endl;
-        for (int i = 0; i < 2; i++)
-            for (int j = 0; j < 6; j++)
-                printf("%.6f\t", Triplet_Edge_Tangents[i*6 + j]);
-#endif
-        return true;
     }
+
+    return data_read_triplet_edgles_locations.size();
+}
+
+void Data_Reader::Read_Triplet_Edgels( float* &Triplet_Edge_Locations, float* &Triplet_Edge_Tangents ) {
+
+    //> Assign tuple values to arrays
+    for (int ei = 0; ei < data_read_triplet_edgles_locations.size(); ei++) {
+        Triplet_Edge_Locations(ei, 0) = std::get<0>(data_read_triplet_edgles_locations[ei]).first;
+        Triplet_Edge_Locations(ei, 1) = std::get<0>(data_read_triplet_edgles_locations[ei]).second;
+        Triplet_Edge_Locations(ei, 2) = std::get<1>(data_read_triplet_edgles_locations[ei]).first;
+        Triplet_Edge_Locations(ei, 3) = std::get<1>(data_read_triplet_edgles_locations[ei]).second;
+        Triplet_Edge_Locations(ei, 4) = std::get<2>(data_read_triplet_edgles_locations[ei]).first;
+        Triplet_Edge_Locations(ei, 5) = std::get<2>(data_read_triplet_edgles_locations[ei]).second;
+
+        Triplet_Edge_Tangents(ei, 0) = std::get<0>(data_read_triplet_edgles_tangents[ei]).first;
+        Triplet_Edge_Tangents(ei, 1) = std::get<0>(data_read_triplet_edgles_tangents[ei]).second;
+        Triplet_Edge_Tangents(ei, 2) = std::get<1>(data_read_triplet_edgles_tangents[ei]).first;
+        Triplet_Edge_Tangents(ei, 3) = std::get<1>(data_read_triplet_edgles_tangents[ei]).second;
+        Triplet_Edge_Tangents(ei, 4) = std::get<2>(data_read_triplet_edgles_tangents[ei]).first;
+        Triplet_Edge_Tangents(ei, 5) = std::get<2>(data_read_triplet_edgles_tangents[ei]).second;
+    }
+
+#if DATA_READER_DEBUG
+    std::cout << "Number of triplet edgels = " << edge_d << std::endl;
+    std::cout << std::endl << "Printing Triplet_Edge_Locations ..." << std::endl;
+    for (int i = 0; i < 2; i++)
+        for (int j = 0; j < 6; j++)
+            printf("%.6f\t", Triplet_Edge_Locations[i*6 + j]);
+    std::cout << std::endl;
+    std::cout << "Printing Triplet_Edge_Tangents ..." << std::endl;
+    for (int i = 0; i < 2; i++)
+        for (int j = 0; j < 6; j++)
+            printf("%.6f\t", Triplet_Edge_Tangents[i*6 + j]);
+#endif
 }
 
 void Data_Reader::Print_Out_Target_Params_from_Triplet_Edgels(int sample_index, std::vector<std::array<int,3>> target_params_match_indices, magmaFloatComplex *h_Target_Params) {

@@ -1,8 +1,6 @@
 #ifndef EVALUATIONS_H
 #define EVALUATIONS_H
 // ==========================================================================================================
-// Header file declaring all kernels
-//
 // Modifications
 //    Chiang-Heng Chien  23-02-05:   Initially created for evaluating the HC solutions, 
 //                                   e.g., writing results to files, counting the converged solutions, etc.
@@ -25,6 +23,9 @@
 
 #include "definitions.hpp"
 #include "util.hpp"
+
+#define h_Triplet_Edge_Locations(i,j)    h_Triplet_Edge_Locations[(i) * 6 + (j)]
+#define h_Triplet_Edge_Tangents(i,j)     h_Triplet_Edge_Tangents[(i) * 6 + (j)]
 
 class util;
 
@@ -49,7 +50,17 @@ public:
     void Transform_GPUHC_Sols_to_Trifocal_Relative_Pose( magmaFloatComplex *h_GPU_HC_Track_Sols, bool *h_is_GPU_HC_Sol_Converge, float IntrinsicMatrix[9] );
     float get_Rotation_Residual( float* GT_R, std::array<float, 9> Sol_R );
     float get_Translation_Residual( float* GT_Transl, std::array<float, 3> Sol_Transl );
-    void Measure_Relative_Pose_Error( float GT_Pose21[12], float GT_Pose31[12] );
+    void get_HC_Steps_of_Actual_Sols( magmaFloatComplex *h_Debug_Purpose );
+    void Measure_Relative_Pose_Error_from_All_Real_Sols( float GT_Pose21[12], float GT_Pose31[12], magmaFloatComplex *h_Debug_Purpose );
+    void Measure_Relative_Pose_Error( float GT_Pose21[12], float GT_Pose31[12], magmaFloatComplex *h_Debug_Purpose );
+    void get_Solution_with_Maximal_Support( unsigned Num_Of_Triplet_Edgels, float* h_Triplet_Edge_Locations, float* h_Triplet_Edge_Tangents, float K[9] );
+
+    //> Others
+    void Flush_Out_Data();
+    void Write_HC_Steps_of_Actual_Solutions( std::vector<int> GPUHC_Actual_Sols_Steps_Collections ) {
+        for (int i = 0; i < GPUHC_Actual_Sols_Steps_Collections.size(); i++) 
+            GPUHC_Actual_Sols_Steps_File << GPUHC_Actual_Sols_Steps_Collections[i] << "\n";
+    };
     
     //> Some evaluation data
     unsigned Num_Of_Coverged_Sols;
@@ -67,6 +78,15 @@ public:
     float Min_Residual_t21;
     float Min_Residual_t31;
     bool success_flag;
+    std::vector<int> HC_steps_of_actual_solutions;
+    unsigned Max_Num_Of_Reproj_Inliers_Views21;
+    unsigned Max_Num_Of_Reproj_Inliers_Views31;
+    std::array<float, 9> R21_w_Max_Supports;
+    std::array<float, 9> R31_w_Max_Supports;
+    std::array<float, 3> t21_w_Max_Supports;
+    std::array<float, 3> t31_w_Max_Supports;
+    std::vector<int> Max_Reproj_Inliers_Support_Views21_Index;
+    std::vector<int> Max_Reproj_Inliers_Support_Views31_Index;
 
 private:
     //> util
@@ -74,6 +94,7 @@ private:
 
     //> output streams for files to be written
     std::ofstream GPUHC_Track_Sols_File;
+    std::ofstream GPUHC_Actual_Sols_Steps_File;
 
     float Var_Diff_In_Real_Part( magmaFloatComplex *Sol1, magmaFloatComplex *Sol2, int sol1_offset, int sol2_offset, int var_index ) {
         return std::fabs(MAGMA_C_REAL((Sol1 + sol1_offset*(num_of_variables+1))[var_index]) - MAGMA_C_REAL((Sol2 + sol2_offset*(num_of_variables+1))[var_index]));
@@ -81,6 +102,12 @@ private:
     float Var_Diff_In_Imag_Part( magmaFloatComplex *Sol1, magmaFloatComplex *Sol2, int sol1_offset, int sol2_offset, int var_index ) {
         return std::fabs(MAGMA_C_IMAG((Sol1 + sol1_offset*(num_of_variables+1))[var_index]) - MAGMA_C_IMAG((Sol2 + sol2_offset*(num_of_variables+1))[var_index]));
     };
+
+    void get_GT_Rotation( float GT_Pose[12], float* &GT_Rot )       { std::copy( GT_Pose,      GT_Pose + 9,  GT_Rot   ); }
+    void get_GT_Translation( float GT_Pose[12], float* &GT_Transl ) { std::copy( GT_Pose + 9, GT_Pose + 12, GT_Transl ); }
+
+    // template< typename T, int n >
+    // void copy_array_values( std::array<T, n> Copy_From, T* &Copy_To ) { for(int i = 0; i < n; i++) Copy_To[i] = Copy_From[i]; }
 
     std::vector< int > Unique_Sols_Index;
 
@@ -117,6 +144,16 @@ private:
     float* R_gt_R;
     float* Sols_R_;
     float* Sol_Transl_;
+
+    float* GT_Rot21;
+    float* GT_Rot31;
+    float* GT_Transl21;
+    float* GT_Transl31;
+
+    std::vector<int> real_track_indices;
+
+    unsigned Num_Of_Reproj_Err_Inliers_Views21;
+    unsigned Num_Of_Reproj_Err_Inliers_Views31;
 };
 
 #endif

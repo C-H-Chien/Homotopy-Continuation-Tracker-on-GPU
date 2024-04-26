@@ -91,11 +91,13 @@ public:
     
     //> Member functions
     bool Read_Problem_Data();
-    bool Read_RANSAC_Data();
+    bool Read_RANSAC_Data( int tp_index );
     void Allocate_Arrays();
-    void Prepare_Target_Params();
+    void Prepare_Target_Params( );
     void Data_Transfer_From_Host_To_Device();
     void Solve_by_GPU_HC();
+    void Export_Data();
+    void Free_Triplet_Edgels_Mem();
 
     //> Destructor
     ~GPU_HC_Solver();
@@ -125,9 +127,10 @@ private:
     int Max_Order_Of_T;
 
     //> RANSAC data
+    std::string RANSAC_Dataset_Name;
     int Num_Of_Triplet_Edgels;
-    
     int Num_Of_Coeffs_From_Params;
+    std::vector<int> GPUHC_Actual_Sols_Steps_Collections;
 };
 
 #endif

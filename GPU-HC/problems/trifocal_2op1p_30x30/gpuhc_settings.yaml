@@ -21,4 +21,6 @@ dHdt_Max_Parts: 6
 Max_Order_Of_T: 2
 
 #> RANSAC data
-Num_Of_Triplet_Edgels: 5117
+#RANSAC_Dataset: Synthetic / ICL-NUIM
+RANSAC_Dataset: ICL-NUIM
+#5117

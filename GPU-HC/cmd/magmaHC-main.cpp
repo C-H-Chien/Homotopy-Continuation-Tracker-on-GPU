@@ -95,22 +95,31 @@ int main(int argc, char **argv) {
   //> (1) Allocate CPU and GPU arrays
   GPU_HC_.Allocate_Arrays();
 
-  //> (2) Read Problem-Specific Data
-  bool pass_Data_Read_Test = GPU_HC_.Read_Problem_Data();
-  if (!pass_Data_Read_Test) return 0;
+  //> Loop over many times of RANSACs
+  for (int ti = 0; ti < TEST_RANSAC_TIMES; ti++) {
+    //> (2) Read Problem-Specific Data
+    bool pass_Data_Read_Test = GPU_HC_.Read_Problem_Data();
+    if (!pass_Data_Read_Test) return 0;
 
-  //> (3) Read RANSAC Data
-  pass_Data_Read_Test = GPU_HC_.Read_RANSAC_Data();
-  if (!pass_Data_Read_Test) return 0;
+    //> (3) Read RANSAC Data
+    pass_Data_Read_Test = GPU_HC_.Read_RANSAC_Data( ti );
+    if (!pass_Data_Read_Test) return 0;
 
-  //> (4) Convert from triplet edgels to target parameters
-  GPU_HC_.Prepare_Target_Params();
+    //> (4) Convert from triplet edgels to target parameters
+    GPU_HC_.Prepare_Target_Params();
 
-  //> (5) Transfer data from CPU to GPU
-  GPU_HC_.Data_Transfer_From_Host_To_Device();
+    //> (5) Transfer data from CPU to GPU
+    GPU_HC_.Data_Transfer_From_Host_To_Device();
 
-  //> (6) Solve the problem by GPU-HC
-  GPU_HC_.Solve_by_GPU_HC();
+    //> (6) Solve the problem by GPU-HC
+    GPU_HC_.Solve_by_GPU_HC();
+
+    //> (7) Free triplet edgels memory
+    GPU_HC_.Free_Triplet_Edgels_Mem();
+  }
+
+  //> Export all data (HC steps for now) to files
+  GPU_HC_.Export_Data();
 
   return 0;
 }
