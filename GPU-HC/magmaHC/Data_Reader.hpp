@@ -18,6 +18,7 @@
 #include <cstring>
 #include <chrono>
 #include <vector>
+#include <tuple>
 
 #include "definitions.hpp"
 
@@ -41,8 +42,9 @@ public:
     bool Read_dHdt_Indices( T* &h_dHdt_Index );
 
     //> RANSAC Data
-    bool Read_Camera_Matrices( float Pose21[12], float Pose31[12], float K[9] );
-    bool Read_Triplet_Edgels( float* &Triplet_Edge_Locations, float* &Triplet_Edge_Tangents );
+    int get_Num_Of_Triplet_Edgels( int tp_index );
+    bool Read_Camera_Matrices( float Pose21[12], float Pose31[12], float K[9], int tp_index );
+    void Read_Triplet_Edgels( float* &Triplet_Edge_Locations, float* &Triplet_Edge_Tangents );
 
     //> From Triplet Edgels to target parameters printed out for debugging
     void Print_Out_Target_Params_from_Triplet_Edgels(int sample_index, std::vector<std::array<int,3>> target_params_match_indices, magmaFloatComplex *h_Target_Params);
@@ -70,9 +72,14 @@ private:
     std::fstream File_Pose31;
     std::fstream File_Triplet_Edgels;
 
+    std::vector<std::tuple<std::pair<float, float>, std::pair<float, float>, std::pair<float, float>>> data_read_triplet_edgles_locations;
+    std::vector<std::tuple<std::pair<float, float>, std::pair<float, float>, std::pair<float, float>>> data_read_triplet_edgles_tangents;
+
     const int num_of_tracks;
     const int num_of_variables;
     const int num_of_params;
+
+    std::string RANSAC_Data_Path_;
 };
 
 #endif

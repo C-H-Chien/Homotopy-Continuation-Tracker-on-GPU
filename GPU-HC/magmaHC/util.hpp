@@ -20,10 +20,12 @@ class util {
 
 public:
     util() {
-        T_x     = new float[9];
-        E       = new float[9];
-        F       = new float[9];
-        inv_K   = new float[9];
+        T_x                = new float[9];
+        E                  = new float[9];
+        F                  = new float[9];
+        inv_K              = new float[9];
+        matrix_vector_prod = new float[3];
+        matrix_transpose   = new float[9];
     }
 
     void Cayley_To_Rotation_Matrix( float *r, float* &R_ ) {
@@ -97,6 +99,16 @@ public:
     }
 
     template< int n >
+    void get_Matrix_Vector_Product(float* M, float* V, float* &MV) {
+        for (int i = 0; i < n; i++) {
+            MV[i] = 0.0;
+            for (int j = 0; j < n; j++) {
+                MV[i] += M[(i)*n + (j)] * V[j];
+            }
+        }
+    }
+
+    template< int n >
     void get_Matrix_Transpose(float* &R) {
 
         float transpose_R[ n*n ];
@@ -153,6 +165,49 @@ public:
         T_x(2,2) = 0.0;
     }
 
+    //> compute depth rho of the first camera given a correspondence pair and relative pose (Rel_R, Rel_T)
+    float get_depth_rho( float* gamma1, float* gamma2, float* Rel_R, float* Rel_T ) {
+
+        float Rgamma2[3];
+        float depth_rho;
+        get_Matrix_Transpose< 3 >( Rel_R );                                          //> Rel_R becomes Rel_R'
+        get_Matrix_Vector_Product< 3 >(Rel_R, gamma2, matrix_vector_prod);      //> matrix_vector_prod is R'*gamma2
+
+        for (int i = 0; i < 3; i++) Rgamma2[i] = matrix_vector_prod[i];         //> Rgamma = R'*gamma2
+        depth_rho = Rel_T[2]*Rgamma2[2];                                        //> rho = (e3' * T)*(e3' * R' * gamma2)
+        get_Matrix_Vector_Product< 3 >(Rel_R, Rel_T, matrix_vector_prod);       //> matrix_vector_prod is R'*T
+        depth_rho -= matrix_vector_prod[2];                                  //> rho = (e3' * T)*(e3' * R' * gamma2) - (e3' * R' * T)
+        
+        get_Matrix_Transpose< 3 >( Rel_R );                                          //> Rel_R is Rel_R
+        get_Matrix_Vector_Product< 3 >(Rel_R, gamma1, matrix_vector_prod);      //> matrix_vector_prod is R * gamma1
+        depth_rho /= (float)(1 - matrix_vector_prod[2]*Rgamma2[2]);                    //> rho = ((e3' * T)*(e3' * R' * gamma2) - (e3' * R' * T)) / (1 - (e3' * R * gamma1)*(e3' * R' * gamma2))
+
+        return depth_rho;
+    }
+
+    float get_Reprojection_Pixels_Error( float* gamma1, float* gamma2, float* Rel_R, float* Rel_T, float K[9], float rho1 ) {
+        get_Matrix_Vector_Product< 3 >(Rel_R, gamma1, matrix_vector_prod);  //> matrix_vector_prod is R * gamma1
+        for (int i = 0; i < 3; i++) {
+            matrix_vector_prod[i] *= rho1;          //> matrix_vector_prod is rho1 * R * gamma1
+            matrix_vector_prod[i] += Rel_T[i];      //> matrix_vector_prod is rho1 * R * gamma1 + T
+        }
+        matrix_vector_prod[0] /= matrix_vector_prod[2];
+        matrix_vector_prod[1] /= matrix_vector_prod[2];
+
+        //> Convert from metric to pixels
+        matrix_vector_prod[0] = matrix_vector_prod[0] * K[0] + K[2];
+        matrix_vector_prod[1] = matrix_vector_prod[1] * K[4] + K[5];
+        gamma2[0] = gamma2[0] * K[0] + K[2];
+        gamma2[1] = gamma2[1] * K[4] + K[5];
+
+        //> Difference of gamma2 and the reprojected point, both of which are in pixels
+        matrix_vector_prod[0] -= gamma2[0];
+        matrix_vector_prod[1] -= gamma2[1];
+        matrix_vector_prod[2] = 0.0;
+
+        return get_Vector_Norm( matrix_vector_prod );
+    }
+
     void get_Essential_Matrix( float* R21, float* T21 ) {
         //> E21 = (skew_T(T21)*R21);
         get_Skew_Symmetric_Matrix(T21);
@@ -177,6 +232,8 @@ public:
         delete [] E;
         delete [] F;
         delete [] inv_K;
+        delete [] matrix_vector_prod;
+        delete [] matrix_transpose;
     }
 
 public:
@@ -186,7 +243,8 @@ private:
     float *T_x;     //> skew symmetric matrix
     float *E;
     float *inv_K;
-    
+    float *matrix_vector_prod;
+    float *matrix_transpose;
 };
 
 

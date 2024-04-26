@@ -44,9 +44,14 @@ Evaluations::Evaluations( std::string Output_Files_Path, int num_of_tracks, int 
   Min_Residual_t31 = 100.0;
 
   //> Write successful HC track solutions to files
-  std::string write_sols_file_dir = WRITE_FILES_PATH.append("GPU_Converged_HC_tracks.txt");
+  std::string write_sols_file_dir = WRITE_FILES_PATH + "GPU_Converged_HC_tracks.txt";
   GPUHC_Track_Sols_File.open(write_sols_file_dir);
-  if ( !GPUHC_Track_Sols_File.is_open() ) LOG_FILE_ERROR("write_sols_file_dir");
+  if ( !GPUHC_Track_Sols_File.is_open() ) LOG_FILE_ERROR(write_sols_file_dir);
+
+  //> Write successful HC track solutions to files
+  std::string write_actual_sols_HC_steps_file_dir = WRITE_FILES_PATH + "HC_Steps_of_Actual_Solutions.txt";
+  GPUHC_Actual_Sols_Steps_File.open(write_actual_sols_HC_steps_file_dir);
+  if ( !GPUHC_Actual_Sols_Steps_File.is_open() ) LOG_FILE_ERROR(write_actual_sols_HC_steps_file_dir);
 
   //> util class
   MVG_Utility = std::shared_ptr<util>(new util());
@@ -57,12 +62,45 @@ Evaluations::Evaluations( std::string Output_Files_Path, int num_of_tracks, int 
   Transl21  = new float[3];
   Transl31  = new float[3];
 
+  GT_Rot21     = new float[9];
+  GT_Rot31     = new float[9];
+  GT_Transl21  = new float[3];
+  GT_Transl31  = new float[3];
+
   Sol_Rotm_21 = new float[9];
   Sol_Rotm_31 = new float[9];
 
   Sol_Transl_ = new float[3];
   R_gt_R      = new float[9];
   Sols_R_     = new float[9];
+}
+
+void Evaluations::Flush_Out_Data() {
+  Num_Of_Inf_Sols = 0;
+  Num_Of_Coverged_Sols = 0;
+  Num_Of_Real_Sols = 0;
+  Num_Of_Unique_Sols = 0;
+  Percentage_Of_Convergence = 0.0;
+  Percentage_Of_Inf_Sols = 0.0;
+  Percentage_Of_Real_Sols = 0.0;
+  Percentage_Of_Unique_Sols = 0.0;
+  success_flag = false;
+  Min_Residual_R21 = 100.0;
+  Min_Residual_R31 = 100.0;
+  Min_Residual_t21 = 100.0;
+  Min_Residual_t31 = 100.0;
+  real_track_indices.clear();
+  HC_steps_of_actual_solutions.clear();
+
+  normalized_t21s.clear();
+  normalized_t31s.clear();
+  normalized_R21s.clear();
+  normalized_R31s.clear();
+  F21s.clear();
+  F31s.clear();
+
+  Max_Reproj_Inliers_Support_Views21_Index.clear();
+  Max_Reproj_Inliers_Support_Views31_Index.clear();
 }
 
 void Evaluations::Write_Converged_Sols( \
@@ -258,6 +296,8 @@ void Evaluations::Transform_GPUHC_Sols_to_Trifocal_Relative_Pose( \
       std::copy( MVG_Utility->F, MVG_Utility->F + 9, begin(FundMatrix31));
       F31s.push_back( FundMatrix31 );
 
+      //> Push back track index with real solutions. Use for GPU DEBUG
+      real_track_indices.push_back(bs);
     }
   }
 }
@@ -271,6 +311,10 @@ float Evaluations::get_Rotation_Residual(float* GT_R, std::array<float, 9> Sol_R
   MVG_Utility->get_Matrix_Transpose< 3 >(GT_R);                         //> R_{gt}'
   MVG_Utility->get_Matrix_Matrix_Product< 3 >(GT_R, Sols_R_, R_gt_R);    //> R_{gt}' * R
   float trace_RgR = MVG_Utility->get_Matrix_Trace< 3 >(R_gt_R);         //> trace( R_{gt}' * R )
+
+  //> Remember to transpose the GT rotation back
+  MVG_Utility->get_Matrix_Transpose< 3 >(GT_R);                         //> R_{gt}
+
   return acos(0.5 * (trace_RgR - 1.0));
 }
 
@@ -280,28 +324,173 @@ float Evaluations::get_Translation_Residual(float* GT_Transl, std::array<float, 
   return std::fabs(Transl_Dot_Prod - 1.0);
 }
 
-void Evaluations::Measure_Relative_Pose_Error( float GT_Pose21[12], float GT_Pose31[12] ) {
+void Evaluations::get_Solution_with_Maximal_Support( unsigned Num_Of_Triplet_Edgels, float* h_Triplet_Edge_Locations, float* h_Triplet_Edge_Tangents, float K[9] ) {
+
+  std::array<float, 3> Rel_t21;
+  std::array<float, 3> Rel_t31;
+  std::array<float, 9> Rel_R21;
+  std::array<float, 9> Rel_R31;
+
+  float *gamma1   = new float[3];
+  float *gamma2   = new float[3];
+  float *gamma3   = new float[3];
+  float *tangent1 = new float[3];
+  float *tangent2 = new float[3];
+  float *tangent3 = new float[3];
+  float *hypo_R21 = new float[9];
+  float *hypo_R31 = new float[9];
+  float *hypo_t21 = new float[3];
+  float *hypo_t31 = new float[3];
+  float rho1_21, rho1_31;
+  float reproj_error_21, reproj_error_31;
+
+  gamma1[2]   = 1.0; gamma2[2]   = 1.0; gamma3[2]   = 1.0;
+  tangent1[2] = 0.0; tangent2[2] = 0.0; tangent3[2] = 0.0;
+
+  //> Initialize
+  Max_Num_Of_Reproj_Inliers_Views21 = 0;
+  Max_Num_Of_Reproj_Inliers_Views31 = 0;
+
+  //> Loop over all hypothesis pose
+  for ( int cp_i = 0; cp_i < normalized_t21s.size(); cp_i++ ) {
+
+    //> Reset inlier counter
+    Num_Of_Reproj_Err_Inliers_Views21 = 0;
+    Num_Of_Reproj_Err_Inliers_Views31 = 0;
+
+    //> Fetch hypothesis trifocal relative pose can convert data type
+    Rel_R21 = normalized_R21s[cp_i];
+    Rel_R31 = normalized_R31s[cp_i];
+    Rel_t21 = normalized_t21s[cp_i];
+    Rel_t31 = normalized_t31s[cp_i];
+    std::copy(Rel_R21.begin(), Rel_R21.end(), hypo_R21);
+    std::copy(Rel_R31.begin(), Rel_R31.end(), hypo_R31);
+    std::copy(Rel_t21.begin(), Rel_t21.end(), hypo_t21);
+    std::copy(Rel_t31.begin(), Rel_t31.end(), hypo_t31);
+
+    //> Loop over all triplet edgels
+    for ( int ei = 0; ei < Num_Of_Triplet_Edgels; ei++ ) {
+      //> Assigne triplet edgels
+      gamma1[0] = h_Triplet_Edge_Locations(ei, 0);
+      gamma1[1] = h_Triplet_Edge_Locations(ei, 1);
+      gamma2[0] = h_Triplet_Edge_Locations(ei, 2);
+      gamma2[1] = h_Triplet_Edge_Locations(ei, 3);
+      gamma3[0] = h_Triplet_Edge_Locations(ei, 4);
+      gamma3[1] = h_Triplet_Edge_Locations(ei, 5);
+
+      tangent1[0] = h_Triplet_Edge_Tangents(ei, 0);
+      tangent1[1] = h_Triplet_Edge_Tangents(ei, 1);
+      tangent2[0] = h_Triplet_Edge_Tangents(ei, 2);
+      tangent2[1] = h_Triplet_Edge_Tangents(ei, 3);
+      tangent3[0] = h_Triplet_Edge_Tangents(ei, 4);
+      tangent3[1] = h_Triplet_Edge_Tangents(ei, 5);
+
+      //> Use Sampson error / reprojection error / tangent transfer error ?
+      //> Reprojection error of view 1&2
+      rho1_21 = MVG_Utility->get_depth_rho( gamma1, gamma2, hypo_R21, hypo_t21 );
+      reproj_error_21 = MVG_Utility->get_Reprojection_Pixels_Error( gamma1, gamma2, hypo_R21, hypo_t21, K, rho1_21 );
+
+      //> Reprojection error of view 1&3
+      rho1_31 = MVG_Utility->get_depth_rho( gamma1, gamma3, hypo_R31, hypo_t31 );
+      reproj_error_31 = MVG_Utility->get_Reprojection_Pixels_Error( gamma1, gamma3, hypo_R31, hypo_t31, K, rho1_31 );
+
+      if ( reproj_error_21 < REPROJ_ERROR_INLIER_THRESH ) Num_Of_Reproj_Err_Inliers_Views21++;
+      if ( reproj_error_31 < REPROJ_ERROR_INLIER_THRESH ) Num_Of_Reproj_Err_Inliers_Views31++;
+    }
+
+    //> Record maximal inlier support for view 1&2 and view 1&3 individually
+    if (Num_Of_Reproj_Err_Inliers_Views21 >= Max_Num_Of_Reproj_Inliers_Views21) {
+    // if (Num_Of_Reproj_Err_Inliers_Views21 == Num_Of_Triplet_Edgels) {
+      Max_Num_Of_Reproj_Inliers_Views21 = Num_Of_Reproj_Err_Inliers_Views21;
+      // Max_Reproj_Inliers_Support_Views21_Index = cp_i;
+      Max_Reproj_Inliers_Support_Views21_Index.push_back( cp_i );
+    }
+    if (Num_Of_Reproj_Err_Inliers_Views31 >= Max_Num_Of_Reproj_Inliers_Views31) {
+    // if (Num_Of_Reproj_Err_Inliers_Views31 == Num_Of_Triplet_Edgels) {
+      Max_Num_Of_Reproj_Inliers_Views31 = Num_Of_Reproj_Err_Inliers_Views31;
+      // Max_Reproj_Inliers_Support_Views31_Index = cp_i;
+      Max_Reproj_Inliers_Support_Views31_Index.push_back( cp_i );
+    }
+  }
+
+  std::cout << "Index of poses with max number of inliers views 1&2: ";
+  for (int i = 0; i < Max_Reproj_Inliers_Support_Views21_Index.size(); i++) std::cout << Max_Reproj_Inliers_Support_Views21_Index[i] << ", ";
+  std::cout << std::endl;
+  std::cout << "Index of poses with max number of inliers views 1&3: ";
+  for (int i = 0; i < Max_Reproj_Inliers_Support_Views31_Index.size(); i++) std::cout << Max_Reproj_Inliers_Support_Views31_Index[i] << ", ";
+  std::cout << std::endl;
+
+  //> Now with solution index supported by maximal inliers, fetch the corresponding solution(s)
+  R21_w_Max_Supports = normalized_R21s[ Max_Reproj_Inliers_Support_Views21_Index[0] ];
+  t21_w_Max_Supports = normalized_t21s[ Max_Reproj_Inliers_Support_Views21_Index[0] ];
+  R31_w_Max_Supports = normalized_R31s[ Max_Reproj_Inliers_Support_Views31_Index[0] ];
+  t31_w_Max_Supports = normalized_t31s[ Max_Reproj_Inliers_Support_Views31_Index[0] ];
+
+  delete [] gamma1;
+  delete [] gamma2;
+  delete [] gamma3;
+  delete [] tangent1;
+  delete [] tangent2;
+  delete [] tangent3;
+
+  delete [] hypo_R21;
+  delete [] hypo_R31;
+  delete [] hypo_t21;
+  delete [] hypo_t31;
+}
+
+void Evaluations::get_HC_Steps_of_Actual_Sols( magmaFloatComplex *h_Debug_Purpose ) {
+
+  int fetch_HC_steps;
+
+  //> Find the union of HC steps from views 1&2 and 1&3
+  std::vector<int>::iterator it, st;
+  std::vector<int> union_HC_steps( Max_Reproj_Inliers_Support_Views21_Index.size() + Max_Reproj_Inliers_Support_Views31_Index.size());
+  it = std::set_union( Max_Reproj_Inliers_Support_Views21_Index.begin(), Max_Reproj_Inliers_Support_Views21_Index.end(), \
+                       Max_Reproj_Inliers_Support_Views31_Index.begin(), Max_Reproj_Inliers_Support_Views31_Index.end(), \
+                       union_HC_steps.begin() );
+  
+  for (st = union_HC_steps.begin(); st != it; ++st) {
+    fetch_HC_steps = MAGMA_C_REAL( h_Debug_Purpose[ real_track_indices[ *st ] ] );
+    HC_steps_of_actual_solutions.push_back( fetch_HC_steps );
+  } 
+}
+
+void Evaluations::Measure_Relative_Pose_Error( float GT_Pose21[12], float GT_Pose31[12], magmaFloatComplex *h_Debug_Purpose ) {
   //> Decompose the GT pose into rotation and translation
-  float* GT_Rot21     = new float[9];
-  float* GT_Rot31     = new float[9];
-  float* GT_Transl21  = new float[3];
-  float* GT_Transl31  = new float[3];
-
-  for (int i = 0; i < 9; i++) {
-    GT_Rot21[i] = GT_Pose21[i];
-    GT_Rot31[i] = GT_Pose31[i];
-  }
-
-  int t_index = 0;
-  for (int i = 9; i < 12; i++) {
-    GT_Transl21[t_index] = GT_Pose21[i];
-    GT_Transl31[t_index] = GT_Pose31[i];
-    t_index++;
-  }
+  get_GT_Rotation( GT_Pose21, GT_Rot21 );
+  get_GT_Rotation( GT_Pose31, GT_Rot31 );
+  get_GT_Translation( GT_Pose21, GT_Transl21 );
+  get_GT_Translation( GT_Pose31, GT_Transl31 );
 
   //> Normalize the GT translations
   MVG_Utility->Normalize_Translation_Vector( GT_Transl21 );
   MVG_Utility->Normalize_Translation_Vector( GT_Transl31 );
+
+  Min_Residual_R21 = get_Rotation_Residual( GT_Rot21, R21_w_Max_Supports );
+  Min_Residual_R31 = get_Rotation_Residual( GT_Rot31, R31_w_Max_Supports );
+  Min_Residual_t21 = get_Translation_Residual( GT_Transl21, t21_w_Max_Supports );
+  Min_Residual_t31 = get_Translation_Residual( GT_Transl31, t31_w_Max_Supports );
+
+  if (Min_Residual_t21 < TRANSL_RESIDUAL_TOL && Min_Residual_t31 < TRANSL_RESIDUAL_TOL && \
+      Min_Residual_R21 < ROT_RESIDUAL_TOL && Min_Residual_R31 < ROT_RESIDUAL_TOL) {
+    success_flag = true;
+  }
+}
+
+void Evaluations::Measure_Relative_Pose_Error_from_All_Real_Sols( float GT_Pose21[12], float GT_Pose31[12], magmaFloatComplex *h_Debug_Purpose ) {
+
+  //> Decompose the GT pose into rotation and translation
+  get_GT_Rotation( GT_Pose21, GT_Rot21 );
+  get_GT_Rotation( GT_Pose31, GT_Rot31 );
+  get_GT_Translation( GT_Pose21, GT_Transl21 );
+  get_GT_Translation( GT_Pose31, GT_Transl31 );
+
+  //> Normalize the GT translations
+  MVG_Utility->Normalize_Translation_Vector( GT_Transl21 );
+  MVG_Utility->Normalize_Translation_Vector( GT_Transl31 );
+
+  std::cout << " ====================================================== " << std::endl;
 
   //> Measure the relative pose error only when there is a valid solution
   if (!normalized_R21s.empty()) {
@@ -315,32 +504,42 @@ void Evaluations::Measure_Relative_Pose_Error( float GT_Pose21[12], float GT_Pos
       Residual_t21 = get_Translation_Residual(GT_Transl21, normalized_t21s[si]);
       Residual_t31 = get_Translation_Residual(GT_Transl31, normalized_t31s[si]);
 
+      if (Residual_R21 < Min_Residual_R21) Min_Residual_R21 = Residual_R21;
+      if (Residual_R31 < Min_Residual_R31) Min_Residual_R31 = Residual_R31;
+      if (Residual_t21 < Min_Residual_t21) Min_Residual_t21 = Residual_t21;
+      if (Residual_t31 < Min_Residual_t31) Min_Residual_t31 = Residual_t31;
+
       if (Residual_t21 < TRANSL_RESIDUAL_TOL && Residual_t31 < TRANSL_RESIDUAL_TOL && \
           Residual_R21 < ROT_RESIDUAL_TOL && Residual_R31 < ROT_RESIDUAL_TOL) {
-            if (Residual_R21 < Min_Residual_R21) Min_Residual_R21 = Residual_R21;
-            if (Residual_R31 < Min_Residual_R31) Min_Residual_R31 = Residual_R31;
-            if (Residual_t21 < Min_Residual_t21) Min_Residual_t21 = Residual_t21;
-            if (Residual_t31 < Min_Residual_t31) Min_Residual_t31 = Residual_t31;
-            success_flag = true;
+            
+          success_flag = true;
+            
+          //> HC steps, if GPU_DEBUG is activated
+// #if GPU_DEBUG
+          // std::cout << si << ", ";
+          // int fetch_HC_steps = MAGMA_C_REAL( h_Debug_Purpose[ real_track_indices[si] ] );
+          // HC_steps_of_actual_solutions.push_back( fetch_HC_steps );          
+// #endif
       }
     }
   }
-  
-  delete [] GT_Rot21;
-  delete [] GT_Rot31;
-  delete [] GT_Transl21;
-  delete [] GT_Transl31;
 }
 
 Evaluations::~Evaluations() {
   //> Close all files
   GPUHC_Track_Sols_File.close();
+  GPUHC_Actual_Sols_Steps_File.close();
 
   //> Free memory
   delete [] Rot21;
   delete [] Rot31;
   delete [] Transl21;
   delete [] Transl31;
+
+  delete [] GT_Rot21;
+  delete [] GT_Rot31;
+  delete [] GT_Transl21;
+  delete [] GT_Transl31;
 
   delete [] Sol_Rotm_21;
   delete [] Sol_Rotm_31;
