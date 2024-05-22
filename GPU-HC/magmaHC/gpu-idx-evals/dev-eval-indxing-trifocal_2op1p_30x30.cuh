@@ -50,14 +50,25 @@ compute_param_homotopy(
   magmaFloatComplex *s_target_params
 )
 {
+  
     //> 30 threads with 33 parameters
     //> floor(33/30) = 1
     //> mod(33/30) = 3
-    s_param_homotopy[ tx ] = s_target_params[ tx ] * t + s_start_params[ tx ] * (1.0-t);
+#if APPLY_GAMMA_TRICK
+  s_param_homotopy[ tx ] = s_target_params[ tx ] * ( GAMMA * t / (1.0 + GAMMA_MINUS_ONE * t) ) \
+                         + s_start_params[ tx ] * ( 1.0 - GAMMA * t / (1.0 + GAMMA_MINUS_ONE * t) );
+  if (tx < 3) {
+    s_param_homotopy[ tx + Num_Of_Vars ] = s_target_params[ tx + Num_Of_Vars ] * ( GAMMA * t / (1.0 + GAMMA_MINUS_ONE * t) ) \
+                                         + s_start_params[ tx + Num_Of_Vars ] * ( 1.0 - GAMMA * t / (1.0 + GAMMA_MINUS_ONE * t) );
+  }
+#else
+  s_param_homotopy[ tx ] = s_target_params[ tx ] * t + s_start_params[ tx ] * (1.0-t);
+  if (tx < 3) {
+    s_param_homotopy[ tx + Num_Of_Vars ] = s_target_params[ tx + Num_Of_Vars ] * t + s_start_params[ tx + Num_Of_Vars ] * (1.0-t);
+  }
+#endif
 
-    if (tx < 3) {
-      s_param_homotopy[ tx + Num_Of_Vars ] = s_target_params[ tx + Num_Of_Vars ] * t + s_start_params[ tx + Num_Of_Vars ] * (1.0-t);
-    }
+    
 }
 
 //> Jacobian \partial H / \partial x parallel evaluation

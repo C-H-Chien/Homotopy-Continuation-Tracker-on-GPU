@@ -1,14 +1,14 @@
 #ifndef magmaHC_kernels_h
 #define magmaHC_kernels_h
-// ============================================================================
-// Header file declaring all kernels
+// ========================================================================================================
+// Header file for GPU-HC Solver
 //
 // Modifications
-//    Chiang-Heng Chien  22-10-31:   Initially Created (Copied from other repos)
+//    Chiang-Heng Chien  24-01-31:   Initially Created (Copied and recised from the original GPU-HC repo)
 //
 //> (c) LEMS, Brown University
 //> Chiang-Heng Chien (chiang-heng_chien@brown.edu)
-// ============================================================================
+// ========================================================================================================
 #include <stdio.h>
 #include <stdlib.h>
 #include <cstdio>
@@ -26,6 +26,7 @@
 
 #define h_Triplet_Edge_Locations(i,j)    h_Triplet_Edge_Locations[(i) * 6 + (j)]
 #define h_Triplet_Edge_Tangents(i,j)     h_Triplet_Edge_Tangents[(i) * 6 + (j)]
+#define h_Triplet_Point_Locations(i,j)   h_Triplet_Point_Locations[(i) * 6 + (j)]
 
 class Data_Reader;
 class Evaluations;
@@ -55,6 +56,7 @@ class GPU_HC_Solver {
     magmaFloatComplex       *h_dHdt_PHC_Coeffs;
     T_index_mat             *h_dHdx_Index;
     T_index_mat             *h_dHdt_Index;
+    float                   *h_Triplet_Point_Locations;      //> in metrics
     float                   *h_Triplet_Edge_Locations;      //> in metrics
     float                   *h_Triplet_Edge_Tangents;       //> in metrics
     magmaFloatComplex       *h_Debug_Purpose;
@@ -117,6 +119,9 @@ private:
     int GPUHC_Max_Steps;
     int GPUHC_Max_Correction_Steps;
     int GPUHC_delta_t_incremental_steps;
+    std::string Feature_Type;
+    std::string Problem_Task;
+    int Num_Of_Views;
     int Num_Of_Vars;
     int Num_Of_Params;
     int Num_Of_Tracks;
@@ -128,9 +133,12 @@ private:
 
     //> RANSAC data
     std::string RANSAC_Dataset_Name;
-    int Num_Of_Triplet_Edgels;
+    int Num_Of_Correspondences;
     int Num_Of_Coeffs_From_Params;
     std::vector<int> GPUHC_Actual_Sols_Steps_Collections;
+    std::vector<int> GPUHC_Actual_Sols_Min_Steps_Collections;
+
+    
 };
 
 #endif

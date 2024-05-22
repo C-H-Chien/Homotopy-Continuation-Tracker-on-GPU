@@ -50,6 +50,9 @@ GPU_HC_Solver<T_index_mat>::GPU_HC_Solver(YAML::Node Problem_Settings_File): Pro
     GPUHC_Max_Correction_Steps      = Problem_Setting_YAML_File["GPUHC_Max_Correction_Steps"].as<int>();
     GPUHC_delta_t_incremental_steps = Problem_Setting_YAML_File["GPUHC_Num_Of_Steps_to_Increase_Delta_t"].as<int>();
     //> (3) Problem Specifications
+    Feature_Type                    = Problem_Setting_YAML_File["Feature_Type"].as<std::string>();
+    Problem_Task                    = Problem_Setting_YAML_File["Problem_Task"].as<std::string>();
+    Num_Of_Views                    = Problem_Setting_YAML_File["Num_Of_Views"].as<int>();
     Num_Of_Vars                     = Problem_Setting_YAML_File["Num_Of_Vars"].as<int>();
     Num_Of_Params                   = Problem_Setting_YAML_File["Num_Of_Params"].as<int>();
     Num_Of_Tracks                   = Problem_Setting_YAML_File["Num_Of_Tracks"].as<int>();
@@ -60,7 +63,6 @@ GPU_HC_Solver<T_index_mat>::GPU_HC_Solver(YAML::Node Problem_Settings_File): Pro
     Max_Order_Of_T                  = Problem_Setting_YAML_File["Max_Order_Of_T"].as<int>();
     //> (4) RANSAC data
     RANSAC_Dataset_Name             = Problem_Setting_YAML_File["RANSAC_Dataset"].as<std::string>();
-    // Num_Of_Triplet_Edgels           = Problem_Setting_YAML_File["Num_Of_Triplet_Edgels"].as<int>();
 
     //> Check if conversion from problem parameters to polynomial coefficients is needed
     if (GPUHC_type == std::string("P2C")) {
@@ -72,12 +74,10 @@ GPU_HC_Solver<T_index_mat>::GPU_HC_Solver(YAML::Node Problem_Settings_File): Pro
     //> Initialization
     magma_init();
     magma_print_environment();
-
     magma_getdevice( &cdev );
     magma_queue_create( cdev, &my_queue );
 
     //> Define the array sizes
-    // ldd_params            = magma_roundup( Num_Of_Params, 32 );   //> multiple of 32 by default
     dHdx_Index_Size       = Num_Of_Vars*Num_Of_Vars*dHdx_Max_Terms*dHdx_Max_Parts;
     dHdt_Index_Size       = Num_Of_Vars*dHdt_Max_Terms*dHdt_Max_Parts;
     dHdx_PHC_Coeffs_Size  = (Use_P2C) ? ((Num_Of_Coeffs_From_Params+1)*(Max_Order_Of_T+1)) : 0;
@@ -99,10 +99,7 @@ GPU_HC_Solver<T_index_mat>::GPU_HC_Solver(YAML::Node Problem_Settings_File): Pro
     Problem_File_Path = std::string("../../problems/") + HC_problem;
     RANSAC_Data_File_Path = std::string("../../RANSAC_Data/") + HC_problem + "/" + RANSAC_Dataset_Name;
     Write_Files_Path = std::string("../../") + WRITE_FILES_FOLDER;
-
-    // //> Data reader
-    // Load_Problem_Data = std::shared_ptr<Data_Reader>(new Data_Reader(Problem_File_Path, RANSAC_Data_File_Path, Num_Of_Tracks, Num_Of_Vars, Num_Of_Params));
-
+    
     //> Evaluations
     Evaluate_GPUHC_Sols = std::shared_ptr<Evaluations>(new Evaluations(Write_Files_Path, Num_Of_Tracks, Num_Of_Vars));
 }
@@ -122,8 +119,6 @@ void GPU_HC_Solver<T_index_mat>::Allocate_Arrays() {
 
     h_dHdx_Index              = new T_index_mat[ dHdx_Index_Size ];
     h_dHdt_Index              = new T_index_mat[ dHdt_Index_Size ];
-    // h_Triplet_Edge_Locations  = new float[ Num_Of_Triplet_Edgels*2*3 ];
-    // h_Triplet_Edge_Tangents   = new float[ Num_Of_Triplet_Edgels*2*3 ];
     h_is_GPU_HC_Sol_Converge  = new bool[ Num_Of_Tracks*NUM_OF_RANSAC_ITERATIONS ];
     h_is_GPU_HC_Sol_Infinity  = new bool[ Num_Of_Tracks*NUM_OF_RANSAC_ITERATIONS ];
 
@@ -183,23 +178,77 @@ template< typename T_index_mat >
 bool GPU_HC_Solver<T_index_mat>::Read_RANSAC_Data( int tp_index ) {
     //> Load problem data to arrays
     bool is_Data_Read_Successfully = false;
-
-    //> (0) get number of triplet edgels 
-    Num_Of_Triplet_Edgels = Load_Problem_Data->get_Num_Of_Triplet_Edgels( tp_index );
-    if (Num_Of_Triplet_Edgels == 0)
+    
+    if (Num_Of_Views > SUPPORTING_MAX_NUM_OF_VIEWS) {
+        LOG_ERROR("Need to add more views in the Data_Reader and GPU_HC_Solver code!");
         return false;
-    LOG_INFOR_MESG("Number of triplet edgels = " + std::to_string(Num_Of_Triplet_Edgels));
-
-    //> Allocate triplet edgel locations and tangents arrays
-    h_Triplet_Edge_Locations  = new float[ Num_Of_Triplet_Edgels*2*3 ];
-    h_Triplet_Edge_Tangents   = new float[ Num_Of_Triplet_Edgels*2*3 ];
-
-    //> (1) Camera intrinsic/extrinsic matrices
-    is_Data_Read_Successfully = Load_Problem_Data->Read_Camera_Matrices( h_Camera_Pose21, h_Camera_Pose31, h_Camera_Intrinsic_Matrix, tp_index );
-    if (!is_Data_Read_Successfully) { LOG_DATA_LOAD_ERROR("Camera Matrices"); return false; }
-
-    //> (2) Triplet edgel correspondences, convert data to edgel locations and tangents arrays
-    Load_Problem_Data->Read_Triplet_Edgels( h_Triplet_Edge_Locations, h_Triplet_Edge_Tangents );
+    }
+    //> (1) Camera intrinsic/extrinsic matrices and feature correspondences
+    switch (Num_Of_Views) {
+        case 2:
+            if (Load_Problem_Data->Read_Camera_Matrices( h_Camera_Pose, h_Camera_Intrinsic_Matrix, tp_index ) ) {
+                if (Feature_Type == "point") {
+                    //> TODO
+                }
+                else if (Feature_Type == "quiver") {
+                    //> TODO
+                }
+            }
+            else {
+                LOG_DATA_LOAD_ERROR("Failed to read and allocate camera matrices"); 
+                return false;
+            }
+        case 3:
+            if ( Load_Problem_Data->Read_Camera_Matrices( h_Camera_Pose21, h_Camera_Pose31, h_Camera_Intrinsic_Matrix, tp_index ) ) {
+                if (Feature_Type == "point") {
+                    //> Allocate and read triplet points 
+                    if (Problem_Task == "relative_pose") {
+                        Num_Of_Correspondences = Load_Problem_Data->get_Num_Of_Triplet_Point_Matches( tp_index, true );
+                        if (Num_Of_Correspondences == 0) return false;
+                        h_Triplet_Point_Locations = new float[Num_Of_Correspondences*2*3];
+                        is_Data_Read_Successfully = Load_Problem_Data->Read_Triplet_Point_Pairs( h_Triplet_Point_Locations );
+                    }
+                    else if (Problem_Task == "absolute_pose") {
+                        //> [TODO] There is no absolute trifocal pose estimation problem based on points so far!!!
+                    }
+                    else {
+                        LOG_ERROR("Invalid problem task!"); 
+                        return false;
+                    }
+                }
+                else if (Feature_Type == "quiver") {
+                    //> Allocate and read triplet points 
+                    if (Problem_Task == "relative_pose") {
+                        Num_Of_Correspondences = Load_Problem_Data->get_Num_Of_Triplet_Edgels( tp_index, true );
+                        if (Num_Of_Correspondences == 0) return false;
+                        h_Triplet_Edge_Locations  = new float[ Num_Of_Correspondences*2*3 ];
+                        h_Triplet_Edge_Tangents   = new float[ Num_Of_Correspondences*2*3 ];
+                        is_Data_Read_Successfully = Load_Problem_Data->Read_Triplet_Edgels( h_Triplet_Edge_Locations, h_Triplet_Edge_Tangents );
+                    }
+                    else if (Problem_Task == "absolute_pose") {
+                        //> [TODO] There is no absolute trifocal pose estimation problem based on quivers so far!!!
+                    }
+                    else {
+                        LOG_ERROR("Invalid problem task!"); 
+                        return false;
+                    }
+                }
+                else { 
+                    LOG_ERROR("Invalid feature type!"); 
+                    return false; 
+                }
+            }
+            else {
+                LOG_DATA_LOAD_ERROR("Failed to read and allocate camera matrices"); 
+                return false;
+            }
+        default: 
+    }
+    if (!is_Data_Read_Successfully) { 
+        LOG_DATA_LOAD_ERROR("Camera Matrices and Observation data (feature points, quivers, lines, etc)"); 
+        return false; 
+    }
+    LOG_INFOR_MESG("Number of correspondences = " + std::to_string(Num_Of_Correspondences));
     return true;
 }
 
@@ -214,7 +263,7 @@ void GPU_HC_Solver<T_index_mat>::Prepare_Target_Params() {
         //> (1) Converting from triplet edgels to target parameters
         //> Pick 3 triplet edgels
         while(1) {
-            for (int ri = 0; ri < 3; ri++) Edgel_Indx[ri] = rand() % Num_Of_Triplet_Edgels;
+            for (int ri = 0; ri < 3; ri++) Edgel_Indx[ri] = rand() % Num_Of_Correspondences;
             if ( (Edgel_Indx[0] != Edgel_Indx[1]) && (Edgel_Indx[0] != Edgel_Indx[1]) && (Edgel_Indx[1] != Edgel_Indx[2]) ) break;
         }
         for (int i = 0; i < 3; i++) picked_samples[i] = Edgel_Indx[i];
@@ -277,20 +326,6 @@ template< typename T_index_mat >
 void GPU_HC_Solver<T_index_mat>::Solve_by_GPU_HC() {
     std::cout << "GPU computing ..." << std::endl << std::endl;
 
-    // if (HC_problem == "5pt_rel_pos_geo_form_quat") {
-    //     gpu_time = kernel_HC_Solver_5pt_rel_pos_geo_form_quat
-    //                (my_queue, GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
-    //                 d_Start_Sols_array, d_Homotopy_Sols_array, \
-    //                 d_dHdx_Index, d_dHdt_Index, d_dHdx_PHC_Coeffs, d_dHdt_PHC_Coeffs, \
-    //                 d_is_GPU_HC_Sol_Converge, d_is_GPU_HC_Sol_Infinity, d_Debug_Purpose);
-    // }
-    // else if (HC_problem == "5pt_rel_pos_alg_form_quat") {
-    //     gpu_time = kernel_HC_Solver_5pt_rel_pos_alg_form_quat
-    //                (my_queue, GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
-    //                 d_Start_Sols_array, d_Homotopy_Sols_array, \
-    //                 d_dHdx_Index, d_dHdt_Index, d_dHdx_PHC_Coeffs, d_dHdt_PHC_Coeffs, \
-    //                 d_is_GPU_HC_Sol_Converge, d_is_GPU_HC_Sol_Infinity, d_Debug_Purpose);
-    // } 
     if (HC_problem == "trifocal_2op1p_30x30") {
         gpu_time = kernel_HC_Solver_trifocal_2op1p_30x30 \
                    (my_queue, GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
@@ -335,38 +370,52 @@ void GPU_HC_Solver<T_index_mat>::Solve_by_GPU_HC() {
     // std::cout << " - Number of Unique Solutions:          " << Evaluate_GPUHC_Sols->Num_Of_Unique_Sols << std::endl;
 
     Evaluate_GPUHC_Sols->Transform_GPUHC_Sols_to_Trifocal_Relative_Pose( h_GPU_HC_Track_Sols, h_is_GPU_HC_Sol_Converge, h_Camera_Intrinsic_Matrix );
-    Evaluate_GPUHC_Sols->get_Solution_with_Maximal_Support( Num_Of_Triplet_Edgels, h_Triplet_Edge_Locations, h_Triplet_Edge_Tangents, h_Camera_Intrinsic_Matrix );
+    // Evaluate_GPUHC_Sols->get_Solution_with_Maximal_Support( Num_Of_Correspondences, h_Triplet_Edge_Locations, h_Triplet_Edge_Tangents, h_Camera_Intrinsic_Matrix );
+    Evaluate_GPUHC_Sols->Measure_Relative_Pose_Error_from_All_Real_Sols( h_Camera_Pose21, h_Camera_Pose31, h_Debug_Purpose );
     Evaluate_GPUHC_Sols->Measure_Relative_Pose_Error( h_Camera_Pose21, h_Camera_Pose31, h_Debug_Purpose );
     Evaluate_GPUHC_Sols->get_HC_Steps_of_Actual_Sols( h_Debug_Purpose );
+    Evaluate_GPUHC_Sols->get_Polynomial_Residuals( h_GPU_HC_Track_Sols, h_Target_Params, h_is_GPU_HC_Sol_Converge );
+    
     // Evaluate_GPUHC_Sols->Flush_Out_Data();
     // Evaluate_GPUHC_Sols->Transform_GPUHC_Sols_to_Trifocal_Relative_Pose( h_GPU_HC_Track_Sols, h_is_GPU_HC_Sol_Converge, h_Camera_Intrinsic_Matrix );
     // Evaluate_GPUHC_Sols->Measure_Relative_Pose_Error_from_All_Real_Sols( h_Camera_Pose21, h_Camera_Pose31, h_Debug_Purpose );
-    
-    for (int i = 0; i < Evaluate_GPUHC_Sols->HC_steps_of_actual_solutions.size(); i++) {
-        std::cout << Evaluate_GPUHC_Sols->HC_steps_of_actual_solutions[i] << ", ";
-        GPUHC_Actual_Sols_Steps_Collections.push_back( Evaluate_GPUHC_Sols->HC_steps_of_actual_solutions[i] );
-    }
-    std::cout << std::endl;
 
     if (Evaluate_GPUHC_Sols->success_flag) {
         std::cout << "## Found solution matched with GT: " << std::endl;
-        std::cout << " - Residual of R21: " << Evaluate_GPUHC_Sols->Min_Residual_R21 << " (rad)" << std::endl;
-        std::cout << " - Residual of R31: " << Evaluate_GPUHC_Sols->Min_Residual_R31 << " (rad)" << std::endl;
-        std::cout << " - Residual of t21: " << Evaluate_GPUHC_Sols->Min_Residual_t21 << " (m)" << std::endl;
-        std::cout << " - Residual of t31: " << Evaluate_GPUHC_Sols->Min_Residual_t31 << " (m)" << std::endl;
+        std::cout << " - Residual of R21:                   " << Evaluate_GPUHC_Sols->Min_Residual_R21 << " (rad)" << std::endl;
+        std::cout << " - Residual of R31:                   " << Evaluate_GPUHC_Sols->Min_Residual_R31 << " (rad)" << std::endl;
+        std::cout << " - Residual of t21:                   " << Evaluate_GPUHC_Sols->Min_Residual_t21 << " (m)" << std::endl;
+        std::cout << " - Residual of t31:                   " << Evaluate_GPUHC_Sols->Min_Residual_t31 << " (m)" << std::endl;
+        // std::cout << " - Max number of inliers (Views 1&2): " << Evaluate_GPUHC_Sols->Max_Num_Of_Reproj_Inliers_Views21 << std::endl;
+        // std::cout << " - Max number of inliers (Views 1&3): " << Evaluate_GPUHC_Sols->Max_Num_Of_Reproj_Inliers_Views31 << std::endl;
+#if GPU_DEBUG
+        for (int i = 0; i < Evaluate_GPUHC_Sols->HC_steps_of_actual_solutions.size(); i++) {
+            std::cout << Evaluate_GPUHC_Sols->HC_steps_of_actual_solutions[i] << ", ";
+            GPUHC_Actual_Sols_Steps_Collections.push_back( Evaluate_GPUHC_Sols->HC_steps_of_actual_solutions[i] );
+        }
+        std::cout << std::endl;
+        if (!Evaluate_GPUHC_Sols->HC_steps_of_actual_solutions.empty()) {
+            int min_HC_step = *std::min_element(Evaluate_GPUHC_Sols->HC_steps_of_actual_solutions.begin(), Evaluate_GPUHC_Sols->HC_steps_of_actual_solutions.end());
+            GPUHC_Actual_Sols_Min_Steps_Collections.push_back( min_HC_step );
+        }
+#endif
     }
     else {
         std::cout << "## Not found a solution matched with GT: " << std::endl;
-        std::cout << " - Residual of R21: " << Evaluate_GPUHC_Sols->Min_Residual_R21 << " (rad)" << std::endl;
-        std::cout << " - Residual of R31: " << Evaluate_GPUHC_Sols->Min_Residual_R31 << " (rad)" << std::endl;
-        std::cout << " - Residual of t21: " << Evaluate_GPUHC_Sols->Min_Residual_t21 << " (m)" << std::endl;
-        std::cout << " - Residual of t31: " << Evaluate_GPUHC_Sols->Min_Residual_t31 << " (m)" << std::endl;
+        std::cout << " - Residual of R21:                   " << Evaluate_GPUHC_Sols->Min_Residual_R21 << " (rad)" << std::endl;
+        std::cout << " - Residual of R31:                   " << Evaluate_GPUHC_Sols->Min_Residual_R31 << " (rad)" << std::endl;
+        std::cout << " - Residual of t21:                   " << Evaluate_GPUHC_Sols->Min_Residual_t21 << " (m)" << std::endl;
+        std::cout << " - Residual of t31:                   " << Evaluate_GPUHC_Sols->Min_Residual_t31 << " (m)" << std::endl;
+        // std::cout << " - Max number of inliers (Views 1&2): " << Evaluate_GPUHC_Sols->Max_Num_Of_Reproj_Inliers_Views21 << std::endl;
+        // std::cout << " - Max number of inliers (Views 1&3): " << Evaluate_GPUHC_Sols->Max_Num_Of_Reproj_Inliers_Views31 << std::endl;
     }
 }
 
 template< typename T_index_mat >
 void GPU_HC_Solver<T_index_mat>::Export_Data() {
     Evaluate_GPUHC_Sols->Write_HC_Steps_of_Actual_Solutions( GPUHC_Actual_Sols_Steps_Collections );
+    Evaluate_GPUHC_Sols->Write_HC_Min_Steps_of_Actual_Solutions( GPUHC_Actual_Sols_Min_Steps_Collections );
+    Evaluate_GPUHC_Sols->Write_Polynomial_Residuals();
 }
 
 template< typename T_index_mat >

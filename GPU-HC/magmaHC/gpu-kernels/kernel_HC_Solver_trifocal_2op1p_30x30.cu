@@ -98,6 +98,9 @@ HC_solver_trifocal_2op1p_30x30(
   float* s_delta_t_scale                  = (float*)(sipiv       + (Num_Of_Vars+1));
   int* s_RK_Coeffs                        = (int*)(s_delta_t_scale + 1);
 #endif
+#if GPU_DEBUG
+  int* s_num_of_HC_steps                  = s_RK_Coeffs + 1;
+#endif
 
   //> Static allocated shared memories
 #if USE_8BIT_IN_SHARED_MEM
@@ -138,6 +141,9 @@ HC_solver_trifocal_2op1p_30x30(
     s_track_last_success[Num_Of_Vars] = MAGMA_C_MAKE(1.0, 0.0);
     s_param_homotopy[Num_Of_Params]   = MAGMA_C_ONE;
     sipiv[Num_Of_Vars]                = 0;
+#if GPU_DEBUG
+    s_num_of_HC_steps[0]              = 0;
+#endif
   }
   magmablas_syncwarp();
 
@@ -155,6 +161,9 @@ HC_solver_trifocal_2op1p_30x30(
 
   volatile int hc_max_steps = HC_max_steps;
   for (int step = 0; step <= hc_max_steps; step++) {
+#if GPU_DEBUG
+    if (tx == 0) s_num_of_HC_steps[0]++;
+#endif
     if (t0 < 1.0 && (1.0-t0 > 0.0000001)) {
 
       // ===================================================================
@@ -166,11 +175,11 @@ HC_solver_trifocal_2op1p_30x30(
 
 #if USE_DEPTH_TO_TRUNCATE_PATH
       if (check_depths_sign) {
-        are_Depths_All_Positive = (MAGMA_C_REAL(s_track[0]) > 0) && (MAGMA_C_REAL(s_track[1]) > 0) && (MAGMA_C_REAL(s_track[2]) > 0) && (MAGMA_C_REAL(s_track[3]) > 0) &&
-                                  (MAGMA_C_REAL(s_track[4]) > 0) && (MAGMA_C_REAL(s_track[5]) > 0) && (MAGMA_C_REAL(s_track[6]) > 0) && (MAGMA_C_REAL(s_track[7]) > 0);
+        are_Depths_All_Positive = ((MAGMA_C_REAL(s_track[0]) > 0) && (MAGMA_C_REAL(s_track[1]) > 0) && (MAGMA_C_REAL(s_track[2]) > 0) && (MAGMA_C_REAL(s_track[3]) > 0)) ||
+                                  ((MAGMA_C_REAL(s_track[4]) > 0) && (MAGMA_C_REAL(s_track[5]) > 0) && (MAGMA_C_REAL(s_track[6]) > 0) && (MAGMA_C_REAL(s_track[7]) > 0));
         if (t0 > 0) check_depths_sign = are_Depths_All_Positive ? false : true;
       }
-      if (t0 > 0.95 && check_depths_sign) break;
+      if (t0 > TRUNCATE_HC_PATH_THRESH && check_depths_sign) break;
 #endif
 
       if (end_zone) {
@@ -210,7 +219,11 @@ HC_solver_trifocal_2op1p_30x30(
 
         if (rk_step < 3) {
 
+#if APPLY_GAMMA_TRICK
+          s_sols[tx] += sB[tx] * delta_t * (s_RK_Coeffs[0] * 1.0/6.0) * (GAMMA / ((GAMMA_MINUS_ONE * t0 + 1.0) * (GAMMA_MINUS_ONE * t0 + 1.0)));
+#else
           s_sols[tx] += sB[tx] * delta_t * (s_RK_Coeffs[0] * 1.0/6.0);
+#endif
           s_track[tx] = (s_RK_Coeffs[0] > 1) ? s_track_last_success[tx] : s_track[tx];
           
           if (tx == 0) {
@@ -219,7 +232,11 @@ HC_solver_trifocal_2op1p_30x30(
           }
           magmablas_syncwarp();
 
+#if APPLY_GAMMA_TRICK
+          sB[tx] *= s_delta_t_scale[0] * (GAMMA / ((GAMMA_MINUS_ONE * t0 + 1.0) * (GAMMA_MINUS_ONE * t0 + 1.0)));
+#else
           sB[tx] *= s_delta_t_scale[0];
+#endif
           s_track[tx] += sB[tx];
           t0 += scales[rk_step] * one_half_delta_t;
         }
@@ -306,7 +323,7 @@ HC_solver_trifocal_2op1p_30x30(
     d_is_GPU_HC_Sol_Infinity[ batchid ] = (r_isInfFail) ? (1) : (0);
   }
 #if GPU_DEBUG
-  d_Debug_Purpose[ batchid ] = (t0 >= 1.0 || (1.0-t0 <= 0.0000001)) ? MAGMA_C_MAKE(1.0, 0.0) : MAGMA_C_MAKE(t0, delta_t);
+  d_Debug_Purpose[ batchid ] = (t0 >= 1.0 || (1.0-t0 <= 0.0000001)) ? MAGMA_C_MAKE(s_num_of_HC_steps[0], 0.0) : MAGMA_C_MAKE(t0, delta_t);
 #endif
 }
 
@@ -362,6 +379,9 @@ kernel_HC_Solver_trifocal_2op1p_30x30(
   shmem += (1)               * sizeof(int);                         //> predictor successes counter
   shmem += (1)               * sizeof(int);                         //> Loopy Runge-Kutta coefficients
   shmem += (1)               * sizeof(float);                       //> Loopy Runge-Kutta delta t
+#if GPU_DEBUG
+  shmem += (1)               * sizeof(int);                         //> Counting HC steps for each track
+#endif
 
   //> Get max. dynamic shared memory on the GPU
   int nthreads_max, shmem_max = 0;

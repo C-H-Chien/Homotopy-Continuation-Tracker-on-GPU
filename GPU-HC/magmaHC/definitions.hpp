@@ -6,12 +6,15 @@
 
 #define WRITE_FILES_FOLDER                      std::string("Output_Write_Files/")
 
+//> General Settings
+#define SUPPORTING_MAX_NUM_OF_VIEWS             (3)
+
 //> RANSAC Settings
 #define NUM_OF_RANSAC_ITERATIONS                (100)
 #define IMAG_PART_TOL                           (1e-5)
 #define ROT_RESIDUAL_TOL                        (1e-1)
-#define TRANSL_RESIDUAL_TOL                     (1e-1)
-#define TEST_RANSAC_TIMES                       (1)
+#define TRANSL_RESIDUAL_TOL                     (2e-1)
+#define TEST_RANSAC_TIMES                       (30)
 #define REPROJ_ERROR_INLIER_THRESH              (2) //> in pixels
 
 //> Settings for GPU-HC Kernel
@@ -39,7 +42,7 @@
 
 //> Settings for Debugging
 #define SHOW_PROBLEM_SETTINGS                   (true)
-#define GPU_DEBUG                               (true)
+#define GPU_DEBUG                               (false)
 #define DATA_READER_DEBUG                       (false)
 #define RANSAC_DEBUG                            (false)
 

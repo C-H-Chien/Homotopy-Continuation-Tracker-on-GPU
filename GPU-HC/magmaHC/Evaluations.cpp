@@ -16,7 +16,7 @@
 #include <iostream>
 #include <iomanip>
 #include <cstring>
-#include <chrono>
+#include <algorithm>
 #include <vector>
 #include <math.h>
 
@@ -48,10 +48,20 @@ Evaluations::Evaluations( std::string Output_Files_Path, int num_of_tracks, int 
   GPUHC_Track_Sols_File.open(write_sols_file_dir);
   if ( !GPUHC_Track_Sols_File.is_open() ) LOG_FILE_ERROR(write_sols_file_dir);
 
-  //> Write successful HC track solutions to files
+  //> Write successful HC track solutions HC steps to a file
   std::string write_actual_sols_HC_steps_file_dir = WRITE_FILES_PATH + "HC_Steps_of_Actual_Solutions.txt";
   GPUHC_Actual_Sols_Steps_File.open(write_actual_sols_HC_steps_file_dir);
   if ( !GPUHC_Actual_Sols_Steps_File.is_open() ) LOG_FILE_ERROR(write_actual_sols_HC_steps_file_dir);
+
+  //> Write successful HC track solutions minimal HC steps to a file
+  std::string write_actual_sols_min_HC_steps_file_dir = WRITE_FILES_PATH + "HC_Min_Steps_of_Actual_Solutions.txt";
+  GPUHC_Actual_Sols_Min_Steps_File.open(write_actual_sols_min_HC_steps_file_dir);
+  if ( !GPUHC_Actual_Sols_Min_Steps_File.is_open() ) LOG_FILE_ERROR(write_actual_sols_min_HC_steps_file_dir);
+
+  //> Write polynomial residuals (RHS of polynomials)
+  std::string write_poly_residuals_file_dir = WRITE_FILES_PATH + "Poly_Residuals.txt";
+  GPUHC_Poly_Residuals_File.open(write_poly_residuals_file_dir);
+  if ( !GPUHC_Poly_Residuals_File.is_open() ) LOG_FILE_ERROR(write_poly_residuals_file_dir);
 
   //> util class
   MVG_Utility = std::shared_ptr<util>(new util());
@@ -91,6 +101,8 @@ void Evaluations::Flush_Out_Data() {
   Min_Residual_t31 = 100.0;
   real_track_indices.clear();
   HC_steps_of_actual_solutions.clear();
+  // RHS_Poly_Residuals_for_All_Sols.clear();
+  // RHS_Poly_Residuals_for_Actual_Sols.clear();
 
   normalized_t21s.clear();
   normalized_t31s.clear();
@@ -351,6 +363,9 @@ void Evaluations::get_Solution_with_Maximal_Support( unsigned Num_Of_Triplet_Edg
   Max_Num_Of_Reproj_Inliers_Views21 = 0;
   Max_Num_Of_Reproj_Inliers_Views31 = 0;
 
+  int max_support_pose_index_views21 = -1;
+  int max_support_pose_index_views31 = -1;
+
   //> Loop over all hypothesis pose
   for ( int cp_i = 0; cp_i < normalized_t21s.size(); cp_i++ ) {
 
@@ -398,20 +413,28 @@ void Evaluations::get_Solution_with_Maximal_Support( unsigned Num_Of_Triplet_Edg
       if ( reproj_error_31 < REPROJ_ERROR_INLIER_THRESH ) Num_Of_Reproj_Err_Inliers_Views31++;
     }
 
-    //> Record maximal inlier support for view 1&2 and view 1&3 individually
-    if (Num_Of_Reproj_Err_Inliers_Views21 >= Max_Num_Of_Reproj_Inliers_Views21) {
+    // //> Record maximal inlier support for view 1&2 and view 1&3 individually
     // if (Num_Of_Reproj_Err_Inliers_Views21 == Num_Of_Triplet_Edgels) {
+    //   Max_Num_Of_Reproj_Inliers_Views21 = Num_Of_Reproj_Err_Inliers_Views21;
+    //   Max_Reproj_Inliers_Support_Views21_Index.push_back( cp_i );
+    // }
+    // if (Num_Of_Reproj_Err_Inliers_Views31 == Num_Of_Triplet_Edgels) {
+    //   Max_Num_Of_Reproj_Inliers_Views31 = Num_Of_Reproj_Err_Inliers_Views31;
+    //   Max_Reproj_Inliers_Support_Views31_Index.push_back( cp_i );
+    // }
+
+    if (Num_Of_Reproj_Err_Inliers_Views21 >= Max_Num_Of_Reproj_Inliers_Views21) {
       Max_Num_Of_Reproj_Inliers_Views21 = Num_Of_Reproj_Err_Inliers_Views21;
-      // Max_Reproj_Inliers_Support_Views21_Index = cp_i;
-      Max_Reproj_Inliers_Support_Views21_Index.push_back( cp_i );
+      max_support_pose_index_views21 = cp_i;
     }
     if (Num_Of_Reproj_Err_Inliers_Views31 >= Max_Num_Of_Reproj_Inliers_Views31) {
-    // if (Num_Of_Reproj_Err_Inliers_Views31 == Num_Of_Triplet_Edgels) {
       Max_Num_Of_Reproj_Inliers_Views31 = Num_Of_Reproj_Err_Inliers_Views31;
-      // Max_Reproj_Inliers_Support_Views31_Index = cp_i;
-      Max_Reproj_Inliers_Support_Views31_Index.push_back( cp_i );
+      max_support_pose_index_views31 = cp_i;
     }
   }
+
+  Max_Reproj_Inliers_Support_Views21_Index.push_back( max_support_pose_index_views21 );
+  Max_Reproj_Inliers_Support_Views31_Index.push_back( max_support_pose_index_views31 );
 
   std::cout << "Index of poses with max number of inliers views 1&2: ";
   for (int i = 0; i < Max_Reproj_Inliers_Support_Views21_Index.size(); i++) std::cout << Max_Reproj_Inliers_Support_Views21_Index[i] << ", ";
@@ -472,6 +495,19 @@ void Evaluations::Measure_Relative_Pose_Error( float GT_Pose21[12], float GT_Pos
   Min_Residual_t21 = get_Translation_Residual( GT_Transl21, t21_w_Max_Supports );
   Min_Residual_t31 = get_Translation_Residual( GT_Transl31, t31_w_Max_Supports );
 
+  std::cout << "R21: ";
+  for (int i = 0; i < 9; i++) std::cout << R21_w_Max_Supports[i] << ", ";
+  std::cout << std::endl;
+  std::cout << "R31: ";
+  for (int i = 0; i < 9; i++) std::cout << R31_w_Max_Supports[i] << ", ";
+  std::cout << std::endl;
+  std::cout << "t21: ";
+  for (int i = 0; i < 3; i++) std::cout << t21_w_Max_Supports[i] << ", ";
+  std::cout << std::endl;
+  std::cout << "t31: ";
+  for (int i = 0; i < 3; i++) std::cout << t31_w_Max_Supports[i] << ", ";
+  std::cout << std::endl;
+
   if (Min_Residual_t21 < TRANSL_RESIDUAL_TOL && Min_Residual_t31 < TRANSL_RESIDUAL_TOL && \
       Min_Residual_R21 < ROT_RESIDUAL_TOL && Min_Residual_R31 < ROT_RESIDUAL_TOL) {
     success_flag = true;
@@ -509,26 +545,166 @@ void Evaluations::Measure_Relative_Pose_Error_from_All_Real_Sols( float GT_Pose2
       if (Residual_t21 < Min_Residual_t21) Min_Residual_t21 = Residual_t21;
       if (Residual_t31 < Min_Residual_t31) Min_Residual_t31 = Residual_t31;
 
-      if (Residual_t21 < TRANSL_RESIDUAL_TOL && Residual_t31 < TRANSL_RESIDUAL_TOL && \
-          Residual_R21 < ROT_RESIDUAL_TOL && Residual_R31 < ROT_RESIDUAL_TOL) {
-            
-          success_flag = true;
-            
-          //> HC steps, if GPU_DEBUG is activated
-// #if GPU_DEBUG
-          // std::cout << si << ", ";
-          // int fetch_HC_steps = MAGMA_C_REAL( h_Debug_Purpose[ real_track_indices[si] ] );
-          // HC_steps_of_actual_solutions.push_back( fetch_HC_steps );          
-// #endif
+      if (Residual_t21 < TRANSL_RESIDUAL_TOL && Residual_R21 < ROT_RESIDUAL_TOL) {
+        Max_Reproj_Inliers_Support_Views21_Index.push_back( si );
+      }
+
+      if (Residual_t31 < TRANSL_RESIDUAL_TOL && Residual_R31 < ROT_RESIDUAL_TOL) {
+        Max_Reproj_Inliers_Support_Views31_Index.push_back( si );
       }
     }
   }
+
+  std::cout << "Index of poses with max number of inliers views 1&2: ";
+  for (int i = 0; i < Max_Reproj_Inliers_Support_Views21_Index.size(); i++) std::cout << Max_Reproj_Inliers_Support_Views21_Index[i] << ", ";
+  std::cout << std::endl;
+  std::cout << "Index of poses with max number of inliers views 1&3: ";
+  for (int i = 0; i < Max_Reproj_Inliers_Support_Views31_Index.size(); i++) std::cout << Max_Reproj_Inliers_Support_Views31_Index[i] << ", ";
+  std::cout << std::endl;
+
+  R21_w_Max_Supports = normalized_R21s[ Max_Reproj_Inliers_Support_Views21_Index[0] ];
+  t21_w_Max_Supports = normalized_t21s[ Max_Reproj_Inliers_Support_Views21_Index[0] ];
+  R31_w_Max_Supports = normalized_R31s[ Max_Reproj_Inliers_Support_Views31_Index[0] ];
+  t31_w_Max_Supports = normalized_t31s[ Max_Reproj_Inliers_Support_Views31_Index[0] ];
+}
+
+void Evaluations::get_Polynomial_Residuals( magmaFloatComplex *h_GPU_HC_Track_Sols, magmaFloatComplex *h_Target_Params, bool *h_is_GPU_HC_Sol_Converge ) 
+{
+  int track_index = 0;
+  for (int ri = 0; ri < NUM_OF_RANSAC_ITERATIONS; ri++) {
+    for (int bs = 0; bs < num_of_tracks; bs++) {
+      if ( (h_is_GPU_HC_Sol_Converge + num_of_tracks * ri)[ bs ] ) {
+        get_RHS_of_Trifocal_Problem_Polys( (h_GPU_HC_Track_Sols + num_of_tracks*(num_of_variables+1)*ri + bs*(num_of_variables+1)), \
+                                            h_Target_Params, RHS_of_Trifocal_Pose_Problem_Polys );
+        
+        double residual = 0.0;
+        for (int vs = 0; vs < num_of_variables; vs++) {
+          residual += sqrt(MAGMA_C_REAL(RHS_of_Trifocal_Pose_Problem_Polys[vs])*MAGMA_C_REAL(RHS_of_Trifocal_Pose_Problem_Polys[vs]) + \
+                           MAGMA_C_IMAG(RHS_of_Trifocal_Pose_Problem_Polys[vs])*MAGMA_C_IMAG(RHS_of_Trifocal_Pose_Problem_Polys[vs]));
+        }
+        residual /= num_of_variables;
+
+        //> Something's fishy if the residual is too big. Probably caused by overflowing floating point numbers.
+        if (residual > 0.03 && residual < 0.1) {
+          RHS_Poly_Residuals_for_All_Sols.push_back( residual );
+
+          //> Push back polynomial residuals of real solutions
+          if (!real_track_indices.empty()) {
+            if (std::find(real_track_indices.begin(), real_track_indices.end(), track_index) != real_track_indices.end()) {
+              RHS_Poly_Residuals_for_Actual_Sols.push_back( residual );
+            }
+          }
+        }
+      }
+      track_index++;
+    }
+  }
+}
+
+void Evaluations::get_RHS_of_Trifocal_Problem_Polys( magmaFloatComplex *h_GPU_HC_Track_Sols, magmaFloatComplex *h_Target_Params, magmaFloatComplex RHS_of_Trifocal_Pose_Problem_Polys[30] ) {
+
+  magmaFloatComplex x1 = h_GPU_HC_Track_Sols[0];
+  magmaFloatComplex x2 = h_GPU_HC_Track_Sols[1];
+  magmaFloatComplex x3 = h_GPU_HC_Track_Sols[2];
+  magmaFloatComplex x4 = h_GPU_HC_Track_Sols[3];
+  magmaFloatComplex x5 = h_GPU_HC_Track_Sols[4];
+  magmaFloatComplex x6 = h_GPU_HC_Track_Sols[5];
+  magmaFloatComplex x7 = h_GPU_HC_Track_Sols[6];
+  magmaFloatComplex x8 = h_GPU_HC_Track_Sols[7];
+  magmaFloatComplex x9 = h_GPU_HC_Track_Sols[8];
+  magmaFloatComplex x10 = h_GPU_HC_Track_Sols[9];
+  magmaFloatComplex x11 = h_GPU_HC_Track_Sols[10];
+  magmaFloatComplex x12 = h_GPU_HC_Track_Sols[11];
+  magmaFloatComplex x13 = h_GPU_HC_Track_Sols[12];
+  magmaFloatComplex x14 = h_GPU_HC_Track_Sols[13];
+  magmaFloatComplex x15 = h_GPU_HC_Track_Sols[14];
+  magmaFloatComplex x16 = h_GPU_HC_Track_Sols[15];
+  magmaFloatComplex x17 = h_GPU_HC_Track_Sols[16];
+  magmaFloatComplex x18 = h_GPU_HC_Track_Sols[17];
+  magmaFloatComplex x19 = h_GPU_HC_Track_Sols[18];
+  magmaFloatComplex x20 = h_GPU_HC_Track_Sols[19];
+  magmaFloatComplex x21 = h_GPU_HC_Track_Sols[20];
+  magmaFloatComplex x22 = h_GPU_HC_Track_Sols[21];
+  magmaFloatComplex x23 = h_GPU_HC_Track_Sols[22];
+  magmaFloatComplex x24 = h_GPU_HC_Track_Sols[23];
+  magmaFloatComplex x25 = h_GPU_HC_Track_Sols[24];
+  magmaFloatComplex x26 = h_GPU_HC_Track_Sols[25];
+  magmaFloatComplex x27 = h_GPU_HC_Track_Sols[26];
+  magmaFloatComplex x28 = h_GPU_HC_Track_Sols[27];
+  magmaFloatComplex x29 = h_GPU_HC_Track_Sols[28];
+  magmaFloatComplex x30 = h_GPU_HC_Track_Sols[29];
+  magmaFloatComplex p1 = h_Target_Params[0];
+  magmaFloatComplex p2 = h_Target_Params[1];
+  magmaFloatComplex p3 = h_Target_Params[2];
+  magmaFloatComplex p4 = h_Target_Params[3];
+  magmaFloatComplex p5 = h_Target_Params[4];
+  magmaFloatComplex p6 = h_Target_Params[5];
+  magmaFloatComplex p7 = h_Target_Params[6];
+  magmaFloatComplex p8 = h_Target_Params[7];
+  magmaFloatComplex p9 = h_Target_Params[8];
+  magmaFloatComplex p10 = h_Target_Params[9];
+  magmaFloatComplex p11 = h_Target_Params[10];
+  magmaFloatComplex p12 = h_Target_Params[11];
+  magmaFloatComplex p13 = h_Target_Params[12];
+  magmaFloatComplex p14 = h_Target_Params[13];
+  magmaFloatComplex p15 = h_Target_Params[14];
+  magmaFloatComplex p16 = h_Target_Params[15];
+  magmaFloatComplex p17 = h_Target_Params[16];
+  magmaFloatComplex p18 = h_Target_Params[17];
+  magmaFloatComplex p19 = h_Target_Params[18];
+  magmaFloatComplex p20 = h_Target_Params[19];
+  magmaFloatComplex p21 = h_Target_Params[20];
+  magmaFloatComplex p22 = h_Target_Params[21];
+  magmaFloatComplex p23 = h_Target_Params[22];
+  magmaFloatComplex p24 = h_Target_Params[23];
+  magmaFloatComplex p25 = h_Target_Params[24];
+  magmaFloatComplex p26 = h_Target_Params[25];
+  magmaFloatComplex p27 = h_Target_Params[26];
+  magmaFloatComplex p28 = h_Target_Params[27];
+  magmaFloatComplex p29 = h_Target_Params[28];
+  magmaFloatComplex p30 = h_Target_Params[29];
+  magmaFloatComplex p31 = h_Target_Params[30];
+  magmaFloatComplex p32 = h_Target_Params[31];
+  magmaFloatComplex p33 = h_Target_Params[32];
+
+  RHS_of_Trifocal_Pose_Problem_Polys[0] = -p1*p31*x25*x25 - 2*p2*p31*x25*x26 - 2*p31*x25*x27 + p1*p31*x26*x26 - 2*p31*x26 + p1*p31*x27*x27 + 2*p2*p31*x27 - x19 - p1*p31 + p3*x3;
+  RHS_of_Trifocal_Pose_Problem_Polys[1] = p2*p31*x25*x25 - 2*p1*p31*x25*x26 + 2*p31*x25 - p2*p31*x26*x26 - 2*p31*x26*x27 + p2*p31*x27*x27 - 2*p1*p31*x27 - x20 - p2*p31 + p4*x3;
+  RHS_of_Trifocal_Pose_Problem_Polys[2] = p31*x25*x25 - 2*p1*p31*x25*x27 - 2*p2*p31*x25 + p31*x26*x26 - 2*p2*p31*x26*x27 + 2*p1*p31*x26 - p31*x27*x27 - p31 + x3 - x21;
+  RHS_of_Trifocal_Pose_Problem_Polys[3] = - p7*x1*x25*x25 - 2*p8*x1*x25*x26 - 2*x1*x25*x27 + p7*x1*x26*x26 - 2*x1*x26 + p7*x1*x27*x27 + 2*p8*x1*x27 - x19 - p7*x1 + p9*x4;
+  RHS_of_Trifocal_Pose_Problem_Polys[4] = p8*x1*x25*x25 - 2*p7*x1*x25*x26 + 2*x1*x25 - p8*x1*x26*x26 - 2*x1*x26*x27 + p8*x1*x27*x27 - 2*p7*x1*x27 - x20 - p8*x1 + p10*x4;
+  RHS_of_Trifocal_Pose_Problem_Polys[5] = x1*x25*x25 - 2*p7*x1*x25*x27 - 2*p8*x1*x25 + x1*x26*x26 - 2*p8*x1*x26*x27 + 2*p7*x1*x26 - x1*x27*x27 - x1 + x4 - x21;
+  RHS_of_Trifocal_Pose_Problem_Polys[6] = - p13*x2*x25*x25 - 2*p14*x2*x25*x26 - 2*x2*x25*x27 + p13*x2*x26*x26 - 2*x2*x26 + p13*x2*x27*x27 + 2*p14*x2*x27 - x19 - p13*x2 + p15*x5;
+  RHS_of_Trifocal_Pose_Problem_Polys[7] = p14*x2*x25*x25 - 2*p13*x2*x25*x26 + 2*x2*x25 - p14*x2*x26*x26 - 2*x2*x26*x27 + p14*x2*x27*x27 - 2*p13*x2*x27 - x20 - p14*x2 + p16*x5;
+  RHS_of_Trifocal_Pose_Problem_Polys[8] = x2*x25*x25 - 2*p13*x2*x25*x27 - 2*p14*x2*x25 + x2*x26*x26 - 2*p14*x2*x26*x27 + 2*p13*x2*x26 - x2*x27*x27 - x2 + x5 - x21;
+  RHS_of_Trifocal_Pose_Problem_Polys[9] = - p1*p31*x28*x28 - 2*p2*p31*x28*x29 - 2*p31*x28*x30 + p1*p31*x29*x29 - 2*p31*x29 + p1*p31*x30*x30 + 2*p2*p31*x30 - x22 - p1*p31 + p5*x6;
+  RHS_of_Trifocal_Pose_Problem_Polys[10] = p2*p31*x28*x28 - 2*p1*p31*x28*x29 + 2*p31*x28 - p2*p31*x29*x29 - 2*p31*x29*x30 + p2*p31*x30*x30 - 2*p1*p31*x30 - x23 - p2*p31 + p6*x6;
+  RHS_of_Trifocal_Pose_Problem_Polys[11] = p31*x28*x28 - 2*p1*p31*x28*x30 - 2*p2*p31*x28 + p31*x29*x29 - 2*p2*p31*x29*x30 + 2*p1*p31*x29 - p31*x30*x30 - p31 + x6 - x24;
+  RHS_of_Trifocal_Pose_Problem_Polys[12] = - p7*x1*x28*x28 - 2*p8*x1*x28*x29 - 2*x1*x28*x30 + p7*x1*x29*x29 - 2*x1*x29 + p7*x1*x30*x30 + 2*p8*x1*x30 - x22 - p7*x1 + p11*x7;
+  RHS_of_Trifocal_Pose_Problem_Polys[13] = p8*x1*x28*x28 - 2*p7*x1*x28*x29 + 2*x1*x28 - p8*x1*x29*x29 - 2*x1*x29*x30 + p8*x1*x30*x30 - 2*p7*x1*x30 - x23 - p8*x1 + p12*x7;
+  RHS_of_Trifocal_Pose_Problem_Polys[14] = x1*x28*x28 - 2*p7*x1*x28*x30 - 2*p8*x1*x28 + x1*x29*x29 - 2*p8*x1*x29*x30 + 2*p7*x1*x29 - x1*x30*x30 - x1 + x7 - x24;
+  RHS_of_Trifocal_Pose_Problem_Polys[15] = - p13*x2*x28*x28 - 2*p14*x2*x28*x29 - 2*x2*x28*x30 + p13*x2*x29*x29 - 2*x2*x29 + p13*x2*x30*x30 + 2*p14*x2*x30 - x22 - p13*x2 + p17*x8;
+  RHS_of_Trifocal_Pose_Problem_Polys[16] = p14*x2*x28*x28 - 2*p13*x2*x28*x29 + 2*x2*x28 - p14*x2*x29*x29 - 2*x2*x29*x30 + p14*x2*x30*x30 - 2*p13*x2*x30 - x23 - p14*x2 + p18*x8;
+  RHS_of_Trifocal_Pose_Problem_Polys[17] = x2*x28*x28 - 2*p13*x2*x28*x30 - 2*p14*x2*x28 + x2*x29*x29 - 2*p14*x2*x29*x30 + 2*p13*x2*x29 - x2*x30*x30 - x2 + x8 - x24;
+  RHS_of_Trifocal_Pose_Problem_Polys[18] = p3*x9 - p1*p32 - p19*x13 + p21*x14 - 2*p32*x26 - p1*p32*x25*x25 + p1*p32*x26*x26 + p1*p32*x27*x27 - p19*x13*x25*x25 + p19*x13*x26*x26 + p19*x13*x27*x27 + 2*p2*p32*x27 + 2*p20*x13*x27 - 2*p32*x25*x27 - 2*p2*p32*x25*x26 - 2*p20*x13*x25*x26;
+  RHS_of_Trifocal_Pose_Problem_Polys[19] = p4*x9 - p2*p32 - p20*x13 + p22*x14 + 2*p32*x25 + p2*p32*x25*x25 - p2*p32*x26*x26 + p2*p32*x27*x27 + p20*x13*x25*x25 - p20*x13*x26*x26 + p20*x13*x27*x27 - 2*p1*p32*x27 - 2*p19*x13*x27 - 2*p32*x26*x27 - 2*p1*p32*x25*x26 - 2*p19*x13*x25*x26;
+  RHS_of_Trifocal_Pose_Problem_Polys[20] = x9 - p32 + p32*x25*x25 + p32*x26*x26 - p32*x27*x27 + 2*p1*p32*x26 - 2*p2*p32*x25 + 2*p19*x13*x26 - 2*p20*x13*x25 - 2*p1*p32*x25*x27 - 2*p2*p32*x26*x27 - 2*p19*x13*x25*x27 - 2*p20*x13*x26*x27;
+  RHS_of_Trifocal_Pose_Problem_Polys[21] = p9*x11 - p7*p33 - p25*x16 + p27*x17 - 2*p33*x26 - p7*p33*x25*x25 + p7*p33*x26*x26 + p7*p33*x27*x27 - p25*x16*x25*x25 + p25*x16*x26*x26 + p25*x16*x27*x27 + 2*p8*p33*x27 + 2*p26*x16*x27 - 2*p33*x25*x27 - 2*p8*p33*x25*x26 - 2*p26*x16*x25*x26;
+  RHS_of_Trifocal_Pose_Problem_Polys[22] = p10*x11 - p8*p33 - p26*x16 + p28*x17 + 2*p33*x25 + p8*p33*x25*x25 - p8*p33*x26*x26 + p8*p33*x27*x27 + p26*x16*x25*x25 - p26*x16*x26*x26 + p26*x16*x27*x27 - 2*p7*p33*x27 - 2*p25*x16*x27 - 2*p33*x26*x27 - 2*p7*p33*x25*x26 - 2*p25*x16*x25*x26;
+  RHS_of_Trifocal_Pose_Problem_Polys[23] = x11 - p33 + p33*x25*x25 + p33*x26*x26 - p33*x27*x27 + 2*p7*p33*x26 - 2*p8*p33*x25 + 2*p25*x16*x26 - 2*p26*x16*x25 - 2*p7*p33*x25*x27 - 2*p8*p33*x26*x27 - 2*p25*x16*x25*x27 - 2*p26*x16*x26*x27;
+  RHS_of_Trifocal_Pose_Problem_Polys[24] = p5*x10 - p1*p32 - p19*x13 + p23*x15 - 2*p32*x29 - p1*p32*x28*x28 + p1*p32*x29*x29 + p1*p32*x30*x30 - p19*x13*x28*x28 + p19*x13*x29*x29 + p19*x13*x30*x30 + 2*p2*p32*x30 + 2*p20*x13*x30 - 2*p32*x28*x30 - 2*p2*p32*x28*x29 - 2*p20*x13*x28*x29;
+  RHS_of_Trifocal_Pose_Problem_Polys[25] = p6*x10 - p2*p32 - p20*x13 + p24*x15 + 2*p32*x28 + p2*p32*x28*x28 - p2*p32*x29*x29 + p2*p32*x30*x30 + p20*x13*x28*x28 - p20*x13*x29*x29 + p20*x13*x30*x30 - 2*p1*p32*x30 - 2*p19*x13*x30 - 2*p32*x29*x30 - 2*p1*p32*x28*x29 - 2*p19*x13*x28*x29;
+  RHS_of_Trifocal_Pose_Problem_Polys[26] = x10 - p32 + p32*x28*x28 + p32*x29*x29 - p32*x30*x30 + 2*p1*p32*x29 - 2*p2*p32*x28 + 2*p19*x13*x29 - 2*p20*x13*x28 - 2*p1*p32*x28*x30 - 2*p2*p32*x29*x30 - 2*p19*x13*x28*x30 - 2*p20*x13*x29*x30;
+  RHS_of_Trifocal_Pose_Problem_Polys[27] = p11*x12 - p7*p33 - p25*x16 + p29*x18 - 2*p33*x29 - p7*p33*x28*x28 + p7*p33*x29*x29 + p7*p33*x30*x30 - p25*x16*x28*x28 + p25*x16*x29*x29 + p25*x16*x30*x30 + 2*p8*p33*x30 + 2*p26*x16*x30 - 2*p33*x28*x30 - 2*p8*p33*x28*x29 - 2*p26*x16*x28*x29;
+  RHS_of_Trifocal_Pose_Problem_Polys[28] = p12*x12 - p8*p33 - p26*x16 + p30*x18 + 2*p33*x28 + p8*p33*x28*x28 - p8*p33*x29*x29 + p8*p33*x30*x30 + p26*x16*x28*x28 - p26*x16*x29*x29 + p26*x16*x30*x30 - 2*p7*p33*x30 - 2*p25*x16*x30 - 2*p33*x29*x30 - 2*p7*p33*x28*x29 - 2*p25*x16*x28*x29;
+  RHS_of_Trifocal_Pose_Problem_Polys[29] = x12 - p33 + p33*x28*x28 + p33*x29*x29 - p33*x30*x30 + 2*p7*p33*x29 - 2*p8*p33*x28 + 2*p25*x16*x29 - 2*p26*x16*x28 - 2*p7*p33*x28*x30 - 2*p8*p33*x29*x30 - 2*p25*x16*x28*x30 - 2*p26*x16*x29*x30;
 }
 
 Evaluations::~Evaluations() {
   //> Close all files
   GPUHC_Track_Sols_File.close();
   GPUHC_Actual_Sols_Steps_File.close();
+  GPUHC_Actual_Sols_Min_Steps_File.close();
+  GPUHC_Poly_Residuals_File.close();
 
   //> Free memory
   delete [] Rot21;

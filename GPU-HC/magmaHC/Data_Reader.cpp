@@ -164,6 +164,47 @@ bool Data_Reader::Read_dHdt_Indices( T* &h_dHdt_Index ) {
     }
 }
 
+//> For 2-views
+bool Data_Reader::Read_Camera_Matrices( float Pose[12], float K[9], int tp_index ) {
+    //> Create padded file index
+    std::string str_File_Index = std::to_string(tp_index);
+    int min_str_length = (3 < str_File_Index.length()) ? 3 : str_File_Index.length();
+    auto padded_Index = std::string(3 - min_str_length, '0') + str_File_Index;
+    File_Name_Pose    = RANSAC_Data_Path_ + "/GT_Poses/GT_Poses_" + padded_Index + ".txt";
+
+    //> Intrinsic matrix
+    File_Intrinsic_Matrix.open(File_Name_Intrinsic_Matrix, std::ios_base::in);
+    if (!File_Intrinsic_Matrix) {
+        LOG_FILE_ERROR(File_Name_Intrinsic_Matrix);
+        return false;
+    }
+    else {
+        int d = 0;
+        float entry = 0.0;
+        while (File_Intrinsic_Matrix >> entry) {
+            K[d] = entry;
+            d++;
+        }
+    }
+
+    //> Extrinsic matrix - Camera pose between view 1 & 2
+    File_Pose.open(File_Name_Pose, std::ios_base::in);
+    if (!File_Pose) {
+        LOG_FILE_ERROR(File_Name_Pose);
+        return false;
+    }
+    else {
+        int d = 0;
+        float entry = 0.0;
+        while (File_Pose >> entry) {
+            Pose[d] = entry;
+            d++;
+        }
+    }
+    return true;
+}
+
+//> For 3-views
 bool Data_Reader::Read_Camera_Matrices( float Pose21[12], float Pose31[12], float K[9], int tp_index ) {
 
     //> Create padded file index
@@ -242,8 +283,52 @@ bool Data_Reader::Read_Camera_Matrices( float Pose21[12], float Pose31[12], floa
     return true;
 }
 
+//> Read triplet point correspondences
+int Data_Reader::get_Num_Of_Triplet_Point_Matches( int tp_index, bool is_relative_pose ) {
+
+    //> Create padded file index
+    std::string str_File_Index = std::to_string(tp_index);
+    int min_str_length = (3 < str_File_Index.length()) ? 3 : str_File_Index.length();
+    auto padded_Index = std::string(3 - min_str_length, '0') + str_File_Index;
+
+    File_Name_Triplet_Points = RANSAC_Data_Path_ + "/Triplet_Matches/Triplet_Matches_" + padded_Index + ".txt";
+    File_Triplet_Points.open(File_Name_Triplet_Points, std::ios_base::in);
+    if (!File_Triplet_Points) {
+        LOG_FILE_ERROR(File_Name_Triplet_Points);
+        return 0;
+    }
+    else {
+        if (is_relative_pose) {
+            float point1_x, point1_y, point2_x, point2_y, point3_x, point3_y;
+            while ( File_Triplet_Points >> point1_x >> point1_y >> point2_x >> point2_y >> point3_x >> point3_y ) {
+                auto point1 = std::make_pair(point1_x, point1_y);
+                auto point2 = std::make_pair(point2_x, point2_y);
+                auto point3 = std::make_pair(point3_x, point3_y);
+                data_read_triplet_point_matches_locations.push_back( std::make_tuple(point1, point2, point3) );
+            }
+        }
+        else {
+            //> [TODO]
+        }
+    }
+    return data_read_triplet_point_matches_locations.size();
+}
+
+void Data_Reader::Read_Triplet_Point_Pairs( float* &Triplet_Point_Locations ) {
+
+    //> Assign tuple values to arrays
+    for (int p = 0; p < data_read_triplet_point_matches_locations.size(); p++) {
+        Triplet_Point_Locations(p, 0) = std::get<0>(data_read_triplet_point_matches_locations[p]).first;
+        Triplet_Point_Locations(p, 1) = std::get<0>(data_read_triplet_point_matches_locations[p]).second;
+        Triplet_Point_Locations(p, 2) = std::get<1>(data_read_triplet_point_matches_locations[p]).first;
+        Triplet_Point_Locations(p, 3) = std::get<1>(data_read_triplet_point_matches_locations[p]).second;
+        Triplet_Point_Locations(p, 4) = std::get<2>(data_read_triplet_point_matches_locations[p]).first;
+        Triplet_Point_Locations(p, 5) = std::get<2>(data_read_triplet_point_matches_locations[p]).second;
+    }
+}
+
 //> Read triplet edgel correspondences file. Return number of triplet edgels.
-int Data_Reader::get_Num_Of_Triplet_Edgels( int tp_index ) {
+int Data_Reader::get_Num_Of_Triplet_Edgels( int tp_index, bool is_relative_pose ) {
 
     //> Create padded file index
     std::string str_File_Index = std::to_string(tp_index);
@@ -257,20 +342,25 @@ int Data_Reader::get_Num_Of_Triplet_Edgels( int tp_index ) {
         return 0;
     }
     else {
-        float edge1_x, edge1_y, tgt1_x, tgt1_y, edge2_x, edge2_y, tgt2_x, tgt2_y, edge3_x, edge3_y, tgt3_x, tgt3_y;
-        while (File_Triplet_Edgels >> edge1_x >> edge1_y >> tgt1_x >> tgt1_y >> \
-                                      edge2_x >> edge2_y >> tgt2_x >> tgt2_y >> \
-                                      edge3_x >> edge3_y >> tgt3_x >> tgt3_y) {
+        if (is_relative_pose) {
+            float edge1_x, edge1_y, tgt1_x, tgt1_y, edge2_x, edge2_y, tgt2_x, tgt2_y, edge3_x, edge3_y, tgt3_x, tgt3_y;
+            while (File_Triplet_Edgels >> edge1_x >> edge1_y >> tgt1_x >> tgt1_y >> \
+                                        edge2_x >> edge2_y >> tgt2_x >> tgt2_y >> \
+                                        edge3_x >> edge3_y >> tgt3_x >> tgt3_y) {
 
-            auto edge1 = std::make_pair(edge1_x, edge1_y);
-            auto edge2 = std::make_pair(edge2_x, edge2_y);
-            auto edge3 = std::make_pair(edge3_x, edge3_y);
-            auto tangent1 = std::make_pair(tgt1_x, tgt1_y);
-            auto tangent2 = std::make_pair(tgt2_x, tgt2_y);
-            auto tangent3 = std::make_pair(tgt3_x, tgt3_y);
+                auto edge1 = std::make_pair(edge1_x, edge1_y);
+                auto edge2 = std::make_pair(edge2_x, edge2_y);
+                auto edge3 = std::make_pair(edge3_x, edge3_y);
+                auto tangent1 = std::make_pair(tgt1_x, tgt1_y);
+                auto tangent2 = std::make_pair(tgt2_x, tgt2_y);
+                auto tangent3 = std::make_pair(tgt3_x, tgt3_y);
 
-            data_read_triplet_edgles_locations.push_back( std::make_tuple(edge1, edge2, edge3) );
-            data_read_triplet_edgles_tangents.push_back( std::make_tuple(tangent1, tangent2, tangent3) );
+                data_read_triplet_edgles_locations.push_back( std::make_tuple(edge1, edge2, edge3) );
+                data_read_triplet_edgles_tangents.push_back( std::make_tuple(tangent1, tangent2, tangent3) );
+            }
+        }
+        else {
+
         }
     }
 

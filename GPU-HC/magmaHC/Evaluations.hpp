@@ -20,6 +20,10 @@
 
 //> MAGMA
 #include "magma_v2.h"
+#include "magma_lapack.h"
+#include "magma_internal.h"
+#undef max
+#undef min
 
 #include "definitions.hpp"
 #include "util.hpp"
@@ -45,6 +49,10 @@ public:
     void Evaluate_GPUHC_Sols( magmaFloatComplex *h_GPU_HC_Track_Sols, bool *h_is_GPU_HC_Sol_Converge, bool *h_is_GPU_HC_Sol_Infinity, int ransac_sample_offset );
     void Evaluate_RANSAC_GPUHC_Sols( magmaFloatComplex *h_GPU_HC_Track_Sols, bool *h_is_GPU_HC_Sol_Converge, bool *h_is_GPU_HC_Sol_Infinity );
     void Find_Unique_Sols( magmaFloatComplex *h_GPU_HC_Track_Sols, bool *h_is_GPU_HC_Sol_Converge );
+    
+    //> Evaluate polynomial residuals
+    void get_Polynomial_Residuals( magmaFloatComplex *h_GPU_HC_Track_Sols, magmaFloatComplex *h_Target_Params, bool *h_is_GPU_HC_Sol_Converge );
+    void get_RHS_of_Trifocal_Problem_Polys( magmaFloatComplex *h_GPU_HC_Track_Sols, magmaFloatComplex *h_Target_Params, magmaFloatComplex RHS_of_Trifocal_Pose_Problem_Polys[30] );
 
     //> Evaluate RANSAC solutions with the ground-truths
     void Transform_GPUHC_Sols_to_Trifocal_Relative_Pose( magmaFloatComplex *h_GPU_HC_Track_Sols, bool *h_is_GPU_HC_Sol_Converge, float IntrinsicMatrix[9] );
@@ -61,6 +69,23 @@ public:
         for (int i = 0; i < GPUHC_Actual_Sols_Steps_Collections.size(); i++) 
             GPUHC_Actual_Sols_Steps_File << GPUHC_Actual_Sols_Steps_Collections[i] << "\n";
     };
+    void Write_HC_Min_Steps_of_Actual_Solutions( std::vector<int> GPUHC_Actual_Sols_Min_Steps_Collections ) {
+        for (int i = 0; i < GPUHC_Actual_Sols_Min_Steps_Collections.size(); i++) {
+            if ( GPUHC_Actual_Sols_Min_Steps_Collections[i] == -1 )
+                continue;
+            else
+                GPUHC_Actual_Sols_Min_Steps_File << GPUHC_Actual_Sols_Min_Steps_Collections[i] << "\n";
+        }
+    };
+    void Write_Polynomial_Residuals() {
+        //> Use 0 or 1 to differentiate data from RHS_Poly_Residuals_for_All_Sols and RHS_Poly_Residuals_for_Actual_Sols
+        for (size_t i = 0; i < RHS_Poly_Residuals_for_All_Sols.size(); i++) {
+            GPUHC_Poly_Residuals_File << std::setprecision(16) << RHS_Poly_Residuals_for_All_Sols[i] << "\t" << 0 << "\n";
+        }
+        for (size_t i = 0; i < RHS_Poly_Residuals_for_Actual_Sols.size(); i++) {
+            GPUHC_Poly_Residuals_File << std::setprecision(16) << RHS_Poly_Residuals_for_Actual_Sols[i] << "\t" << 1 << "\n";
+        }        
+    }
     
     //> Some evaluation data
     unsigned Num_Of_Coverged_Sols;
@@ -95,6 +120,8 @@ private:
     //> output streams for files to be written
     std::ofstream GPUHC_Track_Sols_File;
     std::ofstream GPUHC_Actual_Sols_Steps_File;
+    std::ofstream GPUHC_Actual_Sols_Min_Steps_File;
+    std::ofstream GPUHC_Poly_Residuals_File;
 
     float Var_Diff_In_Real_Part( magmaFloatComplex *Sol1, magmaFloatComplex *Sol2, int sol1_offset, int sol2_offset, int var_index ) {
         return std::fabs(MAGMA_C_REAL((Sol1 + sol1_offset*(num_of_variables+1))[var_index]) - MAGMA_C_REAL((Sol2 + sol2_offset*(num_of_variables+1))[var_index]));
@@ -154,6 +181,10 @@ private:
 
     unsigned Num_Of_Reproj_Err_Inliers_Views21;
     unsigned Num_Of_Reproj_Err_Inliers_Views31;
+
+    magmaFloatComplex RHS_of_Trifocal_Pose_Problem_Polys[30];
+    std::vector<float> RHS_Poly_Residuals_for_All_Sols;
+    std::vector<float> RHS_Poly_Residuals_for_Actual_Sols;
 };
 
 #endif

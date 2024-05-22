@@ -6,11 +6,14 @@ problem_print_out_name: Trifocal Relative Pose Problem (Chicago 30x30)
 
 #> GPU-HC Settings
 GPUHC_Type: PH
-GPUHC_Max_Steps: 100
+GPUHC_Max_Steps: 85
 GPUHC_Max_Correction_Steps: 3
 GPUHC_Num_Of_Steps_to_Increase_Delta_t: 4
 
 #> Problem spec
+Feature_Type: quiver
+Problem_Task: relative_pose
+Num_Of_Views: 3
 Num_Of_Vars: 30
 Num_Of_Params: 33
 Num_Of_Tracks: 312
@@ -23,4 +26,3 @@ Max_Order_Of_T: 2
 #> RANSAC data
 #RANSAC_Dataset: Synthetic / ICL-NUIM
 RANSAC_Dataset: ICL-NUIM
-#5117

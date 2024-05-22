@@ -42,8 +42,15 @@ public:
     bool Read_dHdt_Indices( T* &h_dHdt_Index );
 
     //> RANSAC Data
-    int get_Num_Of_Triplet_Edgels( int tp_index );
+    int get_Num_Of_Triplet_Point_Matches( int tp_index, bool is_relative_pose = false );
+    int get_Num_Of_Triplet_Edgels( int tp_index, bool is_relative_pose = false );
+    
+    //> Camera pose GT data
+    bool Read_Camera_Matrices( float Pose[12], float K[9], int tp_index );
     bool Read_Camera_Matrices( float Pose21[12], float Pose31[12], float K[9], int tp_index );
+
+    //> Feature correspondences (feature type: point, quiver, line, etc.)
+    void Read_Triplet_Points( float* &Triplet_Point_Locations );
     void Read_Triplet_Edgels( float* &Triplet_Edge_Locations, float* &Triplet_Edge_Tangents );
 
     //> From Triplet Edgels to target parameters printed out for debugging
@@ -57,8 +64,11 @@ private:
     std::string File_Name_dHdx_Indx;
     std::string File_Name_dHdt_Indx;
     std::string File_Name_Intrinsic_Matrix;
+    std::string File_Name_Pose;
     std::string File_Name_Pose21;
     std::string File_Name_Pose31;
+    
+    std::string File_Name_Triplet_Points;
     std::string File_Name_Triplet_Edgels;
 
     //> input streams from problem files
@@ -68,10 +78,14 @@ private:
     std::fstream File_dHdx_Indices;
     std::fstream File_dHdt_Indices;
     std::fstream File_Intrinsic_Matrix;
+    std::fstream File_Pose;
     std::fstream File_Pose21;
     std::fstream File_Pose31;
+    
+    std::fstream File_Triplet_Points;
     std::fstream File_Triplet_Edgels;
 
+    std::vector<std::tuple<std::pair<float, float>, std::pair<float, float>, std::pair<float, float>>> data_read_triplet_point_matches_locations;
     std::vector<std::tuple<std::pair<float, float>, std::pair<float, float>, std::pair<float, float>>> data_read_triplet_edgles_locations;
     std::vector<std::tuple<std::pair<float, float>, std::pair<float, float>, std::pair<float, float>>> data_read_triplet_edgles_tangents;
 
