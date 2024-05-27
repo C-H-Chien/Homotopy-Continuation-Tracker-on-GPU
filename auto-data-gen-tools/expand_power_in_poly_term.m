@@ -15,6 +15,7 @@ function [has_power, expanded_input_term] = expand_powers_in_poly_term(input_ter
 %> (c) LEMS, Brown University
 %> Chiang-Heng Chien (chiang-heng_chien@brown.edu)
 %> Completed in Oct. 1st, 2022
+%> May 23rd, 2024: fix an issue when parameter has a power term
 
     %> check if there is a power
     if contains(input_term, "^")
@@ -28,20 +29,29 @@ function [has_power, expanded_input_term] = expand_powers_in_poly_term(input_ter
             
             %> find the part that has the power symbol
             if contains(parts(1,k), "^")
+
+                if contains(parts(1,k), "p")
+                    prefix_symbol = "p";
+                elseif contains(parts(1,k), "x")
+                    prefix_symbol = "x";
+                else
+                    %> Raise an assertion failure
+                    assert(contains(parts(1,k), "p") || contains(parts(1,k), "x"))
+                end
                 %> find variable indices with powers
-                power_vars = extractBetween(parts(1,k), "x", "^");
+                power_vars = extractBetween(parts(1,k), prefix_symbol, "^");
                 
                 %> find the power
                 power = extractAfter(parts(1,k), "^");
-                be_replaced = strcat("x", power_vars, "^", power);
+                be_replaced = strcat(prefix_symbol, power_vars, "^", power);
                 rep_part = "";
                 
                 %> concatenate the variable based on the power
                 for p = 1:double(power)
                     if p > 1
-                        rep_part = strcat(rep_part, "*x", power_vars);
+                        rep_part = strcat(rep_part, "*", prefix_symbol, power_vars);
                     else
-                        rep_part = strcat(rep_part, "x", power_vars);
+                        rep_part = strcat(rep_part, prefix_symbol, power_vars);
                     end
                 end
 
