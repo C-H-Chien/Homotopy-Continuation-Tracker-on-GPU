@@ -84,13 +84,7 @@ int main(int argc, char **argv) {
 	}
 
   //> Initialization from GPU-HC constructor
-#if USE_8BIT_IN_SHARED_MEM
-  GPU_HC_Solver<char> GPU_HC_( Problem_Settings_Map );
-#else
-  //> the templated data type can be changed here for either "int" or "char"
-  //> Here the index matrices live in the global memory
-  GPU_HC_Solver<int> GPU_HC_( Problem_Settings_Map );
-#endif
+  GPU_HC_Solver GPU_HC_( Problem_Settings_Map );
 
   //> (1) Allocate CPU and GPU arrays
   GPU_HC_.Allocate_Arrays();
@@ -101,12 +95,14 @@ int main(int argc, char **argv) {
     bool pass_Data_Read_Test = GPU_HC_.Read_Problem_Data();
     if (!pass_Data_Read_Test) return 0;
 
-    //> (3) Read RANSAC Data
-    pass_Data_Read_Test = GPU_HC_.Read_RANSAC_Data( ti );
-    if (!pass_Data_Read_Test) return 0;
+    // //> (3) Read RANSAC Data, if required
+    // if (GPU_HC_.RANSAC_Dataset_Name != "None") {
+    //   pass_Data_Read_Test = GPU_HC_.Read_RANSAC_Data( ti );
+    //   if (!pass_Data_Read_Test) return 0;
+    // }
 
-    //> (4) Convert from triplet edgels to target parameters
-    GPU_HC_.Prepare_Target_Params();
+    // //> (4) Convert from triplet edgels to target parameters
+    // GPU_HC_.Prepare_Target_Params();
 
     //> (5) Transfer data from CPU to GPU
     GPU_HC_.Data_Transfer_From_Host_To_Device();
@@ -115,11 +111,11 @@ int main(int argc, char **argv) {
     GPU_HC_.Solve_by_GPU_HC();
 
     //> (7) Free triplet edgels memory
-    GPU_HC_.Free_Triplet_Edgels_Mem();
+    // GPU_HC_.Free_Triplet_Edgels_Mem();
   }
 
   //> Export all data (HC steps for now) to files
-  GPU_HC_.Export_Data();
+  // GPU_HC_.Export_Data();
 
   return 0;
 }

@@ -4,7 +4,7 @@
 // Header file declaring all kernels
 //
 // Modifications
-//    Chiang-Heng Chien  22-10-31:   Initially Created (Copied from other repos)
+//    Chiang-Heng Chien  24-05-23:      Shifted from icl branch
 //
 //> (c) LEMS, Brown University
 //> Chiang-Heng Chien (chiang-heng_chien@brown.edu)
@@ -30,7 +30,6 @@
 class Data_Reader;
 class Evaluations;
 
-template< typename T_index_mat >
 class GPU_HC_Solver {
     
     magma_device_t cdev;       // variable to indicate current gpu id
@@ -53,8 +52,8 @@ class GPU_HC_Solver {
     magmaFloatComplex       *h_Target_Params;
     magmaFloatComplex       *h_dHdx_PHC_Coeffs;
     magmaFloatComplex       *h_dHdt_PHC_Coeffs;
-    T_index_mat             *h_dHdx_Index;
-    T_index_mat             *h_dHdt_Index;
+    int                     *h_dHdx_Index;
+    int                     *h_dHdt_Index;
     float                   *h_Triplet_Edge_Locations;      //> in metrics
     float                   *h_Triplet_Edge_Tangents;       //> in metrics
     magmaFloatComplex       *h_Debug_Purpose;
@@ -69,8 +68,8 @@ class GPU_HC_Solver {
     magmaFloatComplex_ptr   d_Start_Params, d_Target_Params;
     magmaFloatComplex_ptr   d_dHdx_PHC_Coeffs;
     magmaFloatComplex_ptr   d_dHdt_PHC_Coeffs;
-    T_index_mat             *d_dHdx_Index;
-    T_index_mat             *d_dHdt_Index;
+    int                     *d_dHdx_Index;
+    int                     *d_dHdt_Index;
     magmaFloatComplex       **d_Start_Sols_array;
     magmaFloatComplex       **d_Homotopy_Sols_array;
     magmaFloatComplex       *d_diffParams;
@@ -91,13 +90,15 @@ public:
     
     //> Member functions
     bool Read_Problem_Data();
-    bool Read_RANSAC_Data( int tp_index );
+    // bool Read_RANSAC_Data( int tp_index );
     void Allocate_Arrays();
-    void Prepare_Target_Params( );
+    // void Prepare_Target_Params( );
     void Data_Transfer_From_Host_To_Device();
     void Solve_by_GPU_HC();
     void Export_Data();
     void Free_Triplet_Edgels_Mem();
+
+    std::string RANSAC_Dataset_Name;
 
     //> Destructor
     ~GPU_HC_Solver();
@@ -127,7 +128,7 @@ private:
     int Max_Order_Of_T;
 
     //> RANSAC data
-    std::string RANSAC_Dataset_Name;
+    
     int Num_Of_Triplet_Edgels;
     int Num_Of_Coeffs_From_Params;
     std::vector<int> GPUHC_Actual_Sols_Steps_Collections;

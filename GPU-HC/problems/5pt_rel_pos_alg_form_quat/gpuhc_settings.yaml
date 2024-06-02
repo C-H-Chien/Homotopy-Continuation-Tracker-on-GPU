@@ -7,8 +7,8 @@ problem_print_out_name: 5-Point Relative Pose Problem (Algebraic Form with Quate
 #> GPU-HC Settings
 GPUHC_Type: P2C
 GPUHC_Max_Steps: 42
-GPUHC_Max_Correction_Steps: 3
-GPUHC_Num_Of_Steps_to_Increase_Delta_t: 4
+GPUHC_Max_Correction_Steps: 300
+GPUHC_Num_Of_Steps_to_Increase_Delta_t: 2
 
 #> Problem spec
 Num_Of_Vars: 6
@@ -21,3 +21,4 @@ dHdt_Max_Terms: 30
 dHdt_Max_Parts: 5
 Max_Order_Of_T: 2
 
+RANSAC_Dataset: None

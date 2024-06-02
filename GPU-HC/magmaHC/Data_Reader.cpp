@@ -19,8 +19,27 @@
 #include <cuComplex.h>
 
 #include "magma_v2.h"
-
 #include "Data_Reader.hpp"
+#include "./PHC_Coeffs/p2c-5pt_rel_pos_alg_form_quat.h"
+#include "./PHC_Coeffs/p2c-5pt_rel_pos_geo_form_quat.h"
+#include "./PHC_Coeffs/p2c-5pt_rel_pos_full_form_quat.h"
+#include "./PHC_Coeffs/p2c-trifocal_2op1p_30x30.h"
+#include "./PHC_Coeffs/p2c-generalized_3views_4pts.h"
+#include "./PHC_Coeffs/p2c-numerical_generalized_3views_6lines.h"
+#include "./PHC_Coeffs/p2c-uncalibrated_trifocal_rel_pos_CY.h"
+#include "./PHC_Coeffs/p2c-uncalibrated_trifocal_rel_pos_CH.h"
+#include "./PHC_Coeffs/p2c-optimal_PnP_quat.h"
+#include "./PHC_Coeffs/p2c-3view_triangulation.h"
+#include "./PHC_Coeffs/p2c-4view_triangulation.h"
+#include "./PHC_Coeffs/p2c-6pt_RS_abs_pos.h"
+#include "./PHC_Coeffs/p2c-6pt_RS_abs_pos_1lin.h"
+#include "./PHC_Coeffs/p2c-dual_reciever_TDOA_5pt.h"
+#include "./PHC_Coeffs/p2c-distorted_2view_triangulation.h"
+#include "./PHC_Coeffs/p2c-optimal_P4P_abs_pos.h"
+#include "./PHC_Coeffs/p2c-3pt_rel_pos_homog.h"
+#include "./PHC_Coeffs/p2c-PnP_unkn_principal_pt.h"
+#include "./PHC_Coeffs/p2c-rel_pos_quiver.h"
+#include "./PHC_Coeffs/p2c-P3P.h"
 
 Data_Reader::Data_Reader(std::string Problem_Filename, std::string RANSAC_Data_File_Path, const int Num_Of_Tracks, const int Num_Of_Vars, const int Num_Of_Params) \
     : num_of_tracks(Num_Of_Tracks), num_of_variables(Num_Of_Vars), num_of_params(Num_Of_Params), RANSAC_Data_Path_(RANSAC_Data_File_Path) {
@@ -34,6 +53,37 @@ Data_Reader::Data_Reader(std::string Problem_Filename, std::string RANSAC_Data_F
     File_Name_dHdt_Indx = Problem_Filename + std::string("/dHdt_indx.txt");
 
     File_Name_Intrinsic_Matrix = RANSAC_Data_Path_ + std::string("/Intrinsic_Matrix.txt");
+}
+
+bool Data_Reader::Construct_Coeffs_From_Params( std::string HC_Problem, \
+        magmaFloatComplex* h_Target_Params,     magmaFloatComplex* h_Start_Params, \
+        magmaFloatComplex* &h_dHdx_PHC_Coeffs,  magmaFloatComplex* &h_dHdt_PHC_Coeffs ) 
+{
+    if (HC_Problem == "5pt_rel_pos_geo_form_quat")              magmaHCWrapper::p2c_5pt_rel_pos_geo_form_quat(h_Target_Params, h_Start_Params, h_dHdx_PHC_Coeffs, h_dHdt_PHC_Coeffs);
+    else if (HC_Problem == "5pt_rel_pos_alg_form_quat")         magmaHCWrapper::p2c_5pt_rel_pos_alg_form_quat(h_Target_Params, h_Start_Params, h_dHdx_PHC_Coeffs, h_dHdt_PHC_Coeffs);
+    else if (HC_Problem == "5pt_rel_pos_full_form_quat")        magmaHCWrapper::p2c_5pt_rel_pos_full_form_quat(h_Target_Params, h_Start_Params, h_dHdx_PHC_Coeffs, h_dHdt_PHC_Coeffs);
+    else if (HC_Problem == "trifocal_2op1p_30x30")              magmaHCWrapper::p2c_trifocal_2op1p_30x30(h_Target_Params, h_Start_Params, h_dHdx_PHC_Coeffs, h_dHdt_PHC_Coeffs);
+    else if (HC_Problem == "generalized_3views_4pts")           magmaHCWrapper::p2c_generalized_3views_4pts(h_Target_Params, h_Start_Params, h_dHdx_PHC_Coeffs, h_dHdt_PHC_Coeffs);
+    else if (HC_Problem == "generalized_3views_6lines")         magmaHCWrapper::p2c_numerical_generalized_3views_6lines(h_dHdx_PHC_Coeffs, h_dHdt_PHC_Coeffs);
+    else if (HC_Problem == "uncalibrated_trifocal_rel_pos_CY")  magmaHCWrapper::p2c_uncalibrated_trifocal_rel_pos_CY(h_Target_Params, h_Start_Params, h_dHdx_PHC_Coeffs, h_dHdt_PHC_Coeffs);
+    else if (HC_Problem == "uncalibrated_trifocal_rel_pos_CH")  magmaHCWrapper::p2c_uncalibrated_trifocal_rel_pos_CH(h_Target_Params, h_Start_Params, h_dHdx_PHC_Coeffs, h_dHdt_PHC_Coeffs);
+    else if (HC_Problem == "optimal_PnP_quat")                  magmaHCWrapper::p2c_optimal_PnP_quat(h_Target_Params, h_Start_Params, h_dHdx_PHC_Coeffs, h_dHdt_PHC_Coeffs);
+    else if (HC_Problem == "3view_triangulation")               magmaHCWrapper::p2c_3view_triangulation(h_Target_Params, h_Start_Params, h_dHdx_PHC_Coeffs, h_dHdt_PHC_Coeffs);
+    else if (HC_Problem == "4view_triangulation")               magmaHCWrapper::p2c_4view_triangulation(h_Target_Params, h_Start_Params, h_dHdx_PHC_Coeffs, h_dHdt_PHC_Coeffs);
+    else if (HC_Problem == "6pt_RS_abs_pos")                    magmaHCWrapper::p2c_6pt_RS_abs_pos(h_Target_Params, h_Start_Params, h_dHdx_PHC_Coeffs, h_dHdt_PHC_Coeffs);
+    else if (HC_Problem == "6pt_RS_abs_pos_1lin")               magmaHCWrapper::p2c_6pt_RS_abs_pos_1lin(h_Target_Params, h_Start_Params, h_dHdx_PHC_Coeffs, h_dHdt_PHC_Coeffs);
+    else if (HC_Problem == "dual_reciever_TDOA_5pt")            magmaHCWrapper::p2c_dual_reciever_TDOA_5pt(h_Target_Params, h_Start_Params, h_dHdx_PHC_Coeffs, h_dHdt_PHC_Coeffs);
+    else if (HC_Problem == "distorted_2view_triangulation")     magmaHCWrapper::p2c_distorted_2view_triangulation(h_Target_Params, h_Start_Params, h_dHdx_PHC_Coeffs, h_dHdt_PHC_Coeffs);
+    else if (HC_Problem == "optimal_P4P_abs_pos")               magmaHCWrapper::p2c_optimal_P4P_abs_pos(h_Target_Params, h_Start_Params, h_dHdx_PHC_Coeffs, h_dHdt_PHC_Coeffs);
+    else if (HC_Problem == "3pt_rel_pos_homog")                 magmaHCWrapper::p2c_3pt_rel_pos_homog(h_Target_Params, h_Start_Params, h_dHdx_PHC_Coeffs, h_dHdt_PHC_Coeffs);
+    else if (HC_Problem == "PnP_unkn_principal_pt")             magmaHCWrapper::p2c_PnP_unkn_principal_pt(h_Target_Params, h_Start_Params, h_dHdx_PHC_Coeffs, h_dHdt_PHC_Coeffs);
+    else if (HC_Problem == "rel_pos_quiver")                    magmaHCWrapper::p2c_rel_pos_quiver(h_Target_Params, h_Start_Params, h_dHdx_PHC_Coeffs, h_dHdt_PHC_Coeffs);
+    else if (HC_Problem == "P3P")                               magmaHCWrapper::p2c_P3P(h_Target_Params, h_Start_Params, h_dHdx_PHC_Coeffs, h_dHdt_PHC_Coeffs);
+    else {
+        LOG_ERROR("Invalid HC problem name or P2C function is not included in the Construct_Coeffs_From_Params.");
+        return false;
+    }
+    return true;
 }
 
 bool Data_Reader::Read_Start_Sols(magmaFloatComplex* &h_Start_Sols, magmaFloatComplex* &h_Homotopy_Sols) {
@@ -97,8 +147,13 @@ bool Data_Reader::Read_Target_Params(magmaFloatComplex* &h_Target_Params) {
             d++;
         }
         h_Target_Params[num_of_params] = MAGMA_C_ONE;
-        return true;
     }
+
+    // std::cout << "Target parameters:" << std::endl;
+    // for (int i = 0; i <= num_of_params; i++)
+    //     std::cout << MAGMA_C_REAL(h_Target_Params[i]) << "\t" << MAGMA_C_IMAG(h_Target_Params[i]) << std::endl;
+    // std::cout << std::endl;
+    return true;
 }
 
 bool Data_Reader::Read_Start_Params(magmaFloatComplex* &h_Start_Params) {
@@ -116,12 +171,16 @@ bool Data_Reader::Read_Start_Params(magmaFloatComplex* &h_Start_Params) {
             d++;
         }
         h_Start_Params[num_of_params] = MAGMA_C_ONE;
-        return true;
     }
+
+    // std::cout << "Start parameters:" << std::endl;
+    // for (int i = 0; i <= num_of_params; i++)
+    //     std::cout << MAGMA_C_REAL(h_Start_Params[i]) << "\t" << MAGMA_C_IMAG(h_Start_Params[i]) << std::endl;
+    // std::cout << std::endl;
+    return true;
 }
 
-template< typename T >
-bool Data_Reader::Read_dHdx_Indices( T* &h_dHdx_Index ) {
+bool Data_Reader::Read_dHdx_Indices( int* &h_dHdx_Index ) {
     int index, d = 0;
     File_dHdx_Indices.open(File_Name_dHdx_Indx, std::ios_base::in);
     if (!File_dHdx_Indices) {
@@ -130,7 +189,7 @@ bool Data_Reader::Read_dHdx_Indices( T* &h_dHdx_Index ) {
     }
     else {
         while (File_dHdx_Indices >> index) {
-            (h_dHdx_Index)[d] = (T)index;
+            (h_dHdx_Index)[d] = (int)index;
             d++;
         }
 #if DATA_READER_DEBUG
@@ -142,8 +201,7 @@ bool Data_Reader::Read_dHdx_Indices( T* &h_dHdx_Index ) {
     }
 }
 
-template< typename T >
-bool Data_Reader::Read_dHdt_Indices( T* &h_dHdt_Index ) {
+bool Data_Reader::Read_dHdt_Indices( int* &h_dHdt_Index ) {
     int index, d = 0;
     File_dHdt_Indices.open(File_Name_dHdt_Indx, std::ios_base::in);
     if (!File_dHdt_Indices) {
@@ -152,7 +210,7 @@ bool Data_Reader::Read_dHdt_Indices( T* &h_dHdt_Index ) {
     }
     else {
         while (File_dHdt_Indices >> index) {
-            (h_dHdt_Index)[d] = (T)index;
+            (h_dHdt_Index)[d] = (int)index;
             d++;
         }
 #if DATA_READER_DEBUG
@@ -321,13 +379,5 @@ void Data_Reader::Print_Out_Target_Params_from_Triplet_Edgels(int sample_index, 
                                    MAGMA_C_IMAG((h_Target_Params + sample_index*(num_of_params+1))[i]));
     }
 }
-
-#if USE_8BIT_IN_SHARED_MEM == false
-template bool Data_Reader::Read_dHdx_Indices< int >( int* & );
-template bool Data_Reader::Read_dHdt_Indices< int >( int* & );
-#endif
-
-template bool Data_Reader::Read_dHdx_Indices< char >( char* & );
-template bool Data_Reader::Read_dHdt_Indices< char >( char* & );
 
 #endif

@@ -22,5 +22,5 @@ Max_Order_Of_T: 2
 
 #> RANSAC data
 #RANSAC_Dataset: Synthetic / ICL-NUIM
-RANSAC_Dataset: ICL-NUIM
+RANSAC_Dataset: None
 #5117

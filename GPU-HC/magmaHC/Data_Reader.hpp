@@ -5,6 +5,7 @@
 //
 // Changelogs
 //    Chien  24-01-21:   Initially Created.
+//    Chien  24-05-24:   Add coefficients construction from parameters.
 //
 //> (c) LEMS, Brown University
 //> Chiang-Heng Chien (chiang-heng_chien@brown.edu)
@@ -22,6 +23,7 @@
 
 #include "definitions.hpp"
 
+
 #define Triplet_Edge_Locations(i,j)    Triplet_Edge_Locations[(i) * 6 + (j)]
 #define Triplet_Edge_Tangents(i,j)     Triplet_Edge_Tangents[(i) * 6 + (j)]
 
@@ -35,11 +37,8 @@ public:
     bool Read_Target_Params( magmaFloatComplex* &h_Target_Params );
     bool Read_Start_Sols( magmaFloatComplex* &h_Start_Sols, magmaFloatComplex* &h_Homotopy_Sols );
 
-    template< typename T >
-    bool Read_dHdx_Indices( T* &h_dHdx_Index );
-
-    template< typename T >
-    bool Read_dHdt_Indices( T* &h_dHdt_Index );
+    bool Read_dHdx_Indices( int* &h_dHdx_Index );
+    bool Read_dHdt_Indices( int* &h_dHdt_Index );
 
     //> RANSAC Data
     int get_Num_Of_Triplet_Edgels( int tp_index );
@@ -48,6 +47,10 @@ public:
 
     //> From Triplet Edgels to target parameters printed out for debugging
     void Print_Out_Target_Params_from_Triplet_Edgels(int sample_index, std::vector<std::array<int,3>> target_params_match_indices, magmaFloatComplex *h_Target_Params);
+
+    bool Construct_Coeffs_From_Params( std::string HC_Problem, \
+        magmaFloatComplex* h_Target_Params,     magmaFloatComplex* h_Start_Params, \
+        magmaFloatComplex* &h_dHdx_PHC_Coeffs,  magmaFloatComplex* &h_dHdt_PHC_Coeffs );
 
 private:
     //> File names

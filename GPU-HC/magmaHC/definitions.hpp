@@ -7,7 +7,7 @@
 #define WRITE_FILES_FOLDER                      std::string("Output_Write_Files/")
 
 //> RANSAC Settings
-#define NUM_OF_RANSAC_ITERATIONS                (100)
+#define NUM_OF_RANSAC_ITERATIONS                (1)
 #define IMAG_PART_TOL                           (1e-5)
 #define ROT_RESIDUAL_TOL                        (1e-1)
 #define TRANSL_RESIDUAL_TOL                     (1e-1)
@@ -17,7 +17,6 @@
 //> Settings for GPU-HC Kernel
 #define APPLY_GAMMA_TRICK                       (false)
 #define USE_DOUBLE_PRECISION                    (false)
-#define USE_8BIT_IN_SHARED_MEM                  (false)
 #define USE_DEPTH_TO_TRUNCATE_PATH              (false)
 #define TRUNCATE_HC_PATH_THRESH                 (0.95)
 
