@@ -1,0 +1,27 @@
+%YAML:1.0
+
+#> Problem Name (must be the same as the problem folder name)
+problem_name: 5pt_rel_pos_full_form_quat
+problem_print_out_name: 5-Point Relative Pose Problem (Full Form, 16x16, Quaternion Representation)
+
+#> GPU-HC Settings
+GPUHC_Type: P2C
+GPUHC_Max_Steps: 36
+GPUHC_Max_Correction_Steps: 3
+GPUHC_Num_Of_Steps_to_Increase_Delta_t: 4
+
+#> Problem spec
+Num_Of_Vars: 16
+Num_Of_Params: 20
+Num_Of_Tracks: 40
+Num_Of_Coeffs_From_Params: 20
+dHdx_Max_Terms: 7
+dHdx_Max_Parts: 4
+dHdt_Max_Terms: 9
+dHdt_Max_Parts: 5
+Max_Order_Of_T: 1
+
+#> RANSAC data
+#RANSAC_Dataset: Synthetic / ICL-NUIM
+# RANSAC_Dataset: ICL-NUIM
+RANSAC_Dataset: None

@@ -1,0 +1,27 @@
+%YAML:1.0
+
+#> Problem Name (must be the same as the problem folder name)
+problem_name: generalized_3views_6lines
+problem_print_out_name: Generalized Three-View Relative Pose Problem using 6 Lines
+
+#> GPU-HC Settings
+GPUHC_Type: P2C
+GPUHC_Max_Steps: 100
+GPUHC_Max_Correction_Steps: 5
+GPUHC_Num_Of_Steps_to_Increase_Delta_t: 5
+
+#> Problem spec
+Num_Of_Vars: 6
+Num_Of_Params: 36
+Num_Of_Tracks: 600
+dHdx_Max_Terms: 40
+dHdx_Max_Parts: 5
+dHdt_Max_Terms: 100
+dHdt_Max_Parts: 6
+Max_Order_Of_T: 3
+Num_Of_Coeffs_From_Params: 564
+
+#> RANSAC data
+#RANSAC_Dataset: Synthetic / ICL-NUIM
+# RANSAC_Dataset: ICL-NUIM
+RANSAC_Dataset: None

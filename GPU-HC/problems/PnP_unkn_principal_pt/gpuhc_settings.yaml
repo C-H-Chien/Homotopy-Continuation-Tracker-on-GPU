@@ -1,0 +1,32 @@
+%YAML:1.0
+
+#> Problem Name (must be the same as the problem folder name)
+problem_name: PnP_unkn_principal_pt
+problem_print_out_name: PnP Problem with Unknown Principal Point
+
+#> Reference:
+#  Albl, Cenek, Zuzana Kukelova, Viktor Larsson, and Tomas Pajdla. "Rolling shutter camera absolute pose." IEEE transactions on pattern analysis and machine intelligence 42, no. 6 (2019): 1439-1452.
+#  - This problem comes directly from eq. (9) of the reference paper, i.e., R6P formulation with linearized model (R6P-1lin)
+#  - Elimination Template cannot cope with this problem (out of memory issue).
+
+#> GPU-HC Settings
+GPUHC_Type: P2C
+GPUHC_Max_Steps: 50
+GPUHC_Max_Correction_Steps: 16
+GPUHC_Num_Of_Steps_to_Increase_Delta_t: 2
+
+#> Problem spec
+Num_Of_Vars: 10
+Num_Of_Params: 34
+Num_Of_Tracks: 8
+dHdx_Max_Terms: 5
+dHdx_Max_Parts: 3
+dHdt_Max_Terms: 12
+dHdt_Max_Parts: 4
+Max_Order_Of_T: 2
+Num_Of_Coeffs_From_Params: 28
+
+#> RANSAC data
+#RANSAC_Dataset: Synthetic / ICL-NUIM
+# RANSAC_Dataset: ICL-NUIM
+RANSAC_Dataset: None

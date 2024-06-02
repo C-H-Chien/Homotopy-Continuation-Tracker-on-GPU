@@ -1,0 +1,27 @@
+%YAML:1.0
+
+#> Problem Name (must be the same as the problem folder name)
+problem_name: dual_reciever_TDOA_5pt
+problem_print_out_name: Dual-Reciever TDOA 5-points
+
+#> GPU-HC Settings
+GPUHC_Type: P2C
+GPUHC_Max_Steps: 80
+GPUHC_Max_Correction_Steps: 300
+GPUHC_Num_Of_Steps_to_Increase_Delta_t: 2
+
+#> Problem spec
+Num_Of_Vars: 5
+Num_Of_Params: 20
+Num_Of_Tracks: 24
+dHdx_Max_Terms: 15
+dHdx_Max_Parts: 5
+dHdt_Max_Terms: 33
+dHdt_Max_Parts: 6
+Max_Order_Of_T: 4
+Num_Of_Coeffs_From_Params: 85
+
+#> RANSAC data
+#RANSAC_Dataset: Synthetic / ICL-NUIM
+# RANSAC_Dataset: ICL-NUIM
+RANSAC_Dataset: None

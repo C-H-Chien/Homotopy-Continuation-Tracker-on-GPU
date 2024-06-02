@@ -1,0 +1,32 @@
+%YAML:1.0
+
+#> Problem Name (must be the same as the problem folder name)
+problem_name: 6pt_RS_abs_pos_1lin
+problem_print_out_name: 6-Point Rolling Shutter Absolute Pose with Linearized Model
+
+#> Reference:
+#  Albl, Cenek, Zuzana Kukelova, Viktor Larsson, and Tomas Pajdla. "Rolling shutter camera absolute pose." IEEE transactions on pattern analysis and machine intelligence 42, no. 6 (2019): 1439-1452.
+#  - This problem comes directly from eq. (9) of the reference paper, i.e., R6P formulation with linearized model (R6P-1lin)
+#  - Elimination Template cannot cope with this problem (out of memory issue).
+
+#> GPU-HC Settings
+GPUHC_Type: P2C
+GPUHC_Max_Steps: 50
+GPUHC_Max_Correction_Steps: 250
+GPUHC_Num_Of_Steps_to_Increase_Delta_t: 3
+
+#> Problem spec
+Num_Of_Vars: 18
+Num_Of_Params: 37
+Num_Of_Tracks: 64
+dHdx_Max_Terms: 12
+dHdx_Max_Parts: 4
+dHdt_Max_Terms: 36
+dHdt_Max_Parts: 5
+Max_Order_Of_T: 2
+Num_Of_Coeffs_From_Params: 72
+
+#> RANSAC data
+#RANSAC_Dataset: Synthetic / ICL-NUIM
+# RANSAC_Dataset: ICL-NUIM
+RANSAC_Dataset: None

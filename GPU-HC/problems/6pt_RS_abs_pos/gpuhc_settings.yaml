@@ -1,0 +1,27 @@
+%YAML:1.0
+
+#> Problem Name (must be the same as the problem folder name)
+problem_name: 6pt_RS_abs_pos
+problem_print_out_name: 6-Point Rolling Shutter Absolute Pose
+
+#> GPU-HC Settings
+GPUHC_Type: P2C
+GPUHC_Max_Steps: 40
+GPUHC_Max_Correction_Steps: 200
+GPUHC_Num_Of_Steps_to_Increase_Delta_t: 5
+
+#> Problem spec
+Num_Of_Vars: 6
+Num_Of_Params: 111
+Num_Of_Tracks: 20
+dHdx_Max_Terms: 4
+dHdx_Max_Parts: 3
+dHdt_Max_Terms: 16
+dHdt_Max_Parts: 4
+Max_Order_Of_T: 3
+Num_Of_Coeffs_From_Params: 96
+
+#> RANSAC data
+#RANSAC_Dataset: Synthetic / ICL-NUIM
+# RANSAC_Dataset: ICL-NUIM
+RANSAC_Dataset: None
