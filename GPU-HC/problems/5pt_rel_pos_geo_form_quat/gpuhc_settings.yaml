@@ -4,6 +4,8 @@
 problem_name: 5pt_rel_pos_geo_form_quat
 problem_print_out_name: 5-Point Relative Pose Problem (Geometric Form with Quaternion)
 
+#> Reference: None. This is from Brown LEMS lab internal multiview geometry lecture notes.
+
 #> GPU-HC Settings
 GPUHC_Type: P2C
 GPUHC_Max_Steps: 42

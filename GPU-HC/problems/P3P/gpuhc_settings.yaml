@@ -4,6 +4,9 @@
 problem_name: P3P
 problem_print_out_name: Perspective 3-Point Absolute Pose Estimation Problem
 
+#> Reference: Z. Kukelova, M. Bujnak, and T. Pajdla. Automatic generator of minimal problem solvers. 
+#  In European Conference on Computer Vision, pages 302–315. Springer, 2008.
+
 #> GPU-HC Settings
 GPUHC_Type: P2C
 GPUHC_Max_Steps: 40

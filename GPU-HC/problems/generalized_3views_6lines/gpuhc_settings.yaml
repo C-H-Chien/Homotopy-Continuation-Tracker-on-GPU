@@ -4,6 +4,10 @@
 problem_name: generalized_3views_6lines
 problem_print_out_name: Generalized Three-View Relative Pose Problem using 6 Lines
 
+#> Reference: Ding, Yaqing, Chiang-Heng Chien, Viktor Larsson, Karl Åström, and Benjamin Kimia. 
+#  "Minimal Solutions to Generalized Three-View Relative Pose Problem." 
+#  In Proceedings of the IEEE/CVF International Conference on Computer Vision, pp. 8156-8164. 2023.
+
 #> GPU-HC Settings
 GPUHC_Type: P2C
 GPUHC_Max_Steps: 100

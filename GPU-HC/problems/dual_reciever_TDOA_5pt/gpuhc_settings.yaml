@@ -4,6 +4,9 @@
 problem_name: dual_reciever_TDOA_5pt
 problem_print_out_name: Dual-Reciever TDOA 5-points
 
+#> Reference: Burgess, Simon, Yubin Kuang, and Kalle Åström. "Pose estimation from minimal dual-receiver configurations." 
+#  In Proceedings of the 21st International Conference on Pattern Recognition (ICPR2012), pp. 2553-2556. IEEE, 2012.
+
 #> GPU-HC Settings
 GPUHC_Type: P2C
 GPUHC_Max_Steps: 80

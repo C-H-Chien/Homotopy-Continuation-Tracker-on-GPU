@@ -4,6 +4,10 @@
 problem_name: trifocal_2op1p_30x30
 problem_print_out_name: Trifocal Relative Pose Problem (Chicago 30x30)
 
+#> Reference: Fabbri, Ricardo, Timothy Duff, Hongyi Fan, Margaret Regan, David da Costa de Pinho, 
+#  Elias Tsigaridas, Charles Wampler et al. "Trifocal relative pose from lines at points." 
+#  IEEE Transactions on Pattern Analysis and Machine Intelligence 45, no. 6 (2022): 7870-7884.
+
 #> GPU-HC Settings
 GPUHC_Type: PH
 GPUHC_Max_Steps: 100

@@ -4,6 +4,9 @@
 problem_name: rel_pos_quiver
 problem_print_out_name: Relative Pose Estimation using Quivers with Unknown Focal Length
 
+#> Reference: Y. Kuang and K. Astr ˚ om. Pose estimation with unknown focal length using points, directions and lines. 
+#  In Proceedings of the IEEE International Conference on Computer Vision, pages 529–536, 2013
+
 #> GPU-HC Settings
 GPUHC_Type: P2C
 GPUHC_Max_Steps: 40

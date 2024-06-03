@@ -4,6 +4,10 @@
 problem_name: 4view_triangulation
 problem_print_out_name: 4-View Triangulation
 
+#> Reference: Chien, Chiang-Heng, Hongyi Fan, Ahmad Abdelfattah, Elias Tsigaridas, Stanimire Tomov, and Benjamin Kimia. 
+#  "GPU-based homotopy continuation for minimal problems in computer vision." In Proceedings of the IEEE/CVF Conference 
+#  on Computer Vision and Pattern Recognition, pp. 15765-15776. 2022.
+
 #> GPU-HC Settings
 GPUHC_Type: P2C
 GPUHC_Max_Steps: 80

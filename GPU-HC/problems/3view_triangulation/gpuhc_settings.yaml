@@ -4,6 +4,9 @@
 problem_name: 3view_triangulation
 problem_print_out_name: 3-View Triangulation
 
+#> Reference: Byröd, Martin, Klas Josephson, and Kalle Åström. "Fast optimal three view triangulation." 
+#  In Asian conference on computer vision, pp. 549-559. Springer, Berlin, Heidelberg, 2007.
+
 #> GPU-HC Settings
 GPUHC_Type: P2C
 GPUHC_Max_Steps: 50

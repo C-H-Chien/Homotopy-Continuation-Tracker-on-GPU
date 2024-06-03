@@ -4,6 +4,10 @@
 problem_name: 3pt_rel_pos_homog
 problem_print_out_name: Homography Constrained 3-Point Relative Pose Estimation
 
+#> Reference: O. Saurer, P. Vasseur, C. Demonceaux, and F. Fraundorfer. A homography 
+#  formulation to the 3pt plus a common direction relative pose problem. In Asian Conference  
+#  on Computer Vision, pages 288–301. Springer, 2014
+
 #> GPU-HC Settings
 GPUHC_Type: P2C
 GPUHC_Max_Steps: 50

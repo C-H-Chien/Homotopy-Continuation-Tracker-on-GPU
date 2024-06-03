@@ -4,6 +4,9 @@
 problem_name: optimal_PnP_quat
 problem_print_out_name: Optimal PnP with quaternion parameterization
 
+#> Reference: Nakano, Gaku. "Globally Optimal DLS Method for PnP Problem with Cayley parameterization." 
+#  In BMVC, vol. 78, pp. 1-78. 2015.
+
 #> GPU-HC Settings
 GPUHC_Type: P2C
 GPUHC_Max_Steps: 30

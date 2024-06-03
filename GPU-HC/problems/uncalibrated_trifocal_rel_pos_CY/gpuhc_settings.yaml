@@ -4,6 +4,8 @@
 problem_name: uncalibrated_trifocal_rel_pos_CY
 problem_print_out_name: Uncalibrated Trifocal Relative Pose Problem (Chiang-Heng & Yaqing Version)
 
+#> Reference: This is from a formulation of our GPU-HC journal version. Will be updated.
+
 #> GPU-HC Settings
 GPUHC_Type: P2C
 GPUHC_Max_Steps: 100

@@ -4,6 +4,10 @@
 problem_name: distorted_2view_triangulation
 problem_print_out_name: 2-view triangulation with distortion
 
+#> Reference: Kukelova, Zuzana, and Viktor Larsson. "Radial distortion triangulation." 
+#  In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 
+#  pp. 9681-9689. 2019.
+
 #> GPU-HC Settings
 GPUHC_Type: P2C
 GPUHC_Max_Steps: 100

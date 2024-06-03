@@ -4,6 +4,10 @@
 problem_name: optimal_P4P_abs_pos
 problem_print_out_name: Optimal P4P Absolute Pose Estimation Problem
 
+#> Reference: Svärm, Linus, Olof Enqvist, Fredrik Kahl, and Magnus Oskarsson. 
+#  "City-scale localization for cameras with known vertical direction." 
+#  IEEE transactions on pattern analysis and machine intelligence 39, no. 7 (2016): 1455-1461.
+
 #> GPU-HC Settings
 GPUHC_Type: P2C
 GPUHC_Max_Steps: 50

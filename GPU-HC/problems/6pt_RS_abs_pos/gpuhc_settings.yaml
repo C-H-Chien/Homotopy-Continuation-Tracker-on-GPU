@@ -4,6 +4,9 @@
 problem_name: 6pt_RS_abs_pos
 problem_print_out_name: 6-Point Rolling Shutter Absolute Pose
 
+#> Reference: Albl, Cenek, Zuzana Kukelova, and Tomas Pajdla. "R6p-rolling shutter absolute camera pose." 
+#  In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition, pp. 2292-2300. 2015.
+
 #> GPU-HC Settings
 GPUHC_Type: P2C
 GPUHC_Max_Steps: 40

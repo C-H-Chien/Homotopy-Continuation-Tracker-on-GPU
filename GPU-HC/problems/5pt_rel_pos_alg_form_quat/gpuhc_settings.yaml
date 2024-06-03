@@ -4,6 +4,8 @@
 problem_name: 5pt_rel_pos_alg_form_quat
 problem_print_out_name: 5-Point Relative Pose Problem (Algebraic Form with Quaternion)
 
+#> Reference: This is from a formulation of our GPU-HC journal version. Will be updated.
+
 #> GPU-HC Settings
 GPUHC_Type: P2C
 GPUHC_Max_Steps: 42
