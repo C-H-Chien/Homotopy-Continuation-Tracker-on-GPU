@@ -69,7 +69,7 @@ HC_solver_4view_triangulation(
   const int* __restrict__ d_Hx_idx = d_Hx_indices;
   const int* __restrict__ d_Ht_idx = d_Ht_indices;
   const magmaFloatComplex* __restrict__ d_const_phc_coeffs_Hx = d_phc_coeffs_Hx;
-  const magmaFloatComplex* __restrict__ d_const_phc_coeffs_Ht = d_phc_coeffs_Ht;
+  //const magmaFloatComplex* __restrict__ d_const_phc_coeffs_Ht = d_phc_coeffs_Ht;
 
   //> registers declarations
   magmaFloatComplex r_cgesvA[Num_Of_Vars] = {MAGMA_C_ZERO};
