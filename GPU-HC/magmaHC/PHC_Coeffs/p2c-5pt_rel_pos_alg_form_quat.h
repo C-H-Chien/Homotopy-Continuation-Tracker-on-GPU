@@ -9,7 +9,6 @@
 #include <cstring>
 #include <chrono>
 
-#include "flops.h"
 #include "magma_v2.h"
 #include "magma_lapack.h"
 #include "magma_internal.h"

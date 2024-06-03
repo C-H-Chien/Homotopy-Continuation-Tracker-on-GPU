@@ -1,0 +1,27 @@
+%YAML:1.0
+
+#> Problem Name (must be the same as the problem folder name)
+problem_name: rel_pos_quiver
+problem_print_out_name: Relative Pose Estimation using Quivers with Unknown Focal Length
+
+#> GPU-HC Settings
+GPUHC_Type: P2C
+GPUHC_Max_Steps: 40
+GPUHC_Max_Correction_Steps: 5
+GPUHC_Num_Of_Steps_to_Increase_Delta_t: 2
+
+#> Problem spec
+Num_Of_Vars: 4
+Num_Of_Params: 36
+Num_Of_Tracks: 20
+dHdx_Max_Terms: 8
+dHdx_Max_Parts: 4
+dHdt_Max_Terms: 18
+dHdt_Max_Parts: 5
+Max_Order_Of_T: 1
+Num_Of_Coeffs_From_Params: 36
+
+#> RANSAC data
+#RANSAC_Dataset: Synthetic / ICL-NUIM
+# RANSAC_Dataset: ICL-NUIM
+RANSAC_Dataset: None
