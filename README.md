@@ -3,9 +3,23 @@
 ## Introduction
 GPU-HC, as its name suggests, is a GPU implementation of Homotopy Continuation Solver. It is a general tool for finding roots of a polynomial systems (check our papers for more details). Our research aims at applying GPU-HC for computer vision problems, especially multiview geometry problems, where timings are crucial as the computation is typically performed under a RANSAC loop. Please refer and cite the following two papers if you intend to use them in your work. Also, please do not hesitate to contact chiang-heng_chien@brown.edu if you have any questions on using GPU-HC. <br />
 
-1. ``Chien, Chiang-Heng, Hongyi Fan, Ahmad Abdelfattah, Elias Tsigaridas, Stanimire Tomov, and Benjamin Kimia. "GPU-Based Homotopy Continuation for Minimal Problems in Computer Vision." In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 15765-15776. 2022.`` [[Paper link](https://openaccess.thecvf.com/content/CVPR2022/html/Chien_GPU-Based_Homotopy_Continuation_for_Minimal_Problems_in_Computer_Vision_CVPR_2022_paper.html)] <br />
-
-2. ``Chien, Chiang-Heng, Hongyi Fan, Elias Tsigaridas, Ahmad Abdelfattah, Stanimire Tomov, and Benjamin Kimia. "Parallel Path Tracking for Homotopy Continuation using GPU." In Proceedings of the International Symposium on Symbolic and Algebraic Computation. 2022.`` [[Paper link](https://par.nsf.gov/biblio/10333125)] <br /> <br />
+```BibTeX
+@InProceedings{@inproceedings{chien2022gpu,
+  title={{GPU}-based homotopy continuation for minimal problems in computer vision},
+  author={Chien, Chiang-Heng and Fan, Hongyi and Abdelfattah, Ahmad and Tsigaridas, Elias and Tomov, Stanimire and Kimia, Benjamin},
+  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
+  pages={15765--15776},
+  year={2022}
+}
+```
+```BibTeX
+@inproceedings{chien2022parallel,
+  title={Parallel path tracking for homotopy continuation using {GPU}},
+  author={Chien, Chiang-Heng and Fan, Hongyi and Abdelfattah, Ahmad and Tsigaridas, Elias and Tomov, Stanimire and Kimia, Benjamin},
+  booktitle={Proceedings of the International Symposium on Symbolic and Algebraic Computation},
+  year={2022}
+}
+```
 
 ## New Updates
 1. 2023.05.14 GPU-HC has a new release! <br />
@@ -26,7 +40,6 @@ This repository primarily contains three folders: <br />
 (3) CUDA 9.0 or higher <br />
 (4) cuBlas <br />
 (5) openBlas <br />
-(6) pthread <br />
 (7) if you want to solve a new polynomial problem, you will need Matlab 2019 or higher and [Julia](https://julialang.org/downloads/) in order to generate start parameters and start solutions.
 
 ## How to build and compile the code
