@@ -5,18 +5,83 @@
 %> Author: Chiang-Heng Chien
 %> (c) LEMS, Brown University
 %
-%> Initiated                        Oct. 19th, 2022
-%> Solve Issues                     Nov. 6th,  2022
-%> Solve a Factorization Issue      Nov. 11th, 2022
-%> Solve a Parameter Homotopy Issue Nov. 20th, 2022
+%> Initiated                                    Oct. 19th, 2021
+%> Solve data structure issues                  Nov. 6th,  2022
+%> Solve a factorization issue                  Nov. 11th, 2022
+%> Solve a parameter homotopy issue             Nov. 20th, 2022
+%> Solve the power term of parameters issue     May. 27th, 2024
 
 clear;
 format long;
 
 %> This is my lab laptop directory
 fileFolder = '/path/to/your/minimal-problems/';
-problem = "5pt_rel_pos_geo_form_quat/";
+% problem = "5pt_rel_pos_full_form/";
+% problem = "5pt_rel_pos_geo_form_quat/";
+% problem = "5pt_rel_pos_alg_form_quat/";
+% problem = "generalized_3views_4pts/";
+% problem = "generalized_3views_6lines/";
+% problem = "uncalibrated_trifocal_rel_pos_CY/";
+% problem = "uncalibrated_trifocal_rel_pos_CH/";
+% problem = "optimal_PnP_quat/";
+% problem = "6pt_RS_abs_pos/";
+% problem = "6pt_RS_abs_pos_1lin/";
+% problem = "dual_reciever_TDOA_5pt/";
+% problem = "distorted_2view_triangulation/";
+% problem = "optimal_P4P_abs_pos/";
+% problem = "3pt_rel_pos_homog/";
+% problem = "PnP_unkn_principal_pt/";
+% problem = "rel_pos_quiver/";
+% problem = "P3P/";
+% problem = "trifocal_2op1p_30x30/";
+% problem = "3view_triangulation/";
+problem = "4view_triangulation/";
 problemName = extractBefore(problem, "/");
+
+% -- define systems --
+if strcmp(problem, 'trifocal_2op1p_30x30/')
+    [f, numOfVars] = sys_trifocal_2op1p_30x30();
+elseif strcmp(problem, '5pt_rel_pos_full_form/')
+    [f, numOfVars] = sys_5pt_rel_pos_full_form();
+elseif strcmp(problem, '5pt_rel_pos_geo_form_quat/')
+    [f, numOfVars] = sys_5pt_rel_pos_geo_form_quat();
+elseif strcmp(problem, '5pt_rel_pos_alg_form_quat/')
+    [f, numOfVars] = sys_5pt_rel_pos_alg_form_quat();
+elseif strcmp(problem, 'six_lines_generalized_cam/')
+    [f, numOfVars] = sys_six_lines_generalized_cam();
+elseif strcmp(problem, '3view_triangulation/')
+    [f, numOfVars] = sys_3view_triangulation();
+elseif strcmp(problem, '4view_triangulation/')
+    [f, numOfVars] = sys_4view_triangulation();
+elseif strcmp(problem, 'generalized_3views_4pts/')
+    [f, numOfVars] = sys_generalized_3views_4pts();
+elseif strcmp(problem, 'generalized_3views_6lines/')
+    [f, numOfVars] = sys_generalized_3views_6lines();
+elseif strcmp(problem, 'uncalibrated_trifocal_rel_pos_CY/')
+    [f, numOfVars] = sys_uncalibrated_trifocal_rel_pos_CY();
+elseif strcmp(problem, 'uncalibrated_trifocal_rel_pos_CH/')
+    [f, numOfVars] = sys_uncalibrated_trifocal_rel_pos_CH();
+elseif strcmp(problem, 'optimal_PnP_quat/')
+    [f, numOfVars] = sys_optimal_PnP_quat();
+elseif strcmp(problem, '6pt_RS_abs_pos/')
+    [f, numOfVars] = sys_6pt_RS_abs_pos();
+elseif strcmp(problem, '6pt_RS_abs_pos_1lin/')
+    [f, numOfVars] = sys_6pt_RS_abs_pos_1lin();
+elseif strcmp(problem, 'dual_reciever_TDOA_5pt/')
+    [f, numOfVars] = sys_dual_reciever_TDOA_5pt();
+elseif strcmp(problem, 'distorted_2view_triangulation/')
+    [f, numOfVars] = sys_distorted_2view_triangulation();
+elseif strcmp(problem, 'optimal_P4P_abs_pos/')
+    [f, numOfVars] = sys_optimal_P4P_abs_pos();
+elseif strcmp(problem, '3pt_rel_pos_homog/')
+    [f, numOfVars] = sys_3pt_rel_pos_homog();
+elseif strcmp(problem, 'PnP_unkn_principal_pt/')
+    [f, numOfVars] = sys_PnP_unkn_principal_pt();
+elseif strcmp(problem, 'rel_pos_quiver/')
+    [f, numOfVars] = sys_rel_pos_quiver();
+elseif strcmp(problem, 'P3P/')
+    [f, numOfVars] = sys_P3P();
+end
 
 params.make_coefficientHC = 0;
 params.write_Ht_indices = 1;
@@ -54,14 +119,6 @@ outputFileWr_P2C_Ht_script = fopen(fullOutputFileName_p2c_Ht_script, 'w');
 outputFileName_keep_params_rep_problem = 'optimal_rep_problem_keep_params.txt';
 fullOutputFileName_keep_params_rep_problem = fullfile(fileFolder, problem, outputFileName_keep_params_rep_problem);
 outputFileWr_keep_params_rep_problem = fopen(fullOutputFileName_keep_params_rep_problem, 'w');
-
-
-% -- define systems --
-if strcmp(problem, '5pt_rel_pos_alg_form_quat/')
-    [f, numOfVars] = sys_5pt_rel_pos_alg_form_quat();
-elseif strcmp(problem, '5pt_rel_pos_geo_form_quat/')
-    [f, numOfVars] = sys_5pt_rel_pos_geo_form_quat();
-end
 
 for i = 1:numOfVars
     str_vars = 'x';
