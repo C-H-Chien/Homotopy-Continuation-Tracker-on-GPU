@@ -23,9 +23,9 @@ Below we will use ``<problem_name>`` as the name of your minimal problem. <br />
 		- Move ``p2c-<problem_name>.h`` under ``GPU-HC/magmaHC/PHC_Coeffs/``. <br />
 		- Move ``dev-eval-indxing-<problem_name>.cuh`` under ``GPU-HC/magmaHC/gpu-idx-evals/``. <br />
 		- Move ``kernel_HC_Solver_<problem_name>.cu`` under ``GPU-HC/magmaHC/gpu-kernels/``. Hard-coded the number of solutions by replacing XX in the line 
-```cpp
-const int num_of_tracks             = XX;
-```
+		```cpp
+		const int num_of_tracks             = XX;
+		```
 	- Add your minimal problem in ``GPU-HC/magmaHC/gpu-kernels/magmaHC-kernels.hpp`` and ``GPU-HC/magmaHC/GPU_HC_Solver.cpp`` (member function ``Solve_by_GPU_HC()``). <br />
 	- Add your newly added files to the ``GPU-HC/magmaHC/CMakeLists.txt``. <br />
 - **Step 4. Build and Compile:**

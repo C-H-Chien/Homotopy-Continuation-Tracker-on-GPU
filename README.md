@@ -1,7 +1,7 @@
 # GPU-HC: Homotopy Continuation Path Tracking in GPU
 ### Research @ LEMS, Brown University (CVPR 2022)
 ## Introduction
-GPU-HC, as its name suggests, is a GPU implementation of Homotopy Continuation Solver. It is a general tool for finding roots of a polynomial systems (check our papers for more details). Our research aims at applying GPU-HC for computer vision problems, especially multiview geometry problems, where timings are crucial as the computation is typically performed under a RANSAC loop. Please refer and cite the following two papers if you intend to use them in your work. Also, please do not hesitate to contact chiang-heng_chien@brown.edu if you have any questions on using GPU-HC. <br />
+GPU-HC, as its name suggests, is a GPU implementation of Homotopy Continuation Solver. It is a general tool for finding roots of a polynomial systems (check our papers for more details). Our research aims at applying GPU-HC for computer vision problems, especially multiview geometry problems, where timings are crucial as the computation is typically performed under a RANSAC loop. Please refer and cite the reference papers if you intend to use them in your work. Also, please do not hesitate to contact chiang-heng_chien@brown.edu if you have any questions on using GPU-HC. <br />
 
 ## New Updates
 1. 2023.05.14 GPU-HC has a new release! <br />
@@ -41,6 +41,9 @@ cd bin
 ./magmaHC-main -p generalized_3views_4pts
 ```
 which solves the generalized three-view relative pose problem using 4 points.
+
+## How to solve a new minimal problem
+Refer to [Solve_New_Problems](https://github.com/C-H-Chien/Homotopy-Continuation-Tracker-on-GPU/blob/main/Solve_New_Problems.md) document and follow a step-by-step instruction.
 
 ## Limitations
 Several limitations of the GPU-HC solver: <br />

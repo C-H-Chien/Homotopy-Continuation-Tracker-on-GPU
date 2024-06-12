@@ -103,9 +103,9 @@ end
 
 outputFileName_p2c                   = 'optimal_params2coeffs.txt';
 outputFileName_coefficient_problem   = 'optimal_rep_problem.txt';
-outputFileName_PHC_script            = 'PHC_Coeffs_code.txt';
-outputFileName_Dev_Indxing_Code      = 'dev_indxing_code.txt';
-outputFileName_GPUHC_Kernel_Code     = 'gpuhc_kernel_code.txt';
+outputFileName_PHC_script            = strcat('p2c-', problemName, '.h');
+outputFileName_Dev_Indxing_Code      = strcat('dev-eval-indxing-', problemName, '.cuh');
+outputFileName_GPUHC_Kernel_Code     = strcat('kernel_HC_Solver_', problemName, '.cu');
 fullOutputFileName_p2c               = fullfile(fileFolder, problem, outputFileName_p2c);
 fullOutputFileName_rep_problem       = fullfile(fileFolder, problem, outputFileName_coefficient_problem);
 fullOutputFileName_PHC_script        = fullfile(fileFolder, problem, outputFileName_PHC_script);
@@ -708,22 +708,22 @@ fprintf("It's Finished!\n");
 
 %> print out the necessary information of the problem
 fprintf("\n ------------------------------------------------------- \n");
-fprintf("Number of coefficients from parameters: ");
+fprintf("Num_Of_Coeffs_From_Params: ");
 fprintf(string(size(unique_coeffs, 2)));
 fprintf('\n');
-fprintf("Maximal order of function t: ");
+fprintf("Max_Order_Of_T: ");
 fprintf(string(max_order_of_func_t));
 fprintf("\n ------------------------------------------------------- \n");
-fprintf("Max number of terms per dH/dx entry polynomial: ");
+fprintf("dHdx_Max_Terms: ");
 fprintf(string(max_num_of_terms_per_Hx_poly));
 fprintf('\n');
-fprintf("Max number of parts per dH/dx term polynomial: ");
+fprintf("dHdx_Max_Parts: ");
 fprintf(string(max_num_of_parts_per_Hx_term));
 fprintf("\n ------------------------------------------------------- \n");
-fprintf("Max number of terms per dH/dt polynomial: ");
+fprintf("dHdt_Max_Terms: ");
 fprintf(string(max_num_of_terms_per_poly));
 fprintf('\n');
-fprintf("Max number of parts per dH/dt term: ");
+fprintf("dHdt_Max_Parts: ");
 fprintf(string(max_num_of_parts_per_term));
 fprintf("\n ------------------------------------------------------- \n");
 
