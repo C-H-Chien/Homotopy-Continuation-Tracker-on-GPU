@@ -109,13 +109,7 @@ int main(int argc, char **argv) {
 
     //> (6) Solve the problem by GPU-HC
     GPU_HC_.Solve_by_GPU_HC();
-
-    //> (7) Free triplet edgels memory
-    // GPU_HC_.Free_Triplet_Edgels_Mem();
   }
-
-  //> Export all data (HC steps for now) to files
-  // GPU_HC_.Export_Data();
 
   return 0;
 }

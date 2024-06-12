@@ -24,9 +24,6 @@
 #include "Evaluations.hpp"
 #include <yaml-cpp/yaml.h>
 
-#define h_Triplet_Edge_Locations(i,j)    h_Triplet_Edge_Locations[(i) * 6 + (j)]
-#define h_Triplet_Edge_Tangents(i,j)     h_Triplet_Edge_Tangents[(i) * 6 + (j)]
-
 class Data_Reader;
 class Evaluations;
 
@@ -54,8 +51,6 @@ class GPU_HC_Solver {
     magmaFloatComplex       *h_dHdt_PHC_Coeffs;
     int                     *h_dHdx_Index;
     int                     *h_dHdt_Index;
-    float                   *h_Triplet_Edge_Locations;      //> in metrics
-    float                   *h_Triplet_Edge_Tangents;       //> in metrics
     magmaFloatComplex       *h_Debug_Purpose;
     bool                    *h_is_GPU_HC_Sol_Converge;
     bool                    *h_is_GPU_HC_Sol_Infinity;
@@ -95,8 +90,6 @@ public:
     // void Prepare_Target_Params( );
     void Data_Transfer_From_Host_To_Device();
     void Solve_by_GPU_HC();
-    void Export_Data();
-    void Free_Triplet_Edgels_Mem();
 
     std::string RANSAC_Dataset_Name;
 
@@ -128,8 +121,6 @@ private:
     int Max_Order_Of_T;
 
     //> RANSAC data
-    
-    int Num_Of_Triplet_Edgels;
     int Num_Of_Coeffs_From_Params;
     std::vector<int> GPUHC_Actual_Sols_Steps_Collections;
 };
