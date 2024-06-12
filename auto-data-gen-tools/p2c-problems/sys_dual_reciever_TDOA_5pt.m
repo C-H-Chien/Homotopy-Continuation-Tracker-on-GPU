@@ -1,4 +1,4 @@
-function [f, numOfVars] = sys_dual_reciever_TDOA_5pt()
+function [f, numOfVars, num_of_params] = sys_dual_reciever_TDOA_5pt()
     
     %> define systems
     %> variables
@@ -7,6 +7,7 @@ function [f, numOfVars] = sys_dual_reciever_TDOA_5pt()
     syms p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 p15 p16 p17 p18 p19 p20
     
     numOfVars = 5;
+    num_of_params = 20;
     
     %> polynomial equations
     f(1) = -x1^2*x4^2*p16^2 + x1^2*x4^2 - x1^2*x5^2*p16^2 - x1^2*p16^2 + 2*x1*x2*x4*x5 + 2*x1*x3*x4 + 2*x1*x4^2*p1*p16^2 - 2*x1*x4^2*p1 - 2*x1*x4*x5*p2 - 2*x1*x4*p3 + 2*x1*x5^2*p1*p16^2 + 2*x1*p1*p16^2 - x2^2*x4^2*p16^2 - x2^2*x5^2*p16^2 + x2^2*x5^2 - x2^2*p16^2 + 2*x2*x3*x5 + 2*x2*x4^2*p2*p16^2 - 2*x2*x4*x5*p1 + 2*x2*x5^2*p2*p16^2 - 2*x2*x5^2*p2 - 2*x2*x5*p3 + 2*x2*p2*p16^2 - x3^2*x4^2*p16^2 - x3^2*x5^2*p16^2 - x3^2*p16^2 + x3^2 + 2*x3*x4^2*p3*p16^2 - 2*x3*x4*p1 + 2*x3*x5^2*p3*p16^2 - 2*x3*x5*p2 + 2*x3*p3*p16^2 - 2*x3*p3 - x4^2*p1^2*p16^2 + x4^2*p1^2 - x4^2*p2^2*p16^2 - x4^2*p3^2*p16^2 + 2*x4*x5*p1*p2 + 2*x4*p1*p3 - x5^2*p1^2*p16^2 - x5^2*p2^2*p16^2 + x5^2*p2^2 - x5^2*p3^2*p16^2 + 2*x5*p2*p3 - p1^2*p16^2 - p2^2*p16^2 - p3^2*p16^2 + p3^2;

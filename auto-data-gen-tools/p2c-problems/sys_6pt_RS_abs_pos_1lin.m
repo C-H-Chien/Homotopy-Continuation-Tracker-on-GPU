@@ -1,4 +1,4 @@
-function [f, numOfVars] = sys_6pt_RS_abs_pos_1lin()
+function [f, numOfVars, num_of_params] = sys_6pt_RS_abs_pos_1lin()
     
     %> define systems
     %> variables
@@ -7,6 +7,7 @@ function [f, numOfVars] = sys_6pt_RS_abs_pos_1lin()
     syms p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 p15 p16 p17 p18 p19 p20 p21 p22 p23 p24 p25 p26 p27 p28 p29 p30 p31 p32 p33 p34 p35 p36 p37
     
     numOfVars = 18;
+    num_of_params = 37;
     
     %> polynomial equations
     f(1) = x10*p1 - p20 - x7 - x10*p2 + x13*p8 - 2*x2*p22 + 2*x3*p21 - x1^2*x7 - x2^2*x7 - x3^2*x7 - x1^2*p20 + x2^2*p20 + x3^2*p20 + x1^2*x10*p1 - x1^2*x10*p2 + x2^2*x10*p1 - x2^2*x10*p2 + x3^2*x10*p1 - x3^2*x10*p2 + x1^2*x13*p8 + x2^2*x13*p8 + x3^2*x13*p8 - 2*x1*x2*p21 - 2*x1*x3*p22 + x5*p1*p22 - x6*p1*p21 - x5*p2*p22 + x6*p2*p21 + 2*x1*x5*p1*p21 - 2*x2*x5*p1*p20 - 2*x1*x5*p2*p21 + 2*x2*x5*p2*p20 + 2*x1*x6*p1*p22 - 2*x3*x6*p1*p20 - 2*x1*x6*p2*p22 + 2*x3*x6*p2*p20 - x1^2*x5*p1*p22 + x1^2*x6*p1*p21 + x1^2*x5*p2*p22 - x1^2*x6*p2*p21 - x2^2*x5*p1*p22 - x2^2*x6*p1*p21 + x2^2*x5*p2*p22 + x2^2*x6*p2*p21 + x3^2*x5*p1*p22 + x3^2*x6*p1*p21 - x3^2*x5*p2*p22 - x3^2*x6*p2*p21 - 2*x1*x2*x6*p1*p20 + 2*x1*x3*x5*p1*p20 + 2*x1*x2*x6*p2*p20 - 2*x1*x3*x5*p2*p20 + 2*x2*x3*x5*p1*p21 - 2*x2*x3*x5*p2*p21 - 2*x2*x3*x6*p1*p22 + 2*x2*x3*x6*p2*p22;

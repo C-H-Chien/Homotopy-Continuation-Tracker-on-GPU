@@ -1,4 +1,4 @@
-function [f, numOfVars] = sys_3pt_rel_pos_homog()
+function [f, numOfVars, num_of_params] = sys_3pt_rel_pos_homog()
     % -- define systems --
     % -- variables --
     syms x1 x2 x3 x4 x5 x6 x7 x8
@@ -6,6 +6,7 @@ function [f, numOfVars] = sys_3pt_rel_pos_homog()
     syms p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 p15 p16 p17 p18
     
     numOfVars = 8;
+    num_of_params = 18;
 
     f(1) = x1*x6*x8*p1*p16 - x1*x6*p1*p13 + x2*x6*x8*p4*p16 - x2*x6*p4*p13 + x3*x6*x8*p7*p16 - x3*x6*p7*p13 - x4*p4*p16 - x5*p1*p16 + p7*p13;
     f(2) = -x1*x6*x7*p1*p16 + x1*x6*p1*p10 - x2*x6*x7*p4*p16 + x2*x6*p4*p10 - x3*x6*x7*p7*p16 + x3*x6*p7*p10 + x4*p1*p16 - x5*p4*p16 - p7*p10;

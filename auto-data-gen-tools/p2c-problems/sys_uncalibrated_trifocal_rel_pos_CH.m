@@ -1,4 +1,4 @@
-function [f, numOfVars] = sys_uncalibrated_trifocal_rel_pos_CH()
+function [f, numOfVars, num_of_params] = sys_uncalibrated_trifocal_rel_pos_CH()
     
     %> define systems
     %> variables
@@ -7,6 +7,7 @@ function [f, numOfVars] = sys_uncalibrated_trifocal_rel_pos_CH()
     syms p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 p15 p16 p17 p18 p19 p20 p21 p22 p23 p24
     
     numOfVars = 18;
+    num_of_params = 24;
     
     %> polynomial equations
     f(1) = p9*x18 - x13 - 2*x1*x5*x7 - 2*x1*x6*x8 - p1*x1*x5^2*x18 - p1*x1*x6^2*x18 + p1*x1*x7^2*x18 + p1*x1*x8^2*x18 + p9*x1*x5^2*x18 - p9*x1*x6^2*x18 - p9*x1*x7^2*x18 + p9*x1*x8^2*x18 + 2*p5*x1*x5*x8*x18 - 2*p5*x1*x6*x7*x18 - 2*p1*p9*x1*x5*x7*x18^2 + 2*p1*p9*x1*x6*x8*x18^2 + 2*p5*p9*x1*x5*x6*x18^2 + 2*p5*p9*x1*x7*x8*x18^2;

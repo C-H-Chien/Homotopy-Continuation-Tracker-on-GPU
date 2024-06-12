@@ -1,4 +1,4 @@
-function [f, numOfVars] = sys_rel_pos_quiver()
+function [f, numOfVars, num_of_params] = sys_rel_pos_quiver()
     
     %> define systems
     %> variables
@@ -7,6 +7,7 @@ function [f, numOfVars] = sys_rel_pos_quiver()
     syms p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 p15 p16 p17 p18 p19 p20 p21 p22 p23 p24 p25 p26 p27 p28 p29 p30 p31 p32 p33 p34 p35 p36
     
     numOfVars = 4;
+    num_of_params = 36;
     
     %> polynomial equations
     f(1) = -x1^2*x4*p33 + x1^2*p1 - x1^2*p17 + 2*x1*x2*p5 + 2*x1*x2*p13 + 2*x1*x3*x4*p9 + 2*x1*x3*p25 + 2*x1*x4*p21 - 2*x1*p29 - x2^2*x4*p33 - x2^2*p1 + x2^2*p17 + 2*x2*x3*x4*p21 + 2*x2*x3*p29 - 2*x2*x4*p9 + 2*x2*p25 + x3^2*x4*p33 - x3^2*p1 - x3^2*p17 + 2*x3*p5 - 2*x3*p13 + x4*p33 + p1 + p17;

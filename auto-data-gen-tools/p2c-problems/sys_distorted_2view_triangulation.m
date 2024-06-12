@@ -1,4 +1,4 @@
-function [f, numOfVars] = sys_distorted_2view_triangulation()
+function [f, numOfVars, num_of_params] = sys_distorted_2view_triangulation()
     
     %> define systems
     %> variables
@@ -7,6 +7,7 @@ function [f, numOfVars] = sys_distorted_2view_triangulation()
     syms p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 p15
 
     numOfVars = 5;
+    num_of_params = 15;
     
     %> polynomial equations
     f(1) = p13 + x1*p7 + x2*p10 + x3*p11 + x4*p12 + x1^2*p13*p14 + x2^2*p13*p14 + x3^2*p13*p15 + x4^2*p13*p15 + x1*x3*p5 + x1*x4*p6 + x2*x3*p8 + x2*x4*p9 + x1*x3^2*p7*p15 + x1*x4^2*p7*p15 + x1^2*x3*p11*p14 + x2*x3^2*p10*p15 + x2^2*x3*p11*p14 + x2*x4^2*p10*p15 + x1^2*x4*p12*p14 + x2^2*x4*p12*p14 + x1^2*x3^2*p13*p14*p15 + x1^2*x4^2*p13*p14*p15 + x2^2*x3^2*p13*p14*p15 + x2^2*x4^2*p13*p14*p15;

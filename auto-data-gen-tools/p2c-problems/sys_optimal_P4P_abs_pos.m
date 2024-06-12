@@ -7,6 +7,7 @@ function [f, numOfVars] = sys_optimal_P4P_abs_pos()
     syms p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 p15 p16 p17 p18 p19 p20 p21 p22 p23 p24 p25 p26 p27 p28 p29 p30 p31 p32 p33 p34 p35 p36 p37 p38 p39 p40 p41 p42 p43 p44 p45 p46 p47 p48
 
     numOfVars = 5;
+    num_of_params = 48;
     
     %> polynomial equations
     f(1) = x1^2*p13 + x1*x2*p14 + x1*x2*p16 + x1*x3*p15 + x1*x3*p19 + x1*x4*p2*p14 + x1*x4*p2*p16 + x1*x4*p3*p15 + x1*x4*p3*p19 + x1*x5*p2*p15 + x1*x5*p2*p19 - x1*x5*p3*p14 - x1*x5*p3*p16 + 2*x1*p1*p13 + x2^2*p17 + x2*x3*p18 + x2*x3*p20 + 2*x2*x4*p2*p17 + x2*x4*p3*p18 + x2*x4*p3*p20 + x2*x5*p2*p18 + x2*x5*p2*p20 - 2*x2*x5*p3*p17 + x2*p1*p14 + x2*p1*p16 + x3^2*p21 + x3*x4*p2*p18 + x3*x4*p2*p20 + 2*x3*x4*p3*p21 + 2*x3*x5*p2*p21 - x3*x5*p3*p18 - x3*x5*p3*p20 + x3*p1*p15 + x3*p1*p19 + x4^2*p2^2*p17 + x4^2*p2*p3*p18 + x4^2*p2*p3*p20 + x4^2*p3^2*p21 + x4*x5*p2^2*p18 + x4*x5*p2^2*p20 - 2*x4*x5*p2*p3*p17 + 2*x4*x5*p2*p3*p21 - x4*x5*p3^2*p18 - x4*x5*p3^2*p20 + x4*p1*p2*p14 + x4*p1*p2*p16 + x4*p1*p3*p15 + x4*p1*p3*p19 + x5^2*p2^2*p21 - x5^2*p2*p3*p18 - x5^2*p2*p3*p20 + x5^2*p3^2*p17 + x5*p1*p2*p15 + x5*p1*p2*p19 - x5*p1*p3*p14 - x5*p1*p3*p16 + p1^2*p13;

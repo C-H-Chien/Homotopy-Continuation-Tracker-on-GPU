@@ -1,4 +1,4 @@
-function [f, numOfVars] = sys_P3P()
+function [f, numOfVars, num_of_params] = sys_P3P()
     
     %> define systems
     %> variables
@@ -7,6 +7,7 @@ function [f, numOfVars] = sys_P3P()
     syms p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 p15 p16 p17 p18
     
     numOfVars = 3;
+    num_of_params = 18;
     
     %> polynomial equations
     f(1) = x1^2*p1^2 + x1^2*p2^2 + x1^2*p3^2 - 2*x1*x2*p1*p4 - 2*x1*x2*p2*p5 - 2*x1*x2*p3*p6 + x2^2*p4^2 + x2^2*p5^2 + x2^2*p6^2 - p10^2 + 2*p10*p13 - p11^2 + 2*p11*p14 - p12^2 + 2*p12*p15 - p13^2 - p14^2 - p15^2;

@@ -1,4 +1,4 @@
-function [f, numOfVars] = sys_5pt_rel_pos_full_form()
+function [f, numOfVars, num_of_params] = sys_5pt_rel_pos_full_form()
     
     %> define systems
     %> variables
@@ -8,6 +8,7 @@ function [f, numOfVars] = sys_5pt_rel_pos_full_form()
     syms p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 p15 p16 p17 p18 p19 p20
     
     numOfVars = 16;
+    num_of_params = 20;
 
 %     f(1) = p3*x5 - p1*p21 - x10 + 2*p1*p21*x14^2 + 2*p1*p21*x15^2 - 2*p21*x13*x15 - 2*p21*x14*x16 - 2*p2*p21*x13*x14 + 2*p2*p21*x15*x16;
 %     f(2) = p4*x5 - p2*p21 - x11 + 2*p2*p21*x13^2 + 2*p2*p21*x15^2 + 2*p21*x13*x16 - 2*p21*x14*x15 - 2*p1*p21*x13*x14 - 2*p1*p21*x15*x16;

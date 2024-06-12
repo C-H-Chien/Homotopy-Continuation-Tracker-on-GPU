@@ -1,21 +1,23 @@
-%> Transform parametric polynomials into coefficient polynomials
-%> An Improved Version with Minimal Number of Coefficients by Removing
-%  Duplicate Coefficients With Different Signs.
+%> Automatic data generator for the GPU-HC solver
 %
 %> Author: Chiang-Heng Chien
 %> (c) LEMS, Brown University
 %
-%> Initiated                                    Oct. 19th, 2021
-%> Solve data structure issues                  Nov. 6th,  2022
-%> Solve a factorization issue                  Nov. 11th, 2022
-%> Solve a parameter homotopy issue             Nov. 20th, 2022
-%> Solve the power term of parameters issue     May. 27th, 2024
+%> Initiated                                            Oct. 19th, 2021
+%> Solve data structure issues                          Nov. 6th,  2022
+%> Solve a factorization issue                          Nov. 11th, 2022
+%> Solve a parameter homotopy issue                     Nov. 20th, 2022
+%> Solve the power term of parameters issue             May. 27th, 2024
+%> Add auto-generation of PHC_Coeffs code, 
+%  dev_eval_indxing code, and GPU-HC kernel code        Jun. 11th, 2024
 
+clc;
 clear;
 format long;
 
-%> This is my lab laptop directory
+%> Create a folder with the name same as the minimal problem name under "fileFolder" defined below
 fileFolder = '/path/to/your/minimal-problems/';
+
 % problem = "5pt_rel_pos_full_form/";
 % problem = "5pt_rel_pos_geo_form_quat/";
 % problem = "5pt_rel_pos_alg_form_quat/";
@@ -40,47 +42,47 @@ problemName = extractBefore(problem, "/");
 
 % -- define systems --
 if strcmp(problem, 'trifocal_2op1p_30x30/')
-    [f, numOfVars] = sys_trifocal_2op1p_30x30();
+    [f, numOfVars, numOfParams] = sys_trifocal_2op1p_30x30();
 elseif strcmp(problem, '5pt_rel_pos_full_form/')
-    [f, numOfVars] = sys_5pt_rel_pos_full_form();
+    [f, numOfVars, numOfParams] = sys_5pt_rel_pos_full_form();
 elseif strcmp(problem, '5pt_rel_pos_geo_form_quat/')
-    [f, numOfVars] = sys_5pt_rel_pos_geo_form_quat();
+    [f, numOfVars, numOfParams] = sys_5pt_rel_pos_geo_form_quat();
 elseif strcmp(problem, '5pt_rel_pos_alg_form_quat/')
-    [f, numOfVars] = sys_5pt_rel_pos_alg_form_quat();
+    [f, numOfVars, numOfParams] = sys_5pt_rel_pos_alg_form_quat();
 elseif strcmp(problem, 'six_lines_generalized_cam/')
-    [f, numOfVars] = sys_six_lines_generalized_cam();
+    [f, numOfVars, numOfParams] = sys_six_lines_generalized_cam();
 elseif strcmp(problem, '3view_triangulation/')
-    [f, numOfVars] = sys_3view_triangulation();
+    [f, numOfVars, numOfParams] = sys_3view_triangulation();
 elseif strcmp(problem, '4view_triangulation/')
-    [f, numOfVars] = sys_4view_triangulation();
+    [f, numOfVars, numOfParams] = sys_4view_triangulation();
 elseif strcmp(problem, 'generalized_3views_4pts/')
-    [f, numOfVars] = sys_generalized_3views_4pts();
+    [f, numOfVars, numOfParams] = sys_generalized_3views_4pts();
 elseif strcmp(problem, 'generalized_3views_6lines/')
-    [f, numOfVars] = sys_generalized_3views_6lines();
+    [f, numOfVars, numOfParams] = sys_generalized_3views_6lines();
 elseif strcmp(problem, 'uncalibrated_trifocal_rel_pos_CY/')
-    [f, numOfVars] = sys_uncalibrated_trifocal_rel_pos_CY();
+    [f, numOfVars, numOfParams] = sys_uncalibrated_trifocal_rel_pos_CY();
 elseif strcmp(problem, 'uncalibrated_trifocal_rel_pos_CH/')
-    [f, numOfVars] = sys_uncalibrated_trifocal_rel_pos_CH();
+    [f, numOfVars, numOfParams] = sys_uncalibrated_trifocal_rel_pos_CH();
 elseif strcmp(problem, 'optimal_PnP_quat/')
-    [f, numOfVars] = sys_optimal_PnP_quat();
+    [f, numOfVars, numOfParams] = sys_optimal_PnP_quat();
 elseif strcmp(problem, '6pt_RS_abs_pos/')
-    [f, numOfVars] = sys_6pt_RS_abs_pos();
+    [f, numOfVars, numOfParams] = sys_6pt_RS_abs_pos();
 elseif strcmp(problem, '6pt_RS_abs_pos_1lin/')
-    [f, numOfVars] = sys_6pt_RS_abs_pos_1lin();
+    [f, numOfVars, numOfParams] = sys_6pt_RS_abs_pos_1lin();
 elseif strcmp(problem, 'dual_reciever_TDOA_5pt/')
-    [f, numOfVars] = sys_dual_reciever_TDOA_5pt();
+    [f, numOfVars, numOfParams] = sys_dual_reciever_TDOA_5pt();
 elseif strcmp(problem, 'distorted_2view_triangulation/')
-    [f, numOfVars] = sys_distorted_2view_triangulation();
+    [f, numOfVars, numOfParams] = sys_distorted_2view_triangulation();
 elseif strcmp(problem, 'optimal_P4P_abs_pos/')
-    [f, numOfVars] = sys_optimal_P4P_abs_pos();
+    [f, numOfVars, numOfParams] = sys_optimal_P4P_abs_pos();
 elseif strcmp(problem, '3pt_rel_pos_homog/')
-    [f, numOfVars] = sys_3pt_rel_pos_homog();
+    [f, numOfVars, numOfParams] = sys_3pt_rel_pos_homog();
 elseif strcmp(problem, 'PnP_unkn_principal_pt/')
-    [f, numOfVars] = sys_PnP_unkn_principal_pt();
+    [f, numOfVars, numOfParams] = sys_PnP_unkn_principal_pt();
 elseif strcmp(problem, 'rel_pos_quiver/')
-    [f, numOfVars] = sys_rel_pos_quiver();
+    [f, numOfVars, numOfParams] = sys_rel_pos_quiver();
 elseif strcmp(problem, 'P3P/')
-    [f, numOfVars] = sys_P3P();
+    [f, numOfVars, numOfParams] = sys_P3P();
 end
 
 params.make_coefficientHC = 0;
@@ -88,32 +90,32 @@ params.write_Ht_indices = 1;
 params.write_Hx_indices = 1;
 
 if params.write_Ht_indices
-    outputHtIndicesFileName = 'Ht_idx.txt';
+    outputHtIndicesFileName = 'dHdt_indx.txt';
     fullOutputFileName_Ht_indices = fullfile(fileFolder, problem, outputHtIndicesFileName);
     outputFileWr_Ht_indices = fopen(fullOutputFileName_Ht_indices, 'w');
 end
 
 if params.write_Hx_indices
-    outputHxIndicesFileName = 'Hx_idx.txt';
+    outputHxIndicesFileName = 'dHdx_indx.txt';
     fullOutputFileName_Hx_indices = fullfile(fileFolder, problem, outputHxIndicesFileName);
     outputFileWr_Hx_indices = fopen(fullOutputFileName_Hx_indices, 'w');
 end
 
-outputFileName_p2c = 'optimal_params2coeffs.txt';
-outputFileName_coefficient_problem = 'optimal_rep_problem.txt';
-%outputFileName_P2C_script = 'P2C_script.txt';
-outputFileName_P2C_Hx_script = 'P2C_gen_Hx.txt';
-outputFileName_P2C_Ht_script = 'P2C_gen_Ht.txt';
-fullOutputFileName_p2c = fullfile(fileFolder, problem, outputFileName_p2c);
-fullOutputFileName_rep_problem = fullfile(fileFolder, problem, outputFileName_coefficient_problem);
-%fullOutputFileName_p2c_script = fullfile(fileFolder, problem, outputFileName_P2C_script);
-fullOutputFileName_p2c_Hx_script = fullfile(fileFolder, problem, outputFileName_P2C_Hx_script);
-fullOutputFileName_p2c_Ht_script = fullfile(fileFolder, problem, outputFileName_P2C_Ht_script);
-outputFileWr_p2c = fopen(fullOutputFileName_p2c, 'w');
-outputFileWr_rep_problem = fopen(fullOutputFileName_rep_problem, 'w');
-%outputFileWr_P2C_script = fopen(fullOutputFileName_p2c_script, 'w');
-outputFileWr_P2C_Hx_script = fopen(fullOutputFileName_p2c_Hx_script, 'w');
-outputFileWr_P2C_Ht_script = fopen(fullOutputFileName_p2c_Ht_script, 'w');
+outputFileName_p2c                   = 'optimal_params2coeffs.txt';
+outputFileName_coefficient_problem   = 'optimal_rep_problem.txt';
+outputFileName_PHC_script            = 'PHC_Coeffs_code.txt';
+outputFileName_Dev_Indxing_Code      = 'dev_indxing_code.txt';
+outputFileName_GPUHC_Kernel_Code     = 'gpuhc_kernel_code.txt';
+fullOutputFileName_p2c               = fullfile(fileFolder, problem, outputFileName_p2c);
+fullOutputFileName_rep_problem       = fullfile(fileFolder, problem, outputFileName_coefficient_problem);
+fullOutputFileName_PHC_script        = fullfile(fileFolder, problem, outputFileName_PHC_script);
+fullOutputFileName_Dev_Indxing_Code  = fullfile(fileFolder, problem, outputFileName_Dev_Indxing_Code);
+fullOutputFileName_GPUHC_Kernel_Code = fullfile(fileFolder, problem, outputFileName_GPUHC_Kernel_Code);
+outputFileWr_p2c                     = fopen(fullOutputFileName_p2c, 'w');
+outputFileWr_rep_problem             = fopen(fullOutputFileName_rep_problem, 'w');
+outputFileWr_PHC_script              = fopen(fullOutputFileName_PHC_script, 'w');
+outputFileWr_dev_eval_indxing_script = fopen(fullOutputFileName_Dev_Indxing_Code, 'w');
+outputFileWr_kernel_code             = fopen(fullOutputFileName_GPUHC_Kernel_Code, 'w');
 
 %> Optional... write replaced, reordered problem which keeps the parameters
 outputFileName_keep_params_rep_problem = 'optimal_rep_problem_keep_params.txt';
@@ -229,12 +231,8 @@ for i = 1:size(unique_coeffs, 2)
 end
 fprintf('\n');
 
-%> create a P2C script which converts parameter homotopy as a uni-variable
-%  polynomial for coefficient representation
-%createBlankP2C_cpp(problemName, outputFileWr_P2C_script);
-max_order_of_func_t = createUnivPoly4Coeffs(rep_coeffs_stack, outputFileWr_P2C_Hx_script, outputFileWr_P2C_Ht_script);
-% fprintf(outputFileWr_P2C_script, "}\n");
-% fprintf(outputFileWr_P2C_script, "#endif\n");
+%> create a PHC_Coeffs script which converts parameter homotopy as a uni-variable polynomial for coefficient representation
+max_order_of_func_t = create_PHC_Coeffs_CPP_code(problemName, rep_coeffs_stack, numOfParams, outputFileWr_PHC_script);
 
 for i = 1:size(unique_coeffs, 2)+1
     str_coeffs = 'c';
@@ -697,6 +695,15 @@ for p = 1:numOfVars
     end
 end
 
+%> Create a device function in GPU-HC for evaluating the Jacobians dH/dX, dH/dt, and Homotopy H
+create_dev_eval_indxing_CUH_code(problemName, max_order_of_func_t, max_num_of_parts_per_Hx_term, outputFileWr_dev_eval_indxing_script);
+
+%> Create the GPUHC solver kernel code
+create_GPUHC_kernel_CU_code(problemName, max_order_of_func_t, ...
+                            max_num_of_terms_per_Hx_poly, max_num_of_parts_per_Hx_term, ...
+                            max_num_of_terms_per_poly, max_num_of_parts_per_term, ...
+                            numOfVars, size(unique_coeffs, 2), outputFileWr_kernel_code);
+
 fprintf("It's Finished!\n");
 
 %> print out the necessary information of the problem
@@ -707,24 +714,25 @@ fprintf('\n');
 fprintf("Maximal order of function t: ");
 fprintf(string(max_order_of_func_t));
 fprintf("\n ------------------------------------------------------- \n");
-fprintf("Max number of terms per polynomial: ");
-fprintf(string(max_num_of_terms_per_poly));
-fprintf('\n');
-fprintf("Max number of parts per term: ");
-fprintf(string(max_num_of_parts_per_term));
-fprintf("\n ------------------------------------------------------- \n");
-fprintf("Max number of terms per Hx entry polynomial: ");
+fprintf("Max number of terms per dH/dx entry polynomial: ");
 fprintf(string(max_num_of_terms_per_Hx_poly));
 fprintf('\n');
-fprintf("Max number of parts per Hx term polynomial: ");
+fprintf("Max number of parts per dH/dx term polynomial: ");
 fprintf(string(max_num_of_parts_per_Hx_term));
+fprintf("\n ------------------------------------------------------- \n");
+fprintf("Max number of terms per dH/dt polynomial: ");
+fprintf(string(max_num_of_terms_per_poly));
+fprintf('\n');
+fprintf("Max number of parts per dH/dt term: ");
+fprintf(string(max_num_of_parts_per_term));
 fprintf("\n ------------------------------------------------------- \n");
 
 %> close the files
-fclose(outputFileWr_P2C_Hx_script);
-fclose(outputFileWr_P2C_Ht_script);
 fclose(outputFileWr_rep_problem);
 fclose(outputFileWr_keep_params_rep_problem);
+fclose(outputFileWr_PHC_script);
+fclose(outputFileWr_dev_eval_indxing_script);
+fclose(outputFileWr_kernel_code);
 
 if params.write_Ht_indices
     fclose(outputFileWr_Ht_indices);

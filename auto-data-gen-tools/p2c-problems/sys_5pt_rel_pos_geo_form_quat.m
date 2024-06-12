@@ -1,4 +1,4 @@
-function [f, numOfVars] = sys_5pt_rel_pos_geo_form_quat()
+function [f, numOfVars, num_of_params] = sys_5pt_rel_pos_geo_form_quat()
     
     %> define systems
     %> variables
@@ -7,6 +7,7 @@ function [f, numOfVars] = sys_5pt_rel_pos_geo_form_quat()
     syms p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 p15 p16 p17 p18 p19 p20
     
     numOfVars = 6;
+    num_of_params = 20;
     
     %> Version 2
     f(1) = p2*p3 - p1*p4 + p1*x2 - p2*x1 - p3*x2 + p4*x1 - 2*p2*p3*x3^2 + 2*p1*p4*x4^2 + 2*p1*p4*x5^2 - 2*p2*p3*x5^2 + 2*p2*x1*x3^2 - 2*p1*x2*x4^2 - 2*p1*x2*x5^2 + 2*p2*x1*x5^2 + 2*p3*x2*x3^2 - 2*p4*x1*x3^2 + 2*p3*x2*x4^2 - 2*p4*x1*x4^2 - 2*p3*x3*x6 + 2*p3*x4*x5 - 2*p4*x3*x5 - 2*p4*x4*x6 + 2*x1*x3*x6 - 2*x1*x4*x5 + 2*x2*x3*x5 + 2*x2*x4*x6 + 2*p1*p3*x3*x4 - 2*p2*p4*x3*x4 + 2*p1*p3*x5*x6 + 2*p2*p4*x5*x6 - 2*p1*x1*x3*x4 + 2*p2*x2*x3*x4 - 2*p1*x1*x5*x6 - 2*p2*x2*x5*x6 - 2*p1*p3*x2*x3*x5 + 2*p1*p4*x1*x3*x5 + 2*p1*p3*x2*x4*x6 - 2*p1*p4*x1*x4*x6 - 2*p2*p3*x2*x3*x6 - 2*p2*p3*x2*x4*x5 + 2*p2*p4*x1*x3*x6 + 2*p2*p4*x1*x4*x5;

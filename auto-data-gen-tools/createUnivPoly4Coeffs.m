@@ -1,22 +1,20 @@
-function [max_order_of_func_t] = createUnivPoly4Coeffs(line_p2c, outputFileWr_coeffs_Hx, outputFileWr_coeffs_Ht)
+function max_order_of_func_t = createUnivPoly4Coeffs(line_p2c, num_of_params, outputFileWr_PHC)
 
-%     % -- write the correspondences between start and target params arrays and
-%     % ps as well as qs --
-%     % -- 1) target and ps --
-%     for i = 1:numOfParams
-%         wrstr = strcat('magmaFloatComplex', {' '}, 'p', num2str(i), {' '}, '=', {' '}, 'h_targetParams[', num2str(i-1), '];\n');
-%         fprintf(outputFileWr_coeffs_Hx, string(wrstr));
-%     end
-%     % -- 2) start and qs --
-%     for i = 1:numOfParams
-%         wrstr = strcat('magmaFloatComplex', {' '}, 'q', num2str(i), {' '}, '=', {' '}, 'h_startParams[', num2str(i-1), '];\n');
-%         fprintf(outputFileWr_coeffs_Hx, string(wrstr));
-%     end
-%     fprintf(outputFileWr_coeffs_Hx, "\n");
+    %> Write start and target coefficients from parameters
+    %> 1) target coefficients from parameters
+    for i = 1:num_of_params
+        wrstr = strcat('magmaFloatComplex', {' '}, 'p', num2str(i), {' '}, '=', {' '}, 'h_targetParams[', num2str(i-1), '];\n');
+        fprintf(outputFileWr_PHC, strcat("\t", string(wrstr)));
+    end
+    fprintf(outputFileWr_PHC, "\n");
+    %> 2) start coefficients from parameters
+    for i = 1:num_of_params
+        wrstr = strcat('magmaFloatComplex', {' '}, 'q', num2str(i), {' '}, '=', {' '}, 'h_startParams[', num2str(i-1), '];\n');
+        fprintf(outputFileWr_PHC, strcat("\t", string(wrstr)));
+    end
+    fprintf(outputFileWr_PHC, "\n");
 
-    sym_p_homotopy_all = [];
     max_t_size = 0;
-    acc_numOfCoeffs = 0;
     fprintf('construct parameter homotopy for each coefficient ');
     for i = 1:size(line_p2c, 1)
         % -- 1) extract the RHS and convert it to a string, and remove parantheses --
@@ -204,8 +202,8 @@ function [max_order_of_func_t] = createUnivPoly4Coeffs(line_p2c, outputFileWr_co
 
             % -- write to the file --
             %wrstr = strcat('h_phc_coeffs_H[', num2str(acc_numOfCoeffs), ']=', full_coeff, ';');
-            fprintf(outputFileWr_coeffs_Hx, wrstr);
-            fprintf(outputFileWr_coeffs_Hx, '\n');
+            fprintf(outputFileWr_PHC, strcat("\t", wrstr));
+            fprintf(outputFileWr_PHC, '\n');
             acc_numOfCoeffs = acc_numOfCoeffs + 1;
         end
 
@@ -213,8 +211,8 @@ function [max_order_of_func_t] = createUnivPoly4Coeffs(line_p2c, outputFileWr_co
         if size(coefficient, 2) < max_t_size
             for j = size(coefficient, 2):max_t_size-1
                 wrstr = strcat('h_phc_coeffs_Hx[', num2str(acc_numOfCoeffs), "] = MAGMA_C_ZERO;");
-                fprintf(outputFileWr_coeffs_Hx, wrstr);
-                fprintf(outputFileWr_coeffs_Hx, '\n');
+                fprintf(outputFileWr_PHC, strcat("\t", wrstr));
+                fprintf(outputFileWr_PHC, '\n');
                 acc_numOfCoeffs = acc_numOfCoeffs + 1;
             end
         end
@@ -224,8 +222,18 @@ function [max_order_of_func_t] = createUnivPoly4Coeffs(line_p2c, outputFileWr_co
             fprintf('. ');
         end
     end
+
+    %> Pad zeros for the coefficients
+    wrstr = strcat('h_phc_coeffs_Hx[', num2str(acc_numOfCoeffs), "] = MAGMA_C_ONE;");
+    fprintf(outputFileWr_PHC, strcat("\t", wrstr, "\n"));
+    acc_numOfCoeffs = acc_numOfCoeffs + 1;
+    for i = 1:max_t_size-1
+        wrstr = strcat('h_phc_coeffs_Hx[', num2str(acc_numOfCoeffs), "] = MAGMA_C_ZERO;");
+        fprintf(outputFileWr_PHC, strcat("\t", wrstr, "\n"));
+        acc_numOfCoeffs = acc_numOfCoeffs + 1;
+    end
     fprintf('\n');
-    fprintf(outputFileWr_coeffs_Hx, '\n');
+    fprintf(outputFileWr_PHC, '\n');
 
     %> Differentiating the function t to get the coefficients of function t
     % for Ht --
@@ -295,20 +303,14 @@ function [max_order_of_func_t] = createUnivPoly4Coeffs(line_p2c, outputFileWr_co
             %  string to sym and do simpify() is unnecessary. Otherwise if
             %  the parameter has a power, simplify() will convert the
             %  expansion form back to the power form.
-            %sym_full_coeff = str2sym(full_coeff);
-            %simp_sym_full_coeff = simplify(sym_full_coeff);
-            %simp_str_full_coeff = string(simp_sym_full_coeff);
-            %wrstr = strcat('h_phc_coeffs_Hx[', num2str(acc_numOfCoeffs), ']=', simp_str_full_coeff, ';');
-            wrstr = strcat('h_phc_coeffs_Ht[', num2str(acc_numOfCoeffs), ']=', full_coeff, ';');
-            
-            
 %             sym_full_coeff = str2sym(full_coeff);
 %             simp_sym_full_coeff = simplify(sym_full_coeff);
 %             simp_str_full_coeff = string(simp_sym_full_coeff);
 %             wrstr = strcat('h_phc_coeffs_Ht[', num2str(acc_numOfCoeffs), ']=', simp_str_full_coeff, ';');
-            %wrstr = strcat('h_phc_coeffs_Ht[', num2str(acc_numOfCoeffs), ']=', full_coeff, ';');
-            fprintf(outputFileWr_coeffs_Ht, wrstr);
-            fprintf(outputFileWr_coeffs_Ht, '\n');
+            wrstr = strcat('h_phc_coeffs_Ht[', num2str(acc_numOfCoeffs), ']=', full_coeff, ';');
+            
+            fprintf(outputFileWr_PHC, strcat("\t", wrstr));
+            fprintf(outputFileWr_PHC, '\n');
             acc_numOfCoeffs = acc_numOfCoeffs + 1;
         end
 
@@ -316,8 +318,8 @@ function [max_order_of_func_t] = createUnivPoly4Coeffs(line_p2c, outputFileWr_co
         if size(coefficient, 2) < max_t_size-1
             for j = size(coefficient, 2):max_t_size-2
                 wrstr = strcat('h_phc_coeffs_Ht[', num2str(acc_numOfCoeffs), ']= MAGMA_C_ZERO;');
-                fprintf(outputFileWr_coeffs_Ht, wrstr);
-                fprintf(outputFileWr_coeffs_Ht, '\n');
+                fprintf(outputFileWr_PHC, strcat("\t", wrstr));
+                fprintf(outputFileWr_PHC, '\n');
                 acc_numOfCoeffs = acc_numOfCoeffs + 1;
             end
         end
@@ -327,15 +329,19 @@ function [max_order_of_func_t] = createUnivPoly4Coeffs(line_p2c, outputFileWr_co
             fprintf('. ');
         end
     end
+    %> Pad zeros for the coefficients
+    wrstr = strcat('h_phc_coeffs_Ht[', num2str(acc_numOfCoeffs), "] = MAGMA_C_ONE;");
+    fprintf(outputFileWr_PHC, strcat("\t", wrstr, "\n"));
+    acc_numOfCoeffs = acc_numOfCoeffs + 1;
+    for i = 1:max_t_size-2
+        wrstr = strcat('h_phc_coeffs_Hx[', num2str(acc_numOfCoeffs), "] = MAGMA_C_ZERO;");
+        fprintf(outputFileWr_PHC, strcat("\t", wrstr, "\n"));
+        acc_numOfCoeffs = acc_numOfCoeffs + 1;
+    end
+
     fprintf('\n');
 
     %> return output
     max_order_of_func_t = max_t_size-1;
-    
-%     fprintf("Maximal order of function t is:");
-%     fprintf(string(max_t_size-1));
-%     fprintf('\n');
-
-   
 end
 

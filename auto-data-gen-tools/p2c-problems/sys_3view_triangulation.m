@@ -1,4 +1,4 @@
-function [f, numOfVars] = sys_3view_triangulation()
+function [f, numOfVars, num_of_params] = sys_3view_triangulation()
     % -- define systems --
     % -- variables --
     syms x1 x2 x3 x4 x5 x6 x7 x8
@@ -6,6 +6,7 @@ function [f, numOfVars] = sys_3view_triangulation()
     syms p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 p15 p16 p17 p18 p19 p20 p21 p22 p23 p24
     
     numOfVars = 8;
+    num_of_params = 24;
 
     f(1)  = 2*x1 + p1*x3*x7 + p2*x4*x7 + p3*x7 - 2*p19*1;
     f(2)  = 2*x2 + p4*x3*x7 + p5*x4*x7 + p6*x7 - 2*p20*1;

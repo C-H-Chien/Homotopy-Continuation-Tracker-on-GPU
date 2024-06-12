@@ -1,4 +1,4 @@
-function [f, numOfVars] = sys_generalized_3views_4pts()
+function [f, numOfVars, num_of_params] = sys_generalized_3views_4pts()
     
     %> define systems
     %> variables
@@ -7,6 +7,7 @@ function [f, numOfVars] = sys_generalized_3views_4pts()
     syms p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 p15 p16 p17 p18 p19 p20 p21 p22 p23 p24 p25 p26 p27 p28 p29 p30 p31 p32 p33 p34 p35 p36 p37 p38 p39 p40 p41 p42 p43 p44 p45
     
     numOfVars = 12;
+    num_of_params = 45;
     
     %> polynomial equations
     f(1)  = p1^2*x1^2 - 2*p1*p4*x1*x2 + 2*p37*p1*x1 + p2^2*x1^2 - 2*p2*p5*x1*x2 + 2*p38*p2*x1 + p3^2*x1^2 - 2*p3*p6*x1*x2 + 2*p39*p3*x1 + p4^2*x2^2 - 2*p37*p4*x2 + p5^2*x2^2 - 2*p38*p5*x2 + p6^2*x2^2 - 2*p39*p6*x2 - p13^2*x5^2 + 2*p13*p16*x5*x6 - 2*p37*p13*x5 - p14^2*x5^2 + 2*p14*p17*x5*x6 - 2*p38*p14*x5 - p15^2*x5^2 + 2*p15*p18*x5*x6 - 2*p39*p15*x5 - p16^2*x6^2 + 2*p37*p16*x6 - p17^2*x6^2 + 2*p38*p17*x6 - p18^2*x6^2 + 2*p39*p18*x6;

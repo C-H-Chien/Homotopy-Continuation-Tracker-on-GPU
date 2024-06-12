@@ -1,4 +1,4 @@
-function [f, numOfVars] = sys_6pt_RS_abs_pos()
+function [f, numOfVars, num_of_params] = sys_6pt_RS_abs_pos()
     
     %> define systems
     %> variables
@@ -8,6 +8,7 @@ function [f, numOfVars] = sys_6pt_RS_abs_pos()
     syms p86 p87 p88 p89 p90 p91 p92 p93 p94 p95 p96 p97 p98 p99 p100 p101 p102 p103 p104 p105 p106 p107 p108 p109 p110 p111
 
     numOfVars = 6;
+    num_of_params = 111;
     
     %> polynomial equations
     f(1) = -x1*x4*p1*p2*p9 + x1*x4*p1*p2*p21 + x1*x4*p1*p8 - x1*x4*p1*p20 + x1*x4*p2*p18 - x1*x4*p17 + x1*x5*p1*p2*p39 - x1*x5*p1*p38 + x1*x5*p2*p36 - x1*x5*p35 + x1*x6*p1*p2*p57 - x1*x6*p1*p56 + x1*x6*p2*p54 - x1*x6*p53 + x1*p1*p2*p75 - x1*p1*p74 + x1*p2*p8 + x1*p2*p72 + x1*p9 - x1*p71 + x2*x4*p1*p2*p27 - x2*x4*p1*p7 - x2*x4*p1*p26 + x2*x4*p2*p24 - x2*x4*p23 - x2*x5*p1*p2*p9 + x2*x5*p1*p2*p45 - x2*x5*p1*p44 + x2*x5*p2*p42 - x2*x5*p41 + x2*x6*p1*p2*p63 - x2*x6*p1*p9 - x2*x6*p1*p62 + x2*x6*p2*p60 - x2*x6*p59 + x2*p1*p2*p81 - x2*p1*p80 - x2*p2*p7 + x2*p2*p78 - x2*p77 + x3*x4*p1*p2*p7 + x3*x4*p1*p2*p33 - x3*x4*p1*p32 + x3*x4*p2*p30 - x3*x4*p29 + x3*x5*p1*p2*p8 + x3*x5*p1*p2*p51 - x3*x5*p1*p50 + x3*x5*p2*p48 - x3*x5*p47 + x3*x6*p1*p2*p69 + x3*x6*p1*p8 - x3*x6*p1*p68 + x3*x6*p2*p66 - x3*x6*p65 + x3*p1*p2*p87 - x3*p1*p86 + x3*p2*p84 - x3*p7 - x3*p83 + x4*p1*p2*p8 + x4*p1*p2*p93 + x4*p1*p9 - x4*p1*p92 + x4*p2*p90 - x4*p89 - x5*p1*p2*p7 + x5*p1*p2*p99 - x5*p1*p98 + x5*p2*p96 - x5*p95 + x6*p1*p2*p105 - x6*p1*p7 - x6*p1*p104 + x6*p2*p102 - x6*p101 + p1*p2*p111 - p1*p110 + p2*p9 + p2*p108 - p8 - p107;
