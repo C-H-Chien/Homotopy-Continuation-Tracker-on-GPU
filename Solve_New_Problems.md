@@ -26,7 +26,7 @@ Below we will use ``<problem_name>`` as the name of your minimal problem. <br />
 ```bash
 const int num_of_tracks             = XX;
 ```
-<br />
+
 	- Add your minimal problem in ``GPU-HC/magmaHC/gpu-kernels/magmaHC-kernels.hpp`` and ``GPU-HC/magmaHC/GPU_HC_Solver.cpp`` (member function ``Solve_by_GPU_HC()``). <br />
 	- Add your newly added files to the ``GPU-HC/magmaHC/CMakeLists.txt``. <br />
 - **Step 4. Build and Compile:**
