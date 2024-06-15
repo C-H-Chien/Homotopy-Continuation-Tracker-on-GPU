@@ -7,6 +7,7 @@ GPU-HC, as its name suggests, is a GPU implementation of Homotopy Continuation S
 1. 2023.05.14 GPU-HC has a new release! <br />
 2. 2023.03.12 GPU-HC has now been used in solving generalized three-view relative pose problem. Checkout this [ICCV paper](https://openaccess.thecvf.com/content/ICCV2023/papers/Ding_Minimal_Solutions_to_Generalized_Three-View_Relative_Pose_Problem_ICCV_2023_paper.pdf) and [GitHub page](https://github.com/C-H-Chien/Three_View_Generalized_Camera). <br />
 3. 2024.05.29 Major change in the structure of GPU-HC. The GPU code is also optimized, which provides 1.3-6.0x speedup over the older version. This optimized version will become the second release. <br />
+4. 2024.06.14 GPU-HC has a second release! Faster in speed and more friendly to new users who aim to build their own GPU-HC solver. <br />
 
 ## :floppy_disk: What do we have in this repo?
 This repository primarily contains three folders: <br />
@@ -49,7 +50,7 @@ Several limitations of the GPU-HC solver: <br />
 
 ## :bookmark: References
 ```BibTeX
-@InProceedings{@inproceedings{chien2022gpu,
+@InProceedings{chien2022gpu,
   title={{GPU}-based homotopy continuation for minimal problems in computer vision},
   author={Chien, Chiang-Heng and Fan, Hongyi and Abdelfattah, Ahmad and Tsigaridas, Elias and Tomov, Stanimire and Kimia, Benjamin},
   booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
