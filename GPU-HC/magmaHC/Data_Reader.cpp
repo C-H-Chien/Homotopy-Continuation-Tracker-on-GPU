@@ -21,17 +21,24 @@
 #include "magma_v2.h"
 
 #include "Data_Reader.hpp"
+#include "./PHC_Coeffs/p2c-trifocal_2op1p_30x30.h"
 
-Data_Reader::Data_Reader(std::string Problem_Filename, std::string RANSAC_Data_File_Path, const int Num_Of_Tracks, const int Num_Of_Vars, const int Num_Of_Params) \
-    : num_of_tracks(Num_Of_Tracks), num_of_variables(Num_Of_Vars), num_of_params(Num_Of_Params), RANSAC_Data_Path_(RANSAC_Data_File_Path) {
+Data_Reader::Data_Reader(std::string Problem_Filename, std::string RANSAC_Data_File_Path, const int Num_Of_Tracks, const int Num_Of_Vars, const int Num_Of_Params, bool Use_P2C) \
+    : num_of_tracks(Num_Of_Tracks), num_of_variables(Num_Of_Vars), num_of_params(Num_Of_Params), RANSAC_Data_Path_(RANSAC_Data_File_Path), Read_P2C_Jacobians(Use_P2C) {
 
     //> Define problem file names
     File_Name_Start_Params = Problem_Filename + std::string("/start_params.txt");
     File_Name_Target_Params = Problem_Filename + std::string("/target_params.txt");
     File_Name_Start_Sols = Problem_Filename + std::string("/start_sols.txt");
 
-    File_Name_dHdx_Indx = Problem_Filename + std::string("/dHdx_indx.txt");
-    File_Name_dHdt_Indx = Problem_Filename + std::string("/dHdt_indx.txt");
+    if (Read_P2C_Jacobians) {
+        File_Name_dHdx_Indx = Problem_Filename + std::string("/dHdx_indx_P2C.txt");
+        File_Name_dHdt_Indx = Problem_Filename + std::string("/dHdt_indx_P2C.txt");
+    }
+    else {
+        File_Name_dHdx_Indx = Problem_Filename + std::string("/dHdx_indx.txt");
+        File_Name_dHdt_Indx = Problem_Filename + std::string("/dHdt_indx.txt");
+    }
 
     File_Name_Intrinsic_Matrix = RANSAC_Data_Path_ + std::string("/Intrinsic_Matrix.txt");
 }
@@ -104,7 +111,7 @@ bool Data_Reader::Read_Target_Params(magmaFloatComplex* &h_Target_Params) {
 bool Data_Reader::Read_Start_Params(magmaFloatComplex* &h_Start_Params) {
     int d = 0;
     File_Start_Params.open(File_Name_Start_Params, std::ios_base::in);
-    // LOG_INFOR_MESG("Start params file name: " + File_Name_Start_Params);
+    // LOG_INFO_MESG("Start params file name: " + File_Name_Start_Params);
     if (!File_Start_Params) {
         LOG_FILE_ERROR(File_Name_Start_Params);
         return false;
@@ -162,6 +169,20 @@ bool Data_Reader::Read_dHdt_Indices( T* &h_dHdt_Index ) {
 #endif
         return true;
     }
+}
+
+bool Data_Reader::Construct_Coeffs_From_Params( std::string HC_Problem, \
+        magmaFloatComplex* h_Target_Params,     magmaFloatComplex* h_Start_Params, \
+        magmaFloatComplex* &h_dHdx_PHC_Coeffs,  magmaFloatComplex* &h_dHdt_PHC_Coeffs ) 
+{
+    if (HC_Problem == "trifocal_2op1p_30x30") {
+        magmaHCWrapper::p2c_trifocal_2op1p_30x30(h_Target_Params, h_Start_Params, h_dHdx_PHC_Coeffs, h_dHdt_PHC_Coeffs);
+    }
+    else {
+        LOG_ERROR("Invalid HC problem name or P2C function is not included in the Construct_Coeffs_From_Params.");
+        return false;
+    }
+    return true;
 }
 
 bool Data_Reader::Read_Camera_Matrices( float Pose21[12], float Pose31[12], float K[9], int tp_index ) {
@@ -322,10 +343,8 @@ void Data_Reader::Print_Out_Target_Params_from_Triplet_Edgels(int sample_index, 
     }
 }
 
-#if USE_8BIT_IN_SHARED_MEM == false
 template bool Data_Reader::Read_dHdx_Indices< int >( int* & );
 template bool Data_Reader::Read_dHdt_Indices< int >( int* & );
-#endif
 
 template bool Data_Reader::Read_dHdx_Indices< char >( char* & );
 template bool Data_Reader::Read_dHdt_Indices< char >( char* & );

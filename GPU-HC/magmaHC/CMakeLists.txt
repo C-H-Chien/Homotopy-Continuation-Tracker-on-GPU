@@ -14,21 +14,33 @@ set (control_sources
 
   #>  magma kernels
   gpu-kernels/magmaHC-kernels.hpp
-  gpu-kernels/kernel_HC_Solver_5pt_rel_pos_geo_form_quat.cu
-  gpu-kernels/kernel_HC_Solver_5pt_rel_pos_alg_form_quat.cu
-  gpu-kernels/kernel_HC_Solver_trifocal_2op1p_30x30.cu
+  gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_P2C.cu
+  gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_GM32b.cu
+  gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL.cu
+  gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_inline.cu
+  gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_inline_LimUnroll.cu
+  gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_LimUnroll.cu
+  gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_inline_LimUnroll_TrunPaths.cu
+  gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_GM8b_RKL_inline.cu
+  gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL.cu
+  gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL_inline.cu
+  gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL_LimUnroll.cu
 
   #>  device function
   dev-cgesv-batched-small.cuh
   dev-cgesv-batched-small-sm.cuh
   dev-get-new-data.cuh
-  gpu-idx-evals/dev-eval-indxing-5pt_rel_pos_geo_form_quat.cuh
-  gpu-idx-evals/dev-eval-indxing-5pt_rel_pos_alg_form_quat.cuh
-  gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30.cuh
+  gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_8b_GM_inline.cuh
+  gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_8b_SM.cuh
+  gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_8b_SM_inline.cuh
+  gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_8b_SM_LimUnroll.cuh
+  gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_32b.cuh
+  gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_32b_P2C.cuh
+  gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_inline.cuh
+  gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_LimUnroll.cuh
+  gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_inline_LimUnroll.cuh 
 
-  #>  p2c constant matrix
-  PHC_Coeffs/p2c-5pt_rel_pos_alg_form_quat.h
-  PHC_Coeffs/p2c-5pt_rel_pos_geo_form_quat.h
+  #> P2C
   PHC_Coeffs/p2c-trifocal_2op1p_30x30.h
 
   #> Utilities

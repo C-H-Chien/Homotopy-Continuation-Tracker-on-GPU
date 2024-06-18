@@ -87,13 +87,14 @@ public:
     real_Double_t           transfer_d2h_time;
 
     //> Constructor
-    GPU_HC_Solver( YAML::Node );
+    GPU_HC_Solver() {};
+    GPU_HC_Solver( YAML::Node, int );
     
     //> Member functions
     bool Read_Problem_Data();
     bool Read_RANSAC_Data( int tp_index );
     void Allocate_Arrays();
-    void Prepare_Target_Params( );
+    void Prepare_Target_Params( unsigned rand_seed_ );
     void Data_Transfer_From_Host_To_Device();
     void Solve_by_GPU_HC();
     void Export_Data();
@@ -125,6 +126,16 @@ private:
     int dHdt_Max_Terms;
     int dHdt_Max_Parts;
     int Max_Order_Of_T;
+
+    //> GPU kernel settings from YAML file
+    bool Use_Runge_Kutta_in_a_Loop;
+    int Data_Size_for_Indices;
+    std::string Mem_for_Indices;
+    bool Inline_Eval_Functions;
+    bool Limit_Loop_Unroll;
+
+    //> Algorithmic settings from YAML file
+    bool Truncate_HC_Path_by_Positive_Depths;
 
     //> RANSAC data
     std::string RANSAC_Dataset_Name;

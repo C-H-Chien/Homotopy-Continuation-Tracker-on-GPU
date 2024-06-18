@@ -1,20 +1,16 @@
-#ifndef dev_eval_indxing_5pt_rel_pos_geo_form_quat_cuh_
-#define dev_eval_indxing_5pt_rel_pos_geo_form_quat_cuh_
-// ============================================================================
-// Device function for evaluating the parallel indexing for Hx, Ht, and H of
-// 5pt_rel_pos_geo_form_quat problem
+#ifndef dev_eval_indxing_trifocal_2op1p_30x30_P2C_cuh_
+#define dev_eval_indxing_trifocal_2op1p_30x30_P2C_cuh_
+// ===============================================================================================
+// Code Description: Device function for evaluating the parallel indexing of the Jacobians w.r.t. 
+//                   the unknowns x (Hx), the variable t (Ht), and the homotopy itself
 //
-// Modifications
-//    Chien  22-11-14:   Originally created
+// Major Modifications
+//    Chien  24-03-24:   Edited from the dev-eval-indxing-trifocal_2op1p_30x30.cuh
 //
-// ============================================================================
+// ===============================================================================================
 #include <cstdio>
-#include <iostream>
-#include <iomanip>
-#include <cstring>
 #include <cuda_runtime.h>
 
-//> MAGMA
 #include "magma_v2.h"
 #include "magma_lapack.h"
 #include "magma_internal.h"
@@ -32,13 +28,13 @@
 //> Macros
 #include "../definitions.hpp"
 
-//> Compute the coefficients from parameters
-template< typename T, int Num_Of_Vars, int Max_Order_of_t, unsigned Full_Parallel_Offset, \
+//> Compute the coefficients from linear interpolations of parameters of phc
+template< int Num_Of_Vars, int Max_Order_of_t, unsigned Full_Parallel_Offset, \
           unsigned Partial_Parallel_Thread_Offset, unsigned Partial_Parallel_Index_Offset, \
           unsigned Max_Order_of_t_Plus_One, unsigned Partial_Parallel_Index_Offset_Hx, unsigned Partial_Parallel_Index_Offset_Ht >
 __device__ __inline__ void
 eval_parameter_homotopy(
-    const int tx, T t, 
+    const int tx, float t, 
     magmaFloatComplex *s_phc_coeffs_Hx,
     magmaFloatComplex *s_phc_coeffs_Ht,
     const magmaFloatComplex __restrict__ *d_phc_coeffs_Hx,
@@ -46,11 +42,10 @@ eval_parameter_homotopy(
 {
     // =============================================================================
     //> parameter homotopy for evaluating ∂H/∂x and ∂H/∂t
-    #pragma unroll
     for (int i = 0; i < Full_Parallel_Offset; i++) {
       s_phc_coeffs_Hx[ tx + i*Num_Of_Vars ] = d_phc_coeffs_Hx[ tx*Max_Order_of_t_Plus_One + i*Num_Of_Vars*Max_Order_of_t_Plus_One ] 
                                             + d_phc_coeffs_Hx[ tx*Max_Order_of_t_Plus_One + 1 + i*Num_Of_Vars*Max_Order_of_t_Plus_One ] * t
-                                            + d_phc_coeffs_Hx[ tx*Max_Order_of_t_Plus_One + 2 + i*Num_Of_Vars*Max_Order_of_t_Plus_One ] * t * t;
+                                            + (d_phc_coeffs_Hx[ tx*Max_Order_of_t_Plus_One + 2 + i*Num_Of_Vars*Max_Order_of_t_Plus_One ] * t) * t;
 
       s_phc_coeffs_Ht[ tx + i*Num_Of_Vars ] = d_phc_coeffs_Ht[ tx*Max_Order_of_t + i*Num_Of_Vars*Max_Order_of_t ] 
                                             + d_phc_coeffs_Ht[ tx*Max_Order_of_t + 1 + i*Num_Of_Vars*Max_Order_of_t ] * t;
@@ -76,16 +71,14 @@ eval_Jacobian_Hx(
     const int tx, magmaFloatComplex *s_track, magmaFloatComplex r_cgesvA[Num_Of_Vars],
     const int* __restrict__ d_Hx_idx, magmaFloatComplex *s_phc_coeffs )
 {
-  #pragma unroll
   for(int i = 0; i < Num_Of_Vars; i++) {
     r_cgesvA[i] = MAGMA_C_ZERO;
 
-    #pragma unroll
     for(int j = 0; j < dHdx_Max_Terms; j++) {
       r_cgesvA[i] += d_Hx_idx[j*dHdx_Max_Parts + i*dHdx_Entry_Offset + tx*dHdx_Row_Offset] 
-                    * s_phc_coeffs[ d_Hx_idx[j*dHdx_Max_Parts + 1 + i*dHdx_Entry_Offset + tx*dHdx_Row_Offset] ]
-                    * s_track[      d_Hx_idx[j*dHdx_Max_Parts + 2 + i*dHdx_Entry_Offset + tx*dHdx_Row_Offset] ]
-                    * s_track[      d_Hx_idx[j*dHdx_Max_Parts + 3 + i*dHdx_Entry_Offset + tx*dHdx_Row_Offset] ] ;
+                   * s_phc_coeffs[ d_Hx_idx[j*dHdx_Max_Parts + 1 + i*dHdx_Entry_Offset + tx*dHdx_Row_Offset] ]
+                   * s_track[      d_Hx_idx[j*dHdx_Max_Parts + 2 + i*dHdx_Entry_Offset + tx*dHdx_Row_Offset] ]
+                   * s_track[      d_Hx_idx[j*dHdx_Max_Parts + 3 + i*dHdx_Entry_Offset + tx*dHdx_Row_Offset] ] ;
     }
   }
 }
@@ -98,9 +91,8 @@ eval_Jacobian_Ht(
     const int* __restrict__ d_Ht_idx, magmaFloatComplex *s_phc_coeffs)
 {
   r_cgesvB = MAGMA_C_ZERO;
-  #pragma unroll
   for (int i = 0; i < dHdt_Max_Terms; i++) {
-    r_cgesvB -= d_Ht_idx[i*dHdt_Max_Parts + tx*dHdt_Row_Offset] 
+    r_cgesvB -= d_Ht_idx[ i*dHdt_Max_Parts + tx*dHdt_Row_Offset ] 
               * s_phc_coeffs[ d_Ht_idx[i*dHdt_Max_Parts + 1 + tx*dHdt_Row_Offset] ]
               * s_track[      d_Ht_idx[i*dHdt_Max_Parts + 2 + tx*dHdt_Row_Offset] ] 
               * s_track[      d_Ht_idx[i*dHdt_Max_Parts + 3 + tx*dHdt_Row_Offset] ] 
@@ -108,7 +100,7 @@ eval_Jacobian_Ht(
   }
 }
 
-//> Parallel Homotopy Evaluation H
+//> Parallel Homotopy Evaluation
 template< int dHdt_Max_Terms, int dHdt_Max_Parts, int dHdt_Row_Offset >
 __device__ __inline__ void
 eval_Homotopy(
@@ -116,15 +108,13 @@ eval_Homotopy(
     const int* __restrict__ d_Ht_idx, magmaFloatComplex *s_phc_coeffs)
 {
   r_cgesvB = MAGMA_C_ZERO;
-  #pragma unroll
   for (int i = 0; i < dHdt_Max_Terms; i++) {
-    r_cgesvB += d_Ht_idx[i*dHdt_Max_Parts + tx*dHdt_Row_Offset] 
+    r_cgesvB += d_Ht_idx[ i*dHdt_Max_Parts + tx*dHdt_Row_Offset ] 
               * s_phc_coeffs[ d_Ht_idx[i*dHdt_Max_Parts + 1 + tx*dHdt_Row_Offset] ]
               * s_track[      d_Ht_idx[i*dHdt_Max_Parts + 2 + tx*dHdt_Row_Offset] ] 
               * s_track[      d_Ht_idx[i*dHdt_Max_Parts + 3 + tx*dHdt_Row_Offset] ] 
               * s_track[      d_Ht_idx[i*dHdt_Max_Parts + 4 + tx*dHdt_Row_Offset] ] ;
   }
 }
-
 
 #endif

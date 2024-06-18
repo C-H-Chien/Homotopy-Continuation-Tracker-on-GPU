@@ -5,8 +5,7 @@ problem_name: trifocal_2op1p_30x30
 problem_print_out_name: Trifocal Relative Pose Problem (Chicago 30x30)
 
 #> GPU-HC Settings
-GPUHC_Type: PH
-GPUHC_Max_Steps: 100
+GPUHC_Max_Steps: 80
 GPUHC_Max_Correction_Steps: 3
 GPUHC_Num_Of_Steps_to_Increase_Delta_t: 4
 
@@ -19,8 +18,20 @@ dHdx_Max_Parts: 5
 dHdt_Max_Terms: 16
 dHdt_Max_Parts: 6
 Max_Order_Of_T: 2
+Num_Of_Coeffs_From_Params: 37
+
+#> Kernel Settings
+GPUHC_Type: PH                  #> PH or P2C
+Use_Runge_Kutta_in_a_Loop: true
+Data_Size_for_Indices: 32       #> 32: 32-bit, 8: 8-bit
+Mem_for_Indices: GM             #> GM: Global Memory, SM: Shared Memory
+Inline_Eval_Functions: true
+Limit_Loop_Unroll: true
+
+#> Algorithmic Settings
+Truncate_HC_Path_by_Positive_Depths: false
 
 #> RANSAC data
 #RANSAC_Dataset: Synthetic / ICL-NUIM
-RANSAC_Dataset: ICL-NUIM
+RANSAC_Dataset: Synthetic
 #5117

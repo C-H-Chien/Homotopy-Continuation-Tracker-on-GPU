@@ -53,7 +53,7 @@ public:
     void get_HC_Steps_of_Actual_Sols( magmaFloatComplex *h_Debug_Purpose );
     void Measure_Relative_Pose_Error_from_All_Real_Sols( float GT_Pose21[12], float GT_Pose31[12], magmaFloatComplex *h_Debug_Purpose );
     void Measure_Relative_Pose_Error( float GT_Pose21[12], float GT_Pose31[12], magmaFloatComplex *h_Debug_Purpose );
-    void get_Solution_with_Maximal_Support( unsigned Num_Of_Triplet_Edgels, float* h_Triplet_Edge_Locations, float* h_Triplet_Edge_Tangents, float K[9] );
+    bool get_Solution_with_Maximal_Support( unsigned Num_Of_Triplet_Edgels, float* h_Triplet_Edge_Locations, float* h_Triplet_Edge_Tangents, float K[9] );
 
     //> Others
     void Flush_Out_Data();

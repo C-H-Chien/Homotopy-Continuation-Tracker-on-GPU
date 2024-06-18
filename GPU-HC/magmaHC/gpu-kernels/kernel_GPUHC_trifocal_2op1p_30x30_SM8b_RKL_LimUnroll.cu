@@ -1,12 +1,13 @@
-#ifndef kernel_HC_Solver_trifocal_2op1p_30x30_cu
-#define kernel_HC_Solver_trifocal_2op1p_30x30_cu
+#ifndef kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL_LimUnroll_cu
+#define kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL_LimUnroll_cu
 // ===========================================================================================
 // GPU homotopy continuation solver for the trifocal 2op1p 30x30 problem
 //
 // Major Modifications
 //    Chiang-Heng Chien  22-10-03:   Edited from the first version 
 //                                   (kernel_HC_Solver_trifocal_2op1p_30.cu)
-//    Chiang-Heng Chien  23-12-28:   Add macros and circular arc homotopy for gamma-trick
+//    Chiang-Heng Chien  23-12-28:   Add macros
+//    Chiang-Heng Chien  24-06-12:   
 //
 // ============================================================================================
 #include <stdio.h>
@@ -38,17 +39,16 @@
 #include "../definitions.hpp"
 
 //> device functions
-#include "../gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30.cuh"
+#include "../gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_8b_SM_LimUnroll.cuh"
 #include "../dev-cgesv-batched-small.cuh"
 #include "../dev-get-new-data.cuh"
 
-template< typename T_index_mat, \
-          int Num_Of_Vars,    int Num_Of_Params, \
+template< int Num_Of_Vars,    int Num_Of_Params, \
           int dHdx_Max_Terms, int dHdx_Max_Parts, int dHdx_Entry_Offset, \
           int dHdt_Max_Terms, int dHdt_Max_Parts, \
           int dHdx_Index_Matrix_Size, int dHdt_Index_Matrix_Size >
 __global__ void
-HC_solver_trifocal_2op1p_30x30(
+kernel_GPUHC_trifocal_2op1p_30x30(
   const int           HC_max_steps, 
   const int           HC_max_correction_steps, 
   const int           HC_delta_t_incremental_steps,
@@ -57,8 +57,8 @@ HC_solver_trifocal_2op1p_30x30(
   magmaFloatComplex*  d_startParams,
   magmaFloatComplex*  d_targetParams,
   magmaFloatComplex*  d_diffParams,
-  const T_index_mat* __restrict__ d_dHdx_indices,
-  const T_index_mat* __restrict__ d_dHdt_indices,
+  const char* __restrict__ d_dHdx_indices,
+  const char* __restrict__ d_dHdt_indices,
   bool* d_is_GPU_HC_Sol_Converge,
   bool* d_is_GPU_HC_Sol_Infinity,
   magmaFloatComplex* d_Debug_Purpose
@@ -94,25 +94,18 @@ HC_solver_trifocal_2op1p_30x30(
   magmaFloatComplex *sx                   = sB                   + Num_Of_Vars;
   float* dsx                              = (float*)(sx          + Num_Of_Vars);
   int* sipiv                              = (int*)(dsx           + Num_Of_Vars);
-#if USE_LOOPY_RUNGE_KUTTA
   float* s_delta_t_scale                  = (float*)(sipiv       + (Num_Of_Vars+1));
   int* s_RK_Coeffs                        = (int*)(s_delta_t_scale + 1);
-#endif
 
   //> Static allocated shared memories
-#if USE_8BIT_IN_SHARED_MEM
-  __shared__ T_index_mat dHdx_indices[36000];
-  __shared__ T_index_mat dHdt_indices[2880];
+  __shared__ char dHdx_indices[36000];
+  __shared__ char dHdt_indices[2880];
   #pragma unroll
   for (int i = 0; i < 1200; i++) 
     dHdx_indices[ tx + (i)*(Num_Of_Vars) ] = d_dHdx_indices[ tx + (i)*(Num_Of_Vars) ];
   #pragma unroll
   for (int i = 0; i < 96; i++) 
     dHdt_indices[ tx + (i)*(Num_Of_Vars) ] = d_dHdt_indices[ tx + (i)*(Num_Of_Vars) ];
-#else
-  const T_index_mat* __restrict__ dHdx_indices = d_dHdx_indices;
-  const T_index_mat* __restrict__ dHdt_indices = d_dHdt_indices;
-#endif
 
   //> read data from global memory to shared memories or do initializations
   s_sols[tx]               = d_startSols[tx];
@@ -141,11 +134,6 @@ HC_solver_trifocal_2op1p_30x30(
   }
   magmablas_syncwarp();
 
-#if USE_DEPTH_TO_TRUNCATE_PATH
-  bool are_Depths_All_Positive = false;
-  bool check_depths_sign = true;
-#endif
-
   //> 1/2 \Delta t
   float one_half_delta_t;
   float r_sqrt_sols;
@@ -163,15 +151,6 @@ HC_solver_trifocal_2op1p_30x30(
       if (!end_zone && fabs(1 - t0) <= (0.0500001)) {
         end_zone = true;
       }
-
-#if USE_DEPTH_TO_TRUNCATE_PATH
-      if (check_depths_sign) {
-        are_Depths_All_Positive = (MAGMA_C_REAL(s_track[0]) > 0) && (MAGMA_C_REAL(s_track[1]) > 0) && (MAGMA_C_REAL(s_track[2]) > 0) && (MAGMA_C_REAL(s_track[3]) > 0) &&
-                                  (MAGMA_C_REAL(s_track[4]) > 0) && (MAGMA_C_REAL(s_track[5]) > 0) && (MAGMA_C_REAL(s_track[6]) > 0) && (MAGMA_C_REAL(s_track[7]) > 0);
-        if (t0 > 0) check_depths_sign = are_Depths_All_Positive ? false : true;
-      }
-      if (t0 > 0.95 && check_depths_sign) break;
-#endif
 
       if (end_zone) {
         if (delta_t > fabs(1 - t0))
@@ -201,8 +180,8 @@ HC_solver_trifocal_2op1p_30x30(
         compute_param_homotopy< float, Num_Of_Vars >( tx, t0, s_param_homotopy, s_startParams, s_targetParams );
 
         //> Evaluate dH/dx and dH/dt
-        eval_Jacobian_Hx< T_index_mat, Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Index_Matrix_Size >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdx_indices );
-        eval_Jacobian_Ht< T_index_mat, Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Index_Matrix_Size >( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdt_indices, s_diffParams );
+        eval_Jacobian_Hx< Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Index_Matrix_Size >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdx_indices );
+        eval_Jacobian_Ht< Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Index_Matrix_Size >( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdt_indices, s_diffParams );
 
         //> linear system solver: solve for k1, k2, k3, or k4
         cgesv_batched_small_device< Num_Of_Vars >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
@@ -233,13 +212,12 @@ HC_solver_trifocal_2op1p_30x30(
       // ===================================================================
       //> Gauss-Newton Corrector
       // ===================================================================
-      //#pragma unroll
       volatile int hc_max_correction_steps = HC_max_correction_steps;
       for(int i = 0; i < hc_max_correction_steps; i++) {
 
         //> evaluate the Jacobian Hx and the parameter homotopy
-        eval_Jacobian_Hx< T_index_mat, Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Index_Matrix_Size >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdx_indices );
-        eval_Homotopy< T_index_mat, Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Index_Matrix_Size >( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdt_indices );
+        eval_Jacobian_Hx< Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Index_Matrix_Size >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdx_indices );
+        eval_Homotopy< Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Index_Matrix_Size >( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdt_indices );
 
         //> G-Num_Of_Vars corrector first solve
         cgesv_batched_small_device< Num_Of_Vars >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
@@ -310,9 +288,9 @@ HC_solver_trifocal_2op1p_30x30(
 #endif
 }
 
-template< typename T_index_mat >
+
 real_Double_t
-kernel_HC_Solver_trifocal_2op1p_30x30(
+kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL_LimUnroll(
   magma_queue_t       my_queue,
   int                 HC_max_steps, 
   int                 HC_max_correction_steps, 
@@ -322,8 +300,8 @@ kernel_HC_Solver_trifocal_2op1p_30x30(
   magmaFloatComplex*  d_startParams,
   magmaFloatComplex*  d_targetParams,
   magmaFloatComplex*  d_diffParams,
-  T_index_mat*        d_dHdx_indx, 
-  T_index_mat*        d_dHdt_indx,
+  char*                d_dHdx_indx, 
+  char*                d_dHdt_indx,
   bool*               d_is_GPU_HC_Sol_Converge,
   bool*               d_is_GPU_HC_Sol_Infinity,
   magmaFloatComplex*  d_Debug_Purpose
@@ -369,8 +347,8 @@ kernel_HC_Solver_trifocal_2op1p_30x30(
 #if CUDA_VERSION >= 9000
   cudacheck( cudaDeviceGetAttribute (&shmem_max, cudaDevAttrMaxSharedMemoryPerBlockOptin, 0) );
   if (shmem <= shmem_max) {
-    cudacheck( cudaFuncSetAttribute(HC_solver_trifocal_2op1p_30x30 \
-                                    <T_index_mat, num_of_vars, num_of_params, \
+    cudacheck( cudaFuncSetAttribute(kernel_GPUHC_trifocal_2op1p_30x30 \
+                                    <num_of_vars, num_of_params, \
                                      dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdt_Max_Terms, dHdt_Max_Parts, \
                                      dHdx_Index_Matrix_Size, dHdt_Index_Matrix_Size >, //dHdx_Num_Of_Read_Loops, dHdt_Num_Of_Read_Loops >,
                                     cudaFuncAttributeMaxDynamicSharedMemorySize, shmem) );
@@ -397,90 +375,14 @@ kernel_HC_Solver_trifocal_2op1p_30x30(
   gpu_time = magma_sync_wtime( my_queue );
 
   //> launch the GPU kernel
-  e = cudaLaunchKernel((void*)HC_solver_trifocal_2op1p_30x30 \
-                        <T_index_mat, num_of_vars, num_of_params, \
+  e = cudaLaunchKernel((void*)kernel_GPUHC_trifocal_2op1p_30x30 \
+                        <num_of_vars, num_of_params, \
                          dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdt_Max_Terms, dHdt_Max_Parts, \
                          dHdx_Index_Matrix_Size, dHdt_Index_Matrix_Size >, // dHdx_Num_Of_Read_Loops, dHdt_Num_Of_Read_Loops >,
                         grid, threads, kernel_args, shmem, my_queue->cuda_stream());
 
   gpu_time = magma_sync_wtime( my_queue ) - gpu_time;
-  if( e != cudaSuccess ) printf("cudaLaunchKernel of HC_solver_trifocal_2op1p_30x30 is not successful!\n");
-
-  return gpu_time;
-}
-
-#if USE_8BIT_IN_SHARED_MEM == false
-real_Double_t kernel_HC_Solver_trifocal_2op1p_30x30(
-  magma_queue_t       my_queue,
-  int                 HC_max_steps, 
-  int                 HC_max_correction_steps, 
-  int                 HC_delta_t_incremental_steps,
-  magmaFloatComplex** d_startSols_array, 
-  magmaFloatComplex** d_Track_array,
-  magmaFloatComplex*  d_startParams,
-  magmaFloatComplex*  d_targetParams,
-  magmaFloatComplex*  d_diffParams,
-  int*                d_dHdx_indx, 
-  int*                d_dHdt_indx,
-  bool*               d_is_GPU_HC_Sol_Converge,
-  bool*               d_is_GPU_HC_Sol_Infinity,
-  magmaFloatComplex*  d_Debug_Purpose )
-{
-  real_Double_t gpu_time;
-  gpu_time = kernel_HC_Solver_trifocal_2op1p_30x30< int >(
-    my_queue,
-    HC_max_steps, 
-    HC_max_correction_steps, 
-    HC_delta_t_incremental_steps,
-    d_startSols_array, 
-    d_Track_array,
-    d_startParams,
-    d_targetParams,
-    d_diffParams,
-    d_dHdx_indx, 
-    d_dHdt_indx,
-    d_is_GPU_HC_Sol_Converge,
-    d_is_GPU_HC_Sol_Infinity,
-    d_Debug_Purpose
-  );
-
-  return gpu_time;
-}
-#endif
-
-real_Double_t kernel_HC_Solver_trifocal_2op1p_30x30(
-  magma_queue_t       my_queue,
-  int                 HC_max_steps, 
-  int                 HC_max_correction_steps, 
-  int                 HC_delta_t_incremental_steps,
-  magmaFloatComplex** d_startSols_array, 
-  magmaFloatComplex** d_Track_array,
-  magmaFloatComplex*  d_startParams,
-  magmaFloatComplex*  d_targetParams,
-  magmaFloatComplex*  d_diffParams,
-  char*               d_dHdx_indx, 
-  char*               d_dHdt_indx,
-  bool*               d_is_GPU_HC_Sol_Converge,
-  bool*               d_is_GPU_HC_Sol_Infinity,
-  magmaFloatComplex*  d_Debug_Purpose )
-{
-  real_Double_t gpu_time;
-  gpu_time = kernel_HC_Solver_trifocal_2op1p_30x30< char >(
-    my_queue,
-    HC_max_steps, 
-    HC_max_correction_steps, 
-    HC_delta_t_incremental_steps,
-    d_startSols_array, 
-    d_Track_array,
-    d_startParams,
-    d_targetParams,
-    d_diffParams,
-    d_dHdx_indx, 
-    d_dHdt_indx,
-    d_is_GPU_HC_Sol_Converge,
-    d_is_GPU_HC_Sol_Infinity,
-    d_Debug_Purpose
-  );
+  if( e != cudaSuccess ) printf("cudaLaunchKernel of kernel_GPUHC_trifocal_2op1p_30x30 is not successful!\n");
 
   return gpu_time;
 }

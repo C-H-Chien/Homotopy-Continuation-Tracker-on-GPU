@@ -324,7 +324,7 @@ float Evaluations::get_Translation_Residual(float* GT_Transl, std::array<float, 
   return std::fabs(Transl_Dot_Prod - 1.0);
 }
 
-void Evaluations::get_Solution_with_Maximal_Support( unsigned Num_Of_Triplet_Edgels, float* h_Triplet_Edge_Locations, float* h_Triplet_Edge_Tangents, float K[9] ) {
+bool Evaluations::get_Solution_with_Maximal_Support( unsigned Num_Of_Triplet_Edgels, float* h_Triplet_Edge_Locations, float* h_Triplet_Edge_Tangents, float K[9] ) {
 
   std::array<float, 3> Rel_t21;
   std::array<float, 3> Rel_t31;
@@ -413,19 +413,7 @@ void Evaluations::get_Solution_with_Maximal_Support( unsigned Num_Of_Triplet_Edg
     }
   }
 
-  std::cout << "Index of poses with max number of inliers views 1&2: ";
-  for (int i = 0; i < Max_Reproj_Inliers_Support_Views21_Index.size(); i++) std::cout << Max_Reproj_Inliers_Support_Views21_Index[i] << ", ";
-  std::cout << std::endl;
-  std::cout << "Index of poses with max number of inliers views 1&3: ";
-  for (int i = 0; i < Max_Reproj_Inliers_Support_Views31_Index.size(); i++) std::cout << Max_Reproj_Inliers_Support_Views31_Index[i] << ", ";
-  std::cout << std::endl;
-
-  //> Now with solution index supported by maximal inliers, fetch the corresponding solution(s)
-  R21_w_Max_Supports = normalized_R21s[ Max_Reproj_Inliers_Support_Views21_Index[0] ];
-  t21_w_Max_Supports = normalized_t21s[ Max_Reproj_Inliers_Support_Views21_Index[0] ];
-  R31_w_Max_Supports = normalized_R31s[ Max_Reproj_Inliers_Support_Views31_Index[0] ];
-  t31_w_Max_Supports = normalized_t31s[ Max_Reproj_Inliers_Support_Views31_Index[0] ];
-
+  //> Delete intermediate arrays
   delete [] gamma1;
   delete [] gamma2;
   delete [] gamma3;
@@ -437,6 +425,25 @@ void Evaluations::get_Solution_with_Maximal_Support( unsigned Num_Of_Triplet_Edg
   delete [] hypo_R31;
   delete [] hypo_t21;
   delete [] hypo_t31;
+
+  if ( Max_Reproj_Inliers_Support_Views21_Index.size() == 0 || Max_Reproj_Inliers_Support_Views31_Index.size() == 0 ) {
+    return false;
+  }
+  else {
+    std::cout << "Index of poses with max number of inliers views 1&2: ";
+    for (int i = 0; i < Max_Reproj_Inliers_Support_Views21_Index.size(); i++) std::cout << Max_Reproj_Inliers_Support_Views21_Index[i] << ", ";
+    std::cout << std::endl;
+    std::cout << "Index of poses with max number of inliers views 1&3: ";
+    for (int i = 0; i < Max_Reproj_Inliers_Support_Views31_Index.size(); i++) std::cout << Max_Reproj_Inliers_Support_Views31_Index[i] << ", ";
+    std::cout << std::endl;
+
+    //> Now with solution index supported by maximal inliers, fetch the corresponding solution(s)
+    R21_w_Max_Supports = normalized_R21s[ Max_Reproj_Inliers_Support_Views21_Index[0] ];
+    t21_w_Max_Supports = normalized_t21s[ Max_Reproj_Inliers_Support_Views21_Index[0] ];
+    R31_w_Max_Supports = normalized_R31s[ Max_Reproj_Inliers_Support_Views31_Index[0] ];
+    t31_w_Max_Supports = normalized_t31s[ Max_Reproj_Inliers_Support_Views31_Index[0] ];
+    return true;
+  }
 }
 
 void Evaluations::get_HC_Steps_of_Actual_Sols( magmaFloatComplex *h_Debug_Purpose ) {

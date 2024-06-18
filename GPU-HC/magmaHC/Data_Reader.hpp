@@ -29,7 +29,7 @@ class Data_Reader {
 
 public:
     //> Constructor
-    Data_Reader(std::string, std::string, const int, const int, const int);
+    Data_Reader(std::string, std::string, const int, const int, const int, bool);
 
     bool Read_Start_Params( magmaFloatComplex* &h_Start_Params );
     bool Read_Target_Params( magmaFloatComplex* &h_Target_Params );
@@ -40,6 +40,10 @@ public:
 
     template< typename T >
     bool Read_dHdt_Indices( T* &h_dHdt_Index );
+
+    bool Construct_Coeffs_From_Params( std::string HC_Problem, \
+        magmaFloatComplex* h_Target_Params,     magmaFloatComplex* h_Start_Params, \
+        magmaFloatComplex* &h_dHdx_PHC_Coeffs,  magmaFloatComplex* &h_dHdt_PHC_Coeffs );
 
     //> RANSAC Data
     int get_Num_Of_Triplet_Edgels( int tp_index );
@@ -78,6 +82,7 @@ private:
     const int num_of_tracks;
     const int num_of_variables;
     const int num_of_params;
+    bool Read_P2C_Jacobians;
 
     std::string RANSAC_Data_Path_;
 };

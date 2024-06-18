@@ -27,6 +27,71 @@
 
 #include <yaml-cpp/yaml.h>
 
+template<typename T>
+bool run_GPU_HC_Solver( YAML::Node Problem_Settings_Map, int Data_Size_for_Indices) {
+
+  double GPUHC_time_ms = 0.0;
+  double avg_gpu_runtime = 0.0;
+  double max_gpu_runtime = 0.0;
+  double min_gpu_runtime = 10000.0;
+  double all_gpu_runtime[TEST_RANSAC_TIMES];
+
+  GPU_HC_Solver<T> GPU_HC_( Problem_Settings_Map, Data_Size_for_Indices );
+
+  //> (1) Allocate CPU and GPU arrays
+  GPU_HC_.Allocate_Arrays();
+
+  //> Loop over many times of RANSACs
+  for (int ti = 0; ti < TEST_RANSAC_TIMES; ti++) {
+    //> (2) Read Problem-Specific Data
+    bool pass_Data_Read_Test = GPU_HC_.Read_Problem_Data();
+    if (!pass_Data_Read_Test) return false;
+
+    //> (3) Read RANSAC Data
+    pass_Data_Read_Test = GPU_HC_.Read_RANSAC_Data( ti );
+    if (!pass_Data_Read_Test) return false;
+
+    //> (4) Convert from triplet edgels to target parameters
+    GPU_HC_.Prepare_Target_Params( ti );
+
+    //> (5) Transfer data from CPU to GPU
+    GPU_HC_.Data_Transfer_From_Host_To_Device();
+
+    //> (6) Solve the problem by GPU-HC
+    GPU_HC_.Solve_by_GPU_HC();
+
+    //> (7) Free triplet edgels memory
+    GPU_HC_.Free_Triplet_Edgels_Mem();
+
+    GPUHC_time_ms = (GPU_HC_.gpu_time)*1000;
+
+    all_gpu_runtime[ti] = GPUHC_time_ms;
+    avg_gpu_runtime += GPUHC_time_ms;
+    max_gpu_runtime = (GPUHC_time_ms > max_gpu_runtime) ? (GPUHC_time_ms) : (max_gpu_runtime);
+    min_gpu_runtime = (GPUHC_time_ms < min_gpu_runtime) ? (GPUHC_time_ms) : (min_gpu_runtime);
+  }
+
+  avg_gpu_runtime /= TEST_RANSAC_TIMES;
+  std::cout << std::endl;
+  printf(" - [Average GPU Computation Time] %7.2f (ms)\n", avg_gpu_runtime);
+  printf(" - [Maximal GPU Computation Time] %7.2f (ms)\n", max_gpu_runtime);
+  printf(" - [Minimal GPU Computation Time] %7.2f (ms)\n", min_gpu_runtime);
+
+  //> Calculate the standard deviation
+  double sigma = 0.0;
+  for (int i = 0; i < TEST_RANSAC_TIMES; i++) {
+    sigma += (all_gpu_runtime[i] - avg_gpu_runtime) * (all_gpu_runtime[i] - avg_gpu_runtime);
+  }
+  sigma /= TEST_RANSAC_TIMES;
+  sigma = sqrt(sigma);
+  printf(" - [Std dev GPU Computation Time] %7.2f (ms)\n", sigma);
+
+  //> Export all data (HC steps for now) to files
+  // GPU_HC_.Export_Data();
+
+  return true;
+}
+
 int main(int argc, char **argv) {
   //> Get input argument
   --argc; ++argv;
@@ -83,43 +148,21 @@ int main(int argc, char **argv) {
     return 0;
 	}
 
+  //> Get data dize (32-bit or 8-bit) for indices in evaluations
+  int Data_Size_for_Indices = Problem_Settings_Map["Data_Size_for_Indices"].as<int>();
+
   //> Initialization from GPU-HC constructor
-#if USE_8BIT_IN_SHARED_MEM
-  GPU_HC_Solver<char> GPU_HC_( Problem_Settings_Map );
-#else
-  //> the templated data type can be changed here for either "int" or "char"
-  //> Here the index matrices live in the global memory
-  GPU_HC_Solver<int> GPU_HC_( Problem_Settings_Map );
-#endif
-
-  //> (1) Allocate CPU and GPU arrays
-  GPU_HC_.Allocate_Arrays();
-
-  //> Loop over many times of RANSACs
-  for (int ti = 0; ti < TEST_RANSAC_TIMES; ti++) {
-    //> (2) Read Problem-Specific Data
-    bool pass_Data_Read_Test = GPU_HC_.Read_Problem_Data();
-    if (!pass_Data_Read_Test) return 0;
-
-    //> (3) Read RANSAC Data
-    pass_Data_Read_Test = GPU_HC_.Read_RANSAC_Data( ti );
-    if (!pass_Data_Read_Test) return 0;
-
-    //> (4) Convert from triplet edgels to target parameters
-    GPU_HC_.Prepare_Target_Params();
-
-    //> (5) Transfer data from CPU to GPU
-    GPU_HC_.Data_Transfer_From_Host_To_Device();
-
-    //> (6) Solve the problem by GPU-HC
-    GPU_HC_.Solve_by_GPU_HC();
-
-    //> (7) Free triplet edgels memory
-    GPU_HC_.Free_Triplet_Edgels_Mem();
+  bool should_continue = false;
+  if (Data_Size_for_Indices == 8) {
+    should_continue = run_GPU_HC_Solver<char>( Problem_Settings_Map, Data_Size_for_Indices );
   }
+  else if (Data_Size_for_Indices == 32) {
+    should_continue = run_GPU_HC_Solver<int>( Problem_Settings_Map, Data_Size_for_Indices );
+  }
+  else
+    LOG_ERROR("Data size for indices defined in the YAML file is incorrect!");
 
-  //> Export all data (HC steps for now) to files
-  GPU_HC_.Export_Data();
+  //> Maybe we can do something with should_continue
 
   return 0;
 }
