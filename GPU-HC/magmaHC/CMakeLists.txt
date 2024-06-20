@@ -36,9 +36,9 @@ set (control_sources
   gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_8b_SM_LimUnroll.cuh
   gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_32b.cuh
   gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_32b_P2C.cuh
-  gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_inline.cuh
+  gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_32b_inline.cuh
   gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_LimUnroll.cuh
-  gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_inline_LimUnroll.cuh 
+  gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_32b_inline_LimUnroll.cuh 
 
   #> P2C
   PHC_Coeffs/p2c-trifocal_2op1p_30x30.h
@@ -47,17 +47,21 @@ set (control_sources
   util.hpp
 )
 
+set_source_files_properties(Data_Reader.cpp PROPERTIES LANGUAGE CUDA)
+#set_source_files_properties(Data_Reader.hpp PROPERTIES LANGUAGE CUDA)
+set_source_files_properties(GPU_HC_Solver.cpp PROPERTIES LANGUAGE CUDA)
+#set_source_files_properties(GPU_HC_Solver.hpp PROPERTIES LANGUAGE CUDA)
+set_source_files_properties(Evaluations.cpp PROPERTIES LANGUAGE CUDA)
+#set_source_files_properties(Evaluations.hpp PROPERTIES LANGUAGE CUDA)
+
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
-include_directories( "/users/cchien3/data/cchien3/magma-2.5.4/include" )
-include_directories( "/users/cchien3/data/cchien3/magma-2.5.4/testing" )
-include_directories( "/users/cchien3/data/cchien3/magma/control" )
-include_directories( "/users/cchien3/data/cchien3/magma/magmablas" )
 
 add_library( magmaHC ${control_sources} )
 target_link_libraries(magmaHC
-        -L/users/cchien3/data/cchien3/magma-cchien3/lib magma
-        -L/gpfs/runtime/opt/openblas/0.3.23-u6k5fey/lib openblas
-        -L/gpfs/data/bkimia/cchien3/yaml-cpp/bin/lib64 yaml-cpp
-        )
-set_target_properties(magmaHC PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+        #-L/apps/spacks/2023-08-14/opt/spack/linux-ubuntu23.04-x86_64/gcc-9.5.0/cuda-11.8.0-vga6hsgzrgzjyn4rqnbs7ples4tbhvhq/lib64 cublas cusparse cudart
+        -L/apps/spacks/2023-08-14/opt/spack/linux-ubuntu23.04-x86_64/gcc-9.5.0/magma-2.7.1-5hrvjybyve3kqfgx7uv5nxxz7mktnqqw/lib magma
+        -L/apps/spacks/2023-08-14/opt/spack/linux-ubuntu23.04-x86_64/gcc-9.5.0/openblas-0.3.23-2tips3wywhkieahh6udqmjfke4flqm3l/lib openblas
+        -L/home/chchien/thirdParty/yaml-cpp/yaml-cpp-bin/lib64 yaml-cpp
+)
+#set_target_properties(magmaHC PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 

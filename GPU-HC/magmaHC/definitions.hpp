@@ -11,7 +11,7 @@
 #define TRANSL_RESIDUAL_TOL                     (1e-1)
 #define TEST_RANSAC_TIMES                       (100)
 #define REPROJ_ERROR_INLIER_THRESH              (2) //> in pixels
-#define FEED_RANDOM_SEED                        (false)     //> if false, each run is different
+#define FEED_RANDOM_SEED                        (true)     //> if false, each run is different
 
 //> Settings for GPU-HC Kernel
 #define TRUNCATE_HC_PATH_THRESH                 (0.95)

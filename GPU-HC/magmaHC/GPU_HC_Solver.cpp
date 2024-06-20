@@ -531,10 +531,10 @@ void GPU_HC_Solver<char>::Solve_by_GPU_HC() {
     // }
 }
 
-template< typename T_index_mat >
-void GPU_HC_Solver<T_index_mat>::Export_Data() {
-    Evaluate_GPUHC_Sols->Write_HC_Steps_of_Actual_Solutions( GPUHC_Actual_Sols_Steps_Collections );
-}
+// template< typename T_index_mat >
+// void GPU_HC_Solver<T_index_mat>::Export_Data() {
+//     Evaluate_GPUHC_Sols->Write_HC_Steps_of_Actual_Solutions( GPUHC_Actual_Sols_Steps_Collections );
+// }
 
 template< typename T_index_mat >
 void GPU_HC_Solver<T_index_mat>::Free_Triplet_Edgels_Mem() {

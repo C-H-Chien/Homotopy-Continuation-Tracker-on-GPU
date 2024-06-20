@@ -15,8 +15,6 @@
 #include <iostream>
 #include <iomanip>
 #include <cstring>
-#include <chrono>
-#include <cuComplex.h>
 
 #include "magma_v2.h"
 
