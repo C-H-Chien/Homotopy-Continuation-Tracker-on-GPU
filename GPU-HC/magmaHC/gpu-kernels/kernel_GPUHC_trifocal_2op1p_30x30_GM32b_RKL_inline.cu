@@ -39,7 +39,7 @@
 #include "../definitions.hpp"
 
 //> device functions
-#include "../gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_inline.cuh"
+#include "../gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_32b_inline.cuh"
 #include "../dev-cgesv-batched-small.cuh"
 #include "../dev-get-new-data.cuh"
 
