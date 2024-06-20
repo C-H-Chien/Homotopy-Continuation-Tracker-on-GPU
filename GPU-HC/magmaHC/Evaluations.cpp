@@ -223,7 +223,6 @@ void Evaluations::Transform_GPUHC_Sols_to_Trifocal_Relative_Pose( \
 
   for (int i = 0; i < 9; i++) K[i] = IntrinsicMatrix[i];
 
-  float norm_t21, norm_t31;
   unsigned RANSAC_loop_index;
   unsigned track_index_in_one_RANSAC;
 

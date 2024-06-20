@@ -162,6 +162,9 @@ int main(int argc, char **argv) {
   else
     LOG_ERROR("Data size for indices defined in the YAML file is incorrect!");
 
+  if (!should_continue)
+    LOG_ERROR("Something's wrong with run_GPU_HC_Solver!");
+
   //> Maybe we can do something with should_continue
 
   return 0;
