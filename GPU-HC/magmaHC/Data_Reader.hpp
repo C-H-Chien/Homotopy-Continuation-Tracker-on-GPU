@@ -32,8 +32,9 @@ public:
     Data_Reader(std::string, std::string, const int, const int, const int, bool);
 
     bool Read_Start_Params( magmaFloatComplex* &h_Start_Params );
+    bool Feed_Start_Sols_for_Intermediate_Homotopy(magmaFloatComplex* &h_Start_Sols, magmaFloatComplex* &h_Homotopy_Sols, int RANSAC_Iters_per_GPU);
     bool Read_Target_Params( magmaFloatComplex* &h_Target_Params );
-    bool Read_Start_Sols( magmaFloatComplex* &h_Start_Sols, magmaFloatComplex* &h_Homotopy_Sols );
+    bool Read_Start_Sols( magmaFloatComplex* &h_Start_Sols );
 
     template< typename T >
     bool Read_dHdx_Indices( T* &h_dHdx_Index );
@@ -42,8 +43,8 @@ public:
     bool Read_dHdt_Indices( T* &h_dHdt_Index );
 
     bool Construct_Coeffs_From_Params( std::string HC_Problem, \
-        magmaFloatComplex* h_Target_Params,     magmaFloatComplex* h_Start_Params, \
-        magmaFloatComplex* &h_dHdx_PHC_Coeffs,  magmaFloatComplex* &h_dHdt_PHC_Coeffs );
+        magmaFloatComplex* h_Target_Params,    magmaFloatComplex* h_Start_Params, \
+        magmaFloatComplex* h_dHdx_PHC_Coeffs,  magmaFloatComplex* h_dHdt_PHC_Coeffs );
 
     //> RANSAC Data
     int get_Num_Of_Triplet_Edgels( int tp_index );

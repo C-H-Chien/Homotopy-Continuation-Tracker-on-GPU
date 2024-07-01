@@ -20,6 +20,7 @@ set (control_sources
   gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_inline.cu
   gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_inline_LimUnroll.cu
   gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_LimUnroll.cu
+  gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_LimUnroll_TrunPaths.cu
   gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_inline_LimUnroll_TrunPaths.cu
   gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_GM8b_RKL_inline.cu
   gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL.cu
@@ -37,7 +38,7 @@ set (control_sources
   gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_32b.cuh
   gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_32b_P2C.cuh
   gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_32b_inline.cuh
-  gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_LimUnroll.cuh
+  gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_32b_LimUnroll.cuh
   gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_32b_inline_LimUnroll.cuh 
 
   #> P2C
@@ -58,7 +59,8 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 add_library( magmaHC ${control_sources} )
 target_link_libraries(magmaHC
-        #-L/apps/spacks/2023-08-14/opt/spack/linux-ubuntu23.04-x86_64/gcc-9.5.0/cuda-11.8.0-vga6hsgzrgzjyn4rqnbs7ples4tbhvhq/lib64 cublas cusparse cudart
+  #-L/home/ahmad/magma-openblas/lib magma
+  #-L/home/ahmad/openblas/lib openblas
         -L/apps/spacks/2023-08-14/opt/spack/linux-ubuntu23.04-x86_64/gcc-9.5.0/magma-2.7.1-5hrvjybyve3kqfgx7uv5nxxz7mktnqqw/lib magma
         -L/apps/spacks/2023-08-14/opt/spack/linux-ubuntu23.04-x86_64/gcc-9.5.0/openblas-0.3.23-2tips3wywhkieahh6udqmjfke4flqm3l/lib openblas
         -L/home/chchien/thirdParty/yaml-cpp/yaml-cpp-bin/lib64 yaml-cpp

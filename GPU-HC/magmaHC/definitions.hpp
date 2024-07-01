@@ -4,28 +4,33 @@
 
 #define WRITE_FILES_FOLDER                      std::string("Output_Write_Files/")
 
+//> GPU Settings
+#define MAX_NUM_OF_GPUS                         (8)
+#define SET_GPU_DEVICE_ID                       (1)     //> This is a TODO. Device id starts from 0
+
 //> RANSAC Settings
-#define NUM_OF_RANSAC_ITERATIONS                (1)
-#define IMAG_PART_TOL                           (1e-1)  //(1e-5)
+#define NUM_OF_RANSAC_ITERATIONS                (100)
+#define IMAG_PART_TOL                           (1e-5)  //(1e-5)
 #define ROT_RESIDUAL_TOL                        (1e-1)
 #define TRANSL_RESIDUAL_TOL                     (1e-1)
-#define TEST_RANSAC_TIMES                       (100)
+#define TEST_RANSAC_TIMES                       (10)
 #define REPROJ_ERROR_INLIER_THRESH              (2) //> in pixels
-#define FEED_RANDOM_SEED                        (true)     //> if false, each run is different
+#define FEED_RANDOM_SEED                        (false)     //> if true, each run is different
 
 //> Settings for GPU-HC Kernel
 #define TRUNCATE_HC_PATH_THRESH                 (0.95)
 
 //> Evaluation macros
+#define WRITE_GPUHC_CONVERGED_SOLS              (false)
 #define DUPLICATE_SOL_DIFF_TOL                  (1e-4)
-#define ZERO_IMAG_PART_TOL_FOR_SP               (1e-1)  //(1e-4)
+#define ZERO_IMAG_PART_TOL_FOR_SP               (1e-4)  //(1e-4)
 #define DEBUG_EVALUATOR                         (false)
 #define IS_SO3_DET_R_TOL                        (1e-5)
 
 //> Settings for Debugging
 #define SHOW_PROBLEM_SETTINGS                   (true)
 #define SHOW_EVAL_INDX_DATA_SIZE                (false)
-#define GPU_DEBUG                               (true)
+#define GPU_DEBUG                               (false)
 #define DATA_READER_DEBUG                       (false)
 #define RANSAC_DEBUG                            (false)
 

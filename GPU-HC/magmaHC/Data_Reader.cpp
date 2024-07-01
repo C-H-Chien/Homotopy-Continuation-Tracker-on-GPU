@@ -41,7 +41,7 @@ Data_Reader::Data_Reader(std::string Problem_Filename, std::string RANSAC_Data_F
     File_Name_Intrinsic_Matrix = RANSAC_Data_Path_ + std::string("/Intrinsic_Matrix.txt");
 }
 
-bool Data_Reader::Read_Start_Sols(magmaFloatComplex* &h_Start_Sols, magmaFloatComplex* &h_Homotopy_Sols) {
+bool Data_Reader::Read_Start_Sols(magmaFloatComplex* &h_Start_Sols) {
     //> Read start solutions
     File_Start_Sols.open(File_Name_Start_Sols, std::ios_base::in);
     if (!File_Start_Sols) {
@@ -53,7 +53,6 @@ bool Data_Reader::Read_Start_Sols(magmaFloatComplex* &h_Start_Sols, magmaFloatCo
         int d = 0, i = 0; 
         while (File_Start_Sols >> s_real >> s_imag) {
             (h_Start_Sols + i * (num_of_variables+1))[d]     = MAGMA_C_MAKE(s_real, s_imag);
-            (h_Homotopy_Sols + i * (num_of_variables+1))[d]  = MAGMA_C_MAKE(s_real, s_imag);
             if (d < num_of_variables-1) d++;
             else {
                 d = 0;
@@ -62,20 +61,23 @@ bool Data_Reader::Read_Start_Sols(magmaFloatComplex* &h_Start_Sols, magmaFloatCo
         }
         for(int k = 0; k < num_of_tracks; k++) {
             (h_Start_Sols + k * (num_of_variables+1))[num_of_variables]    = MAGMA_C_MAKE(1.0, 0.0);
-            (h_Homotopy_Sols + k * (num_of_variables+1))[num_of_variables] = MAGMA_C_MAKE(1.0, 0.0);
-        }
-        
+        }   
     }
+    return true;
+}
 
+bool Data_Reader::Feed_Start_Sols_for_Intermediate_Homotopy(magmaFloatComplex* &h_Start_Sols, magmaFloatComplex* &h_Homotopy_Sols, int RANSAC_Iters_per_GPU) {
+    
     //> Copy the start solutions a number of RANSAC iterations times for h_Homotopy_Sols array
-    for (int ri = 1; ri < NUM_OF_RANSAC_ITERATIONS; ri++) {
-        for (int i = 0; i < (num_of_tracks * (num_of_variables + 1)); i++) {
-            (h_Homotopy_Sols + ri * (num_of_tracks * (num_of_variables + 1)))[i] = h_Homotopy_Sols[i];
+    for (int ri = 0; ri < RANSAC_Iters_per_GPU; ri++) {
+        for (int i = 0; i < num_of_tracks*(num_of_variables+1); i++) {
+            (h_Homotopy_Sols + ri * (num_of_tracks * (num_of_variables + 1)))[i] = h_Start_Sols[i];
         }
     }
+    
 #if RANSAC_DEBUG
     int copy_id = 2;
-    if (NUM_OF_RANSAC_ITERATIONS > copy_id) {
+    if (RANSAC_Iters_per_GPU > copy_id) {
         std::cout << "Printing coopied h_Homotopy_Sols:" << std::endl;
         printf("     Copy 1                       Copy 2\n");
         for (int i = 0; i < num_of_variables+1; i++) {
@@ -171,7 +173,7 @@ bool Data_Reader::Read_dHdt_Indices( T* &h_dHdt_Index ) {
 
 bool Data_Reader::Construct_Coeffs_From_Params( std::string HC_Problem, \
         magmaFloatComplex* h_Target_Params,     magmaFloatComplex* h_Start_Params, \
-        magmaFloatComplex* &h_dHdx_PHC_Coeffs,  magmaFloatComplex* &h_dHdt_PHC_Coeffs ) 
+        magmaFloatComplex* h_dHdx_PHC_Coeffs,   magmaFloatComplex* h_dHdt_PHC_Coeffs ) 
 {
     if (HC_Problem == "trifocal_2op1p_30x30") {
         magmaHCWrapper::p2c_trifocal_2op1p_30x30(h_Target_Params, h_Start_Params, h_dHdx_PHC_Coeffs, h_dHdt_PHC_Coeffs);

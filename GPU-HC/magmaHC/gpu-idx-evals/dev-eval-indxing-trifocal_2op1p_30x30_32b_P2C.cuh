@@ -32,7 +32,7 @@
 template< int Num_Of_Vars, int Max_Order_of_t, unsigned Full_Parallel_Offset, \
           unsigned Partial_Parallel_Thread_Offset, unsigned Partial_Parallel_Index_Offset, \
           unsigned Max_Order_of_t_Plus_One, unsigned Partial_Parallel_Index_Offset_Hx, unsigned Partial_Parallel_Index_Offset_Ht >
-__device__ __inline__ void
+__device__ __noinline__ void
 eval_parameter_homotopy(
     const int tx, float t, 
     magmaFloatComplex *s_phc_coeffs_Hx,
@@ -66,7 +66,7 @@ eval_parameter_homotopy(
 
 //> Parallel Jacobian Evaluation ∂H/∂x
 template< int Num_Of_Vars, int dHdx_Max_Terms, int dHdx_Max_Parts, int dHdx_Entry_Offset, int dHdx_Row_Offset >
-__device__ __inline__ void
+__device__ __noinline__ void
 eval_Jacobian_Hx(
     const int tx, magmaFloatComplex *s_track, magmaFloatComplex r_cgesvA[Num_Of_Vars],
     const int* __restrict__ d_Hx_idx, magmaFloatComplex *s_phc_coeffs )
@@ -85,7 +85,7 @@ eval_Jacobian_Hx(
 
 //> Parallel Jacobian Evaluation ∂H/∂t
 template< int dHdt_Max_Terms, int dHdt_Max_Parts, int dHdt_Row_Offset >
-__device__ __inline__ void
+__device__ __noinline__ void
 eval_Jacobian_Ht(
     const int tx, magmaFloatComplex *s_track, magmaFloatComplex &r_cgesvB,
     const int* __restrict__ d_Ht_idx, magmaFloatComplex *s_phc_coeffs)
@@ -102,7 +102,7 @@ eval_Jacobian_Ht(
 
 //> Parallel Homotopy Evaluation
 template< int dHdt_Max_Terms, int dHdt_Max_Parts, int dHdt_Row_Offset >
-__device__ __inline__ void
+__device__ __noinline__ void
 eval_Homotopy(
     const int tx, magmaFloatComplex *s_track, magmaFloatComplex &r_cgesvB,
     const int* __restrict__ d_Ht_idx, magmaFloatComplex *s_phc_coeffs)

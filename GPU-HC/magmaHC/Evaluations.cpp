@@ -107,19 +107,22 @@ void Evaluations::Write_Converged_Sols( \
     magmaFloatComplex *h_GPU_HC_Track_Sols, \
     bool *h_is_GPU_HC_Sol_Converge ) 
 {
+  LOG_INFO_MESG("Writing GPU-HC converged solutions to a file ...");
+  int counter = 0;
   for (int ri = 0; ri < NUM_OF_RANSAC_ITERATIONS; ri++) {
     GPUHC_Track_Sols_File << "-------------------- RANSAC Iteration " << ri+1 << " --------------------\n\n";
     for (int bs = 0; bs < num_of_tracks; bs++) {
       GPUHC_Track_Sols_File << std::setprecision(10);
 
-      if (h_is_GPU_HC_Sol_Converge[ bs ] == 1) {
-        //GPUHC_Track_Sols_File << h_is_GPU_HC_Sol_Converge[ bs ] << "\n";
+      if ((h_is_GPU_HC_Sol_Converge + ri * num_of_tracks)[ bs ] == 1) {
+        GPUHC_Track_Sols_File << counter << "\n";
         for (int vs = 0; vs < num_of_variables; vs++) {
           GPUHC_Track_Sols_File << std::setprecision(20) << MAGMA_C_REAL((h_GPU_HC_Track_Sols + ri * num_of_tracks * (num_of_variables+1) + bs * (num_of_variables+1))[vs]) << "\t" \
                                 << std::setprecision(20) << MAGMA_C_IMAG((h_GPU_HC_Track_Sols + ri * num_of_tracks * (num_of_variables+1) + bs * (num_of_variables+1))[vs]) << "\n";
         }
         GPUHC_Track_Sols_File << "\n";
       }
+      counter++;
     }
     GPUHC_Track_Sols_File << "\n";
   }
@@ -429,12 +432,14 @@ bool Evaluations::get_Solution_with_Maximal_Support( unsigned Num_Of_Triplet_Edg
     return false;
   }
   else {
-    std::cout << "Index of poses with max number of inliers views 1&2: ";
-    for (int i = 0; i < Max_Reproj_Inliers_Support_Views21_Index.size(); i++) std::cout << Max_Reproj_Inliers_Support_Views21_Index[i] << ", ";
-    std::cout << std::endl;
-    std::cout << "Index of poses with max number of inliers views 1&3: ";
-    for (int i = 0; i < Max_Reproj_Inliers_Support_Views31_Index.size(); i++) std::cout << Max_Reproj_Inliers_Support_Views31_Index[i] << ", ";
-    std::cout << std::endl;
+    // std::cout << "Index of poses with max number of inliers views 1&2: ";
+    // for (int i = 0; i < Max_Reproj_Inliers_Support_Views21_Index.size(); i++) std::cout << Max_Reproj_Inliers_Support_Views21_Index[i] << ", ";
+    // std::cout << std::endl;
+    // std::cout << "Index of poses with max number of inliers views 1&3: ";
+    // for (int i = 0; i < Max_Reproj_Inliers_Support_Views31_Index.size(); i++) std::cout << Max_Reproj_Inliers_Support_Views31_Index[i] << ", ";
+    // std::cout << std::endl;
+    if (Max_Reproj_Inliers_Support_Views21_Index.size() > 0 && Max_Reproj_Inliers_Support_Views31_Index.size() > 0)
+      std::cout << "### Found GT pose!" << std::endl;
 
     //> Now with solution index supported by maximal inliers, fetch the corresponding solution(s)
     R21_w_Max_Supports = normalized_R21s[ Max_Reproj_Inliers_Support_Views21_Index[0] ];

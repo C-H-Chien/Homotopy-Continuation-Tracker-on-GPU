@@ -48,7 +48,7 @@ template< int Num_Of_Vars,    int Num_Of_Params, \
           int dHdt_Max_Terms, int dHdt_Max_Parts, \
           int dHdx_Index_Matrix_Size, int dHdt_Index_Matrix_Size >
 __global__ void
-kernel_GPUHC_trifocal_2op1p_30x30(
+kernel_GPUHC_trifocal_rel_pos_SM8b_RKL(
   const int           HC_max_steps, 
   const int           HC_max_correction_steps, 
   const int           HC_delta_t_incremental_steps,
@@ -292,6 +292,7 @@ kernel_GPUHC_trifocal_2op1p_30x30(
 real_Double_t
 kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL(
   magma_queue_t       my_queue,
+  int                 sub_RANSAC_iters,
   int                 HC_max_steps, 
   int                 HC_max_correction_steps, 
   int                 HC_delta_t_incremental_steps,
@@ -321,7 +322,7 @@ kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL(
 
   real_Double_t gpu_time;
   dim3 threads(num_of_vars, 1, 1);
-  dim3 grid(num_of_tracks*NUM_OF_RANSAC_ITERATIONS, 1, 1);
+  dim3 grid(num_of_tracks*sub_RANSAC_iters, 1, 1);
   cudaError_t e = cudaErrorInvalidValue;
 
   //> declare the amount of shared memory for the use of the kernel
@@ -347,7 +348,7 @@ kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL(
 #if CUDA_VERSION >= 9000
   cudacheck( cudaDeviceGetAttribute (&shmem_max, cudaDevAttrMaxSharedMemoryPerBlockOptin, 0) );
   if (shmem <= shmem_max) {
-    cudacheck( cudaFuncSetAttribute(kernel_GPUHC_trifocal_2op1p_30x30 \
+    cudacheck( cudaFuncSetAttribute(kernel_GPUHC_trifocal_rel_pos_SM8b_RKL \
                                     <num_of_vars, num_of_params, \
                                      dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdt_Max_Terms, dHdt_Max_Parts, \
                                      dHdx_Index_Matrix_Size, dHdt_Index_Matrix_Size >, //dHdx_Num_Of_Read_Loops, dHdt_Num_Of_Read_Loops >,
@@ -375,14 +376,14 @@ kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL(
   gpu_time = magma_sync_wtime( my_queue );
 
   //> launch the GPU kernel
-  e = cudaLaunchKernel((void*)kernel_GPUHC_trifocal_2op1p_30x30 \
+  e = cudaLaunchKernel((void*)kernel_GPUHC_trifocal_rel_pos_SM8b_RKL \
                         <num_of_vars, num_of_params, \
                          dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdt_Max_Terms, dHdt_Max_Parts, \
                          dHdx_Index_Matrix_Size, dHdt_Index_Matrix_Size >, // dHdx_Num_Of_Read_Loops, dHdt_Num_Of_Read_Loops >,
                         grid, threads, kernel_args, shmem, my_queue->cuda_stream());
 
   gpu_time = magma_sync_wtime( my_queue ) - gpu_time;
-  if( e != cudaSuccess ) printf("cudaLaunchKernel of kernel_GPUHC_trifocal_2op1p_30x30 is not successful!\n");
+  if( e != cudaSuccess ) printf("cudaLaunchKernel of kernel_GPUHC_trifocal_rel_pos_SM8b_RKL is not successful!\n");
 
   return gpu_time;
 }

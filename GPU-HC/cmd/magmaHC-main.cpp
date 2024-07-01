@@ -63,16 +63,20 @@ bool run_GPU_HC_Solver( YAML::Node Problem_Settings_Map, int Data_Size_for_Indic
     //> (7) Free triplet edgels memory
     GPU_HC_.Free_Triplet_Edgels_Mem();
 
-    GPUHC_time_ms = (GPU_HC_.gpu_time)*1000;
+    GPUHC_time_ms = (GPU_HC_.gpu_max_time_from_multiple_GPUs)*1000;
 
     all_gpu_runtime[ti] = GPUHC_time_ms;
     avg_gpu_runtime += GPUHC_time_ms;
     max_gpu_runtime = (GPUHC_time_ms > max_gpu_runtime) ? (GPUHC_time_ms) : (max_gpu_runtime);
     min_gpu_runtime = (GPUHC_time_ms < min_gpu_runtime) ? (GPUHC_time_ms) : (min_gpu_runtime);
+
+    //> Reset GPU max elapse time across all GPUs 
+    GPU_HC_.gpu_max_time_from_multiple_GPUs = 0.0;
   }
 
   avg_gpu_runtime /= TEST_RANSAC_TIMES;
   std::cout << std::endl;
+  printf("## Running %d rounds of %d RANSAC iterations:\n", TEST_RANSAC_TIMES, NUM_OF_RANSAC_ITERATIONS);
   printf(" - [Average GPU Computation Time] %7.2f (ms)\n", avg_gpu_runtime);
   printf(" - [Maximal GPU Computation Time] %7.2f (ms)\n", max_gpu_runtime);
   printf(" - [Minimal GPU Computation Time] %7.2f (ms)\n", min_gpu_runtime);

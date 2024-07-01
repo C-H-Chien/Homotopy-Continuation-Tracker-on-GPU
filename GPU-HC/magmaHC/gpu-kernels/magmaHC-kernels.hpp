@@ -23,6 +23,7 @@
 //> P2C, Naive GPU-HC approach
 real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_P2C(
   magma_queue_t         my_queue,
+  int                   sub_RANSAC_iters,
   int                   HC_max_steps, 
   int                   HC_max_correction_steps, 
   int                   HC_delta_t_incremental_steps,
@@ -40,6 +41,7 @@ real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_P2C(
 //> 1) 32-bit indices in global memory + no Runge-Kutta in a loop + no inlined device functions + no limited loop unroll + no truncated HC paths
 real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_GM32b(
   magma_queue_t         my_queue,
+  int                   sub_RANSAC_iters,
   int                   HC_max_steps, 
   int                   HC_max_correction_steps, 
   int                   HC_delta_t_incremental_steps,
@@ -57,6 +59,7 @@ real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_GM32b(
 
 real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL(
   magma_queue_t         my_queue,
+  int                   sub_RANSAC_iters,
   int                   HC_max_steps, 
   int                   HC_max_correction_steps, 
   int                   HC_delta_t_incremental_steps,
@@ -75,6 +78,7 @@ real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL(
 //> 2) 32-bit indices in global memory + Runge-Kutta in a loop + inlined device functions + no limited loop unroll + no truncated HC paths
 real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_inline(
   magma_queue_t         my_queue,
+  int                   sub_RANSAC_iters,
   int                   HC_max_steps, 
   int                   HC_max_correction_steps, 
   int                   HC_delta_t_incremental_steps,
@@ -93,6 +97,7 @@ real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_inline(
 //> 3) 8-bit indices in global memory + Runge-Kutta in a loop + inlined device functions + no limited loop unroll + no truncated HC paths
 real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_GM8b_RKL_inline(
   magma_queue_t         my_queue,
+  int                   sub_RANSAC_iters,
   int                   HC_max_steps, 
   int                   HC_max_correction_steps, 
   int                   HC_delta_t_incremental_steps,
@@ -111,6 +116,7 @@ real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_GM8b_RKL_inline(
 //> 4) 8-bit indices in shared memory + Runge-Kutta in a loop + inlined device functions + no limited loop unroll + no truncated HC paths
 real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL_inline(
   magma_queue_t         my_queue,
+  int                   sub_RANSAC_iters,
   int                   HC_max_steps, 
   int                   HC_max_correction_steps, 
   int                   HC_delta_t_incremental_steps,
@@ -129,6 +135,7 @@ real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL_inline(
 //> 5) 8-bit indices in shared memory + Runge-Kutta in a loop + no inlined device functions + no limited loop unroll + no truncated HC paths
 real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL(
   magma_queue_t         my_queue,
+  int                   sub_RANSAC_iters,
   int                   HC_max_steps, 
   int                   HC_max_correction_steps, 
   int                   HC_delta_t_incremental_steps,
@@ -147,6 +154,7 @@ real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL(
 //> 6) 8-bit indices in shared memory + Runge-Kutta in a loop + no inlined device functions + limited loop unroll + no truncated HC paths
 real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL_LimUnroll(
   magma_queue_t         my_queue,
+  int                   sub_RANSAC_iters,
   int                   HC_max_steps, 
   int                   HC_max_correction_steps, 
   int                   HC_delta_t_incremental_steps,
@@ -165,6 +173,7 @@ real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL_LimUnroll(
 //> 7) 32-bit indices in global memory + Runge-Kutta in a loop + no inlined device functions + limited loop unroll + no truncated HC paths
 real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_LimUnroll(
   magma_queue_t         my_queue,
+  int                   sub_RANSAC_iters,
   int                   HC_max_steps, 
   int                   HC_max_correction_steps, 
   int                   HC_delta_t_incremental_steps,
@@ -183,6 +192,7 @@ real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_LimUnroll(
 //> 8) 32-bit indices in global memory + Runge-Kutta in a loop + inlined device functions + limited loop unroll + no truncated HC paths
 real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_inline_LimUnroll(
   magma_queue_t         my_queue,
+  int                   sub_RANSAC_iters,
   int                   HC_max_steps, 
   int                   HC_max_correction_steps, 
   int                   HC_delta_t_incremental_steps,
@@ -201,6 +211,7 @@ real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_inline_LimUnroll(
 //> 9) 32-bit indices in global memory + Runge-Kutta in a loop + inlined device functions + limited loop unroll + truncated HC paths
 real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_inline_LimUnroll_TrunPaths(
   magma_queue_t         my_queue,
+  int                   sub_RANSAC_iters,
   int                   HC_max_steps, 
   int                   HC_max_correction_steps, 
   int                   HC_delta_t_incremental_steps,
@@ -214,6 +225,24 @@ real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_inline_LimUnroll_TrunP
   bool*                 d_is_GPU_HC_Sol_Converge,        
   bool*                 d_is_GPU_HC_Sol_Infinity,
   magmaFloatComplex*    d_Debug_Purpose
+);
+
+real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_LimUnroll_TrunPaths(
+  magma_queue_t       my_queue,
+  int                 sub_RANSAC_iters,
+  int                 HC_max_steps, 
+  int                 HC_max_correction_steps, 
+  int                 HC_delta_t_incremental_steps,
+  magmaFloatComplex** d_startSols_array, 
+  magmaFloatComplex** d_Track_array,
+  magmaFloatComplex*  d_startParams,
+  magmaFloatComplex*  d_targetParams,
+  magmaFloatComplex*  d_diffParams,
+  int*                d_dHdx_indx, 
+  int*                d_dHdt_indx,
+  bool*               d_is_GPU_HC_Sol_Converge,
+  bool*               d_is_GPU_HC_Sol_Infinity,
+  magmaFloatComplex*  d_Debug_Purpose
 );
 
 #endif
