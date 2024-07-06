@@ -5,6 +5,7 @@ problem_name: uncalibrated_trifocal_rel_pos_CY
 problem_print_out_name: Uncalibrated Trifocal Relative Pose Problem (Chiang-Heng & Yaqing Version)
 
 #> Reference: This is from a formulation of our GPU-HC journal version. Will be updated.
+#> Acknowledgement: We greatfully thank Yaqing Ding for developing this problem in the year of late 2022.
 
 #> GPU-HC Settings
 GPUHC_Type: P2C
