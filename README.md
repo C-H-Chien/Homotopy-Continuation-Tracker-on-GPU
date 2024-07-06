@@ -46,7 +46,7 @@ Refer to [Solve_New_Problems](https://github.com/C-H-Chien/Homotopy-Continuation
 E.T. means Elimination Template which has an out of memory issue ("X" in the table) for large, hard minimal problems (the first 7 rows). The speed of CPU-HC is chosen from the fastest among Julia, [MiNuS](https://github.com/rfabbri/minus), and my own implementation, running on 8-core multi-threading. Refer to my [another repository](https://github.com/C-H-Chien/Minimal-Problem-Solver-on-CPU) for how you could use elimination template, Julia, and my CPU-HC for solving minimal problems. The selected problems below are provided in this repository under ``GPU-HC/problems/`` with references given in respective YAML files.
 | Problem           | # of Unkn. | # of Sol. | E.T. | CPU-HC | GPU-HC |
 | :---------------: | :------: | :----: | :-------: | :-------: | :-------: |
-| trifocal relative pose, unkown focal length              | 12 |  180 | X | 152.83 | **15.17** | 
+| trifocal relative pose, unkown focal length              | 12 |  668 | X | 152.83 | **15.17** | 
 | trifocal relative pose from lines at points (30x30)      | 30 |  312 | X | 234.86 | **54.44** |
 | generalized 3-view relative pose from 4 points           | 12 |  583 | X | 428.26 |  **4.77** |
 | generalized 3-view relative pose from 6 lines            |  6 |  600 | X | 1103   |  **5.11** |

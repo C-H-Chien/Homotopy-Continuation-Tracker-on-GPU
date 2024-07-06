@@ -283,7 +283,7 @@ kernel_HC_Solver_uncalibrated_trifocal_rel_pos_CY(
 {
   //> Hard-coded for each problem
   const int num_of_vars               = 12;
-  const int num_of_tracks             = 180;
+  const int num_of_tracks             = 668;
   const int num_of_coeffs_from_params = 30;
   const int dHdx_Max_Terms            = 6;
   const int dHdx_Max_Parts            = 4;

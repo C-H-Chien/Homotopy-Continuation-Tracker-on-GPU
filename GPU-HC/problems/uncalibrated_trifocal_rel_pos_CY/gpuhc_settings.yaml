@@ -15,7 +15,7 @@ GPUHC_Num_Of_Steps_to_Increase_Delta_t: 2
 #> Problem spec
 Num_Of_Vars: 12
 Num_Of_Params: 24
-Num_Of_Tracks: 180
+Num_Of_Tracks: 668
 dHdx_Max_Terms: 6
 dHdx_Max_Parts: 4
 dHdt_Max_Terms: 12
