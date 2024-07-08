@@ -63,7 +63,8 @@ bool run_GPU_HC_Solver( YAML::Node Problem_Settings_Map, int Data_Size_for_Indic
     //> (7) Free triplet edgels memory
     GPU_HC_.Free_Triplet_Edgels_Mem();
 
-    GPUHC_time_ms = (GPU_HC_.gpu_max_time_from_multiple_GPUs)*1000;
+    // GPUHC_time_ms = (GPU_HC_.gpu_max_time_from_multiple_GPUs)*1000;
+    GPUHC_time_ms = (GPU_HC_.multi_GPUs_time)*1000;
 
     all_gpu_runtime[ti] = GPUHC_time_ms;
     avg_gpu_runtime += GPUHC_time_ms;

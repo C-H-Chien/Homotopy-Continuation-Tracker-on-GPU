@@ -322,7 +322,7 @@ kernel_GPUHC_trifocal_2op1p_30x30_GM32b(
   const int dHdx_Index_Matrix_Size = num_of_vars * num_of_vars * dHdx_Max_Terms * dHdx_Max_Parts;
   const int dHdt_Index_Matrix_Size = num_of_vars * dHdt_Max_Terms * dHdt_Max_Parts;
   
-  real_Double_t gpu_time;
+  real_Double_t gpu_time = 0.0;
   dim3 threads(num_of_vars, 1, 1);
   dim3 grid(num_of_tracks*sub_RANSAC_iters, 1, 1);
   cudaError_t e = cudaErrorInvalidValue;
@@ -373,7 +373,7 @@ kernel_GPUHC_trifocal_2op1p_30x30_GM32b(
                           &d_Debug_Purpose
                         };
 
-  gpu_time = magma_sync_wtime( my_queue );
+  // gpu_time = magma_sync_wtime( my_queue );
 
   //> launch the GPU kernel
   e = cudaLaunchKernel((void*)kernel_GPUHC_trifocal_rel_pos_GM32b \
@@ -382,7 +382,7 @@ kernel_GPUHC_trifocal_2op1p_30x30_GM32b(
                          dHdx_Index_Matrix_Size, dHdt_Index_Matrix_Size >, \
                         grid, threads, kernel_args, shmem, my_queue->cuda_stream());
 
-  gpu_time = magma_sync_wtime( my_queue ) - gpu_time;
+  // gpu_time = magma_sync_wtime( my_queue ) - gpu_time;
   if( e != cudaSuccess ) printf("cudaLaunchKernel of kernel_GPUHC_trifocal_rel_pos_GM32b is not successful!\n");
 
   return gpu_time;

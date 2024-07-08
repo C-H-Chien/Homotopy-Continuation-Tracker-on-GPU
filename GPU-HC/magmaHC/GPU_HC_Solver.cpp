@@ -313,7 +313,7 @@ void GPU_HC_Solver<T_index_mat>::Data_Transfer_From_Host_To_Device() {
     for (int gpu_id = 0; gpu_id < Num_Of_GPUs; gpu_id++) {
         magma_setdevice(gpu_id);
 
-        transfer_h2d_time[gpu_id] = magma_sync_wtime( gpu_queues[gpu_id] );
+        // transfer_h2d_time[gpu_id] = magma_sync_wtime( gpu_queues[gpu_id] );
 
         magma_csetmatrix( Num_Of_Vars+1,   Num_Of_Tracks*sub_RANSAC_iters[gpu_id],  h_Homotopy_Sols[gpu_id],  (Num_Of_Vars+1),  d_Homotopy_Sols[gpu_id], Num_Of_Vars+1,     gpu_queues[gpu_id] );
         magma_csetmatrix( Num_Of_Vars+1,   Num_Of_Tracks,                           h_Start_Sols,     (Num_Of_Vars+1),  d_Start_Sols[gpu_id],    Num_Of_Vars+1,     gpu_queues[gpu_id] );
@@ -332,7 +332,7 @@ void GPU_HC_Solver<T_index_mat>::Data_Transfer_From_Host_To_Device() {
             magma_csetmatrix( dHdt_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id], (1), h_dHdt_PHC_Coeffs[gpu_id], dHdt_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id], d_dHdt_PHC_Coeffs[gpu_id], dHdt_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id], gpu_queues[gpu_id] );
         }
 
-        transfer_h2d_time[gpu_id] = magma_sync_wtime( gpu_queues[gpu_id] ) - transfer_h2d_time[gpu_id];
+        // transfer_h2d_time[gpu_id] = magma_sync_wtime( gpu_queues[gpu_id] ) - transfer_h2d_time[gpu_id];
     }
 }
 
@@ -462,11 +462,11 @@ void GPU_HC_Solver<int>::Solve_by_GPU_HC() {
     //> Check returns from the GPU kernel
     for (int gpu_id = 0; gpu_id < Num_Of_GPUs; gpu_id++) {
         magma_setdevice(gpu_id);
-        transfer_d2h_time[gpu_id] = magma_sync_wtime( gpu_queues[gpu_id] );
+        // transfer_d2h_time[gpu_id] = magma_sync_wtime( gpu_queues[gpu_id] );
         magma_cgetmatrix( (Num_Of_Vars+1), Num_Of_Tracks*sub_RANSAC_iters[gpu_id], d_Homotopy_Sols[gpu_id],  (Num_Of_Vars+1), h_GPU_HC_Track_Sols[gpu_id],    (Num_Of_Vars+1), gpu_queues[gpu_id] );
         cudacheck( cudaMemcpy( h_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Converge[gpu_id], Num_Of_Tracks*sub_RANSAC_iters[gpu_id]*sizeof(bool), cudaMemcpyDeviceToHost) );
         cudacheck( cudaMemcpy( h_is_GPU_HC_Sol_Infinity[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], Num_Of_Tracks*sub_RANSAC_iters[gpu_id]*sizeof(bool), cudaMemcpyDeviceToHost) );
-        transfer_d2h_time[gpu_id] = magma_sync_wtime( gpu_queues[gpu_id] ) - transfer_d2h_time[gpu_id];
+        // transfer_d2h_time[gpu_id] = magma_sync_wtime( gpu_queues[gpu_id] ) - transfer_d2h_time[gpu_id];
     }
 
 #if GPU_DEBUG
@@ -482,12 +482,12 @@ void GPU_HC_Solver<int>::Solve_by_GPU_HC() {
     //> Print out timings
     printf("## Timings:\n");
     printf(" - GPU Computation Time from magma_wtime = %7.2f (ms)\n", (multi_GPUs_time)*1000);
-    printf(" - GPU Computation Time from magma_sync_wtime:\n");
-    for (int gpu_id = 0; gpu_id < Num_Of_GPUs; gpu_id++) {
-        printf("   GPU %d: elapsed time = %5.2f ms (Data transfer time: CPU->GPU = %5.2f ms, GPU->CPU = %5.2f ms)\n", \
-                   gpu_id, gpu_time[gpu_id]*1000, transfer_h2d_time[gpu_id]*1000, transfer_d2h_time[gpu_id]*1000 );
-        gpu_max_time_from_multiple_GPUs = (gpu_time[gpu_id] > gpu_max_time_from_multiple_GPUs) ? gpu_time[gpu_id] : gpu_max_time_from_multiple_GPUs;
-    }
+    // printf(" - GPU Computation Time from magma_sync_wtime:\n");
+    // for (int gpu_id = 0; gpu_id < Num_Of_GPUs; gpu_id++) {
+    //     printf("   GPU %d: elapsed time = %5.2f ms (Data transfer time: CPU->GPU = %5.2f ms, GPU->CPU = %5.2f ms)\n", \
+    //                gpu_id, gpu_time[gpu_id]*1000, transfer_h2d_time[gpu_id]*1000, transfer_d2h_time[gpu_id]*1000 );
+    //     gpu_max_time_from_multiple_GPUs = (gpu_time[gpu_id] > gpu_max_time_from_multiple_GPUs) ? gpu_time[gpu_id] : gpu_max_time_from_multiple_GPUs;
+    // }
 
     //> First stack all results
     int offset_stack = 0;

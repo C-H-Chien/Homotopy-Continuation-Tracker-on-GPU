@@ -300,7 +300,7 @@ kernel_GPUHC_trifocal_2op1p_30x30_P2C(
   const int dHdx_Row_Offset   = num_of_vars * dHdx_Entry_Offset;
   const int dHdt_Row_Offset   = dHdt_Max_Terms * dHdt_Max_Parts;
 
-  real_Double_t gpu_time;
+  real_Double_t gpu_time = 0.0;
   dim3 threads(num_of_vars, 1, 1);
   dim3 grid(num_of_tracks*sub_RANSAC_iters, 1, 1);
   cudaError_t e = cudaErrorInvalidValue;
@@ -363,7 +363,7 @@ kernel_GPUHC_trifocal_2op1p_30x30_P2C(
                           &d_is_GPU_HC_Sol_Converge, &d_is_GPU_HC_Sol_Infinity, \
                           &d_Debug_Purpose };
 
-  gpu_time = magma_sync_wtime( my_queue );
+  // gpu_time = magma_sync_wtime( my_queue );
 
   // cudacheck( cudaEventRecord(start) );
   e = cudaLaunchKernel((void*)kernel_GPUHC_trifocal_rel_pos_Naive \
@@ -379,7 +379,7 @@ kernel_GPUHC_trifocal_2op1p_30x30_P2C(
                           Partial_Parallel_Index_Offset_for_Ht>, \
                         grid, threads, kernel_args, shmem, my_queue->cuda_stream());
 
-  gpu_time = magma_sync_wtime( my_queue ) - gpu_time;
+  // gpu_time = magma_sync_wtime( my_queue ) - gpu_time;
   if( e != cudaSuccess ) printf("cudaLaunchKernel of kernel_GPUHC_trifocal_rel_pos_Naive is not successful!\n");
 
   return gpu_time;
