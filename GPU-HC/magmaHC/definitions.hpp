@@ -13,7 +13,7 @@
 #define IMAG_PART_TOL                           (1e-5)  //(1e-5)
 #define ROT_RESIDUAL_TOL                        (1e-1)
 #define TRANSL_RESIDUAL_TOL                     (1e-1)
-#define TEST_RANSAC_TIMES                       (10)
+#define TEST_RANSAC_TIMES                       (50)
 #define REPROJ_ERROR_INLIER_THRESH              (2) //> in pixels
 #define FEED_RANDOM_SEED                        (false)     //> if true, each run is different
 
@@ -29,10 +29,11 @@
 
 //> Settings for Debugging
 #define SHOW_PROBLEM_SETTINGS                   (true)
-#define SHOW_EVAL_INDX_DATA_SIZE                (false)
+#define SHOW_EVAL_INDX_DATA_SIZE                (true)
 #define GPU_DEBUG                               (false)
 #define DATA_READER_DEBUG                       (false)
 #define RANSAC_DEBUG                            (false)
+#define DEBUG_L2_PERSISTENT_CACHE               (true)
 
 //> [DO NOT CHANGE] The following macros are constant. They are used for shuffle operation in a warp level.
 #define FULL_MASK                               (0xffffffff)

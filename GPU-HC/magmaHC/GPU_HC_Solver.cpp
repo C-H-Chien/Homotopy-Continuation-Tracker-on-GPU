@@ -65,6 +65,7 @@ GPU_HC_Solver<T_index_mat>::GPU_HC_Solver(YAML::Node Problem_Settings_File, int 
     Mem_for_Indices                 = Problem_Setting_YAML_File["Mem_for_Indices"].as<std::string>();
     Inline_Eval_Functions           = Problem_Setting_YAML_File["Inline_Eval_Functions"].as<bool>();
     Limit_Loop_Unroll               = Problem_Setting_YAML_File["Limit_Loop_Unroll"].as<bool>();
+    Use_L2_Persistent_Cache         = Problem_Setting_YAML_File["Use_L2_Persistent_Cache"].as<bool>();
     //> (5) Algorithmic Settings
     Truncate_HC_Path_by_Positive_Depths = Problem_Setting_YAML_File["Truncate_HC_Path_by_Positive_Depths"].as<bool>();
     //> (6) RANSAC data
@@ -92,6 +93,12 @@ GPU_HC_Solver<T_index_mat>::GPU_HC_Solver(YAML::Node Problem_Settings_File, int 
     for (int gpu_id = 0; gpu_id < Num_Of_GPUs; gpu_id++) {
         magma_setdevice( gpu_id );
         magma_queue_create( gpu_id, &gpu_queues[gpu_id] );
+
+        //> Try to get the L2-cache size and maximal persisting cache size
+        cudaDeviceProp device_prop;
+        cudacheck(cudaGetDeviceProperties( &device_prop, gpu_id ));
+        std::cout << "L2 Cache Size: " << device_prop.l2CacheSize / 1024 / 1024 << " MB" << std::endl;
+        std::cout << "Max Persistent L2 Cache Size: " << device_prop.persistingL2CacheMaxSize / 1024 / 1024 << " MB" << std::endl;
     }
 
     //> Calculate the share of each GPU: divide the number of RANSAC iterations by the number of requested GPUs
@@ -101,12 +108,11 @@ GPU_HC_Solver<T_index_mat>::GPU_HC_Solver(YAML::Node Problem_Settings_File, int 
 	}
     
     //> Define the array sizes
-    dHdx_Index_Size       = Num_Of_Vars*Num_Of_Vars*dHdx_Max_Terms*dHdx_Max_Parts;
-    dHdt_Index_Size       = Num_Of_Vars*dHdt_Max_Terms*dHdt_Max_Parts;
-    dHdx_PHC_Coeffs_Size  = (Use_P2C) ? ((Num_Of_Coeffs_From_Params+1)*(Max_Order_Of_T+1)) : 0;
-    dHdt_PHC_Coeffs_Size  = (Use_P2C) ? ((Num_Of_Coeffs_From_Params+1)*(Max_Order_Of_T)) : 0;
-    // ldd_phc_Params_Hx     = magma_roundup( dHdx_PHC_Coeffs_Size, 32 );  // multiple of 32 by default
-    // ldd_phc_Params_Ht     = magma_roundup( dHdt_PHC_Coeffs_Size, 32 );  // multiple of 32 by default
+    dHdx_Index_Size                 = Num_Of_Vars*Num_Of_Vars*dHdx_Max_Terms*dHdx_Max_Parts;
+    dHdt_Index_Size                 = Num_Of_Vars*dHdt_Max_Terms*dHdt_Max_Parts;
+    unified_dHdx_dHdt_Index_Size    = dHdx_Index_Size + dHdt_Index_Size;
+    dHdx_PHC_Coeffs_Size            = (Use_P2C) ? ((Num_Of_Coeffs_From_Params+1)*(Max_Order_Of_T+1)) : 0;
+    dHdt_PHC_Coeffs_Size            = (Use_P2C) ? ((Num_Of_Coeffs_From_Params+1)*(Max_Order_Of_T)) : 0;
 #if SHOW_EVAL_INDX_DATA_SIZE
     printf("dHdx_Index_Size      = %5.2f KB\n", (double)(dHdx_Index_Size     *sizeof(T_index_mat))       / 1024.);
     printf("dHdt_Index_Size      = %5.2f KB\n", (double)(dHdt_Index_Size     *sizeof(T_index_mat))       / 1024.);
@@ -117,6 +123,27 @@ GPU_HC_Solver<T_index_mat>::GPU_HC_Solver(YAML::Node Problem_Settings_File, int 
 #endif
     magmaFloatComplex **d_Start_Sols_array      = NULL;
     magmaFloatComplex **d_Homotopy_Sols_array   = NULL;
+
+    //> Persistent L2 cache
+    if (Use_L2_Persistent_Cache) {
+        //> (1) First check GPU is Ampere or higher
+        magma_int_t arch = magma_getdevice_arch();
+        if (arch >= 800) {
+            double Num_Of_MBytes_dHdx      = (double)((dHdx_Index_Size*sizeof(T_index_mat)) / 1024.) / 1024.;
+            double Num_Of_MBytes_dHdt      = (double)((dHdt_Index_Size*sizeof(T_index_mat)) / 1024.) / 1024.;
+            Num_Of_MBytes_Persistent_Data  = Num_Of_MBytes_dHdx + Num_Of_MBytes_dHdt;
+            Num_Of_MBytes_Persistent_Cache = Num_Of_MBytes_Persistent_Data + (1); //> 1 MB extra size to be cached
+            cudacheck( cudaDeviceSetLimit(cudaLimitPersistingL2CacheSize, Num_Of_MBytes_Persistent_Cache * 1024 * 1024));
+#if DEBUG_L2_PERSISTENT_CACHE
+            printf("Size of dH/dx + dH/dt = %5.2f MB\n", Num_Of_MBytes_Persistent_Data);
+            printf("L2 Persistent Cache   = %5.2f MB\n", Num_Of_MBytes_Persistent_Cache);
+#endif
+        }
+        else {
+            LOG_ERROR("Invalid device architecture when using L2 persistent cache!");
+            exit(1);
+        }
+    }
 
     //> Define problem file path for problem data reader and output file path for results evaluations
     Problem_File_Path = std::string("../../problems/") + HC_problem;
@@ -133,7 +160,8 @@ void GPU_HC_Solver<T_index_mat>::Allocate_Arrays() {
     //> CPU Allocations
     magma_cmalloc_cpu( &h_Start_Sols,           Num_Of_Tracks*(Num_Of_Vars+1) );
     magma_cmalloc_cpu( &h_Start_Params,         (Num_Of_Params+1) );
-    
+
+    h_unified_dHdx_dHdt_Index = new T_index_mat[ unified_dHdx_dHdt_Index_Size ];
     h_dHdx_Index = new T_index_mat[ dHdx_Index_Size ];
     h_dHdt_Index = new T_index_mat[ dHdt_Index_Size ];
     
@@ -166,13 +194,14 @@ void GPU_HC_Solver<T_index_mat>::Allocate_Arrays() {
         cudacheck( cudaMalloc( &d_is_GPU_HC_Sol_Converge[gpu_id],   (Num_Of_Tracks*sub_RANSAC_iters[gpu_id]) * sizeof(bool) ));
         cudacheck( cudaMalloc( &d_is_GPU_HC_Sol_Infinity[gpu_id],   (Num_Of_Tracks*sub_RANSAC_iters[gpu_id]) * sizeof(bool) ));
 
-        magma_cmalloc( &d_Start_Sols[gpu_id],               Num_Of_Tracks*(Num_Of_Vars+1) );
-        magma_cmalloc( &d_Start_Params[gpu_id],             (Num_Of_Params+1) );
-        magma_cmalloc( &d_dHdx_PHC_Coeffs[gpu_id],          dHdx_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id] );
-        magma_cmalloc( &d_dHdt_PHC_Coeffs[gpu_id],          dHdt_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id] );
-        cudacheck( cudaMalloc( &d_dHdx_Index[gpu_id],       (dHdx_Index_Size) *sizeof(T_index_mat)) );
-        cudacheck( cudaMalloc( &d_dHdt_Index[gpu_id],       (dHdt_Index_Size) *sizeof(T_index_mat)) );
-        magma_malloc( (void**) &d_Start_Sols_array[gpu_id], Num_Of_Tracks * sizeof(magmaFloatComplex*) );
+        magma_cmalloc( &d_Start_Sols[gpu_id],                       Num_Of_Tracks*(Num_Of_Vars+1) );
+        magma_cmalloc( &d_Start_Params[gpu_id],                     (Num_Of_Params+1) );
+        magma_cmalloc( &d_dHdx_PHC_Coeffs[gpu_id],                  dHdx_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id] );
+        magma_cmalloc( &d_dHdt_PHC_Coeffs[gpu_id],                  dHdt_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id] );
+        cudacheck( cudaMalloc( &d_dHdx_Index[gpu_id],               (dHdx_Index_Size) * sizeof(T_index_mat)) );
+        cudacheck( cudaMalloc( &d_dHdt_Index[gpu_id],               (dHdt_Index_Size) * sizeof(T_index_mat)) );
+        cudacheck( cudaMalloc( &d_unified_dHdx_dHdt_Index[gpu_id],  (unified_dHdx_dHdt_Index_Size) * sizeof(T_index_mat) ) );
+        magma_malloc( (void**) &d_Start_Sols_array[gpu_id],         Num_Of_Tracks * sizeof(magmaFloatComplex*) );
     }
 }
 
@@ -210,6 +239,8 @@ bool GPU_HC_Solver<T_index_mat>::Read_Problem_Data() {
     is_Data_Read_Successfully = Load_Problem_Data->Read_dHdt_Indices<T_index_mat>( h_dHdt_Index );
     if (!is_Data_Read_Successfully) { LOG_DATA_LOAD_ERROR("dH/dt Evaluation Indices"); return false; }
 
+    Load_Problem_Data->Read_unified_dHdx_dHdt_Indices<T_index_mat>( h_unified_dHdx_dHdt_Index, h_dHdx_Index, h_dHdt_Index, dHdx_Index_Size, dHdt_Index_Size );
+    
     return true;
 }
 
@@ -313,8 +344,6 @@ void GPU_HC_Solver<T_index_mat>::Data_Transfer_From_Host_To_Device() {
     for (int gpu_id = 0; gpu_id < Num_Of_GPUs; gpu_id++) {
         magma_setdevice(gpu_id);
 
-        // transfer_h2d_time[gpu_id] = magma_sync_wtime( gpu_queues[gpu_id] );
-
         magma_csetmatrix( Num_Of_Vars+1,   Num_Of_Tracks*sub_RANSAC_iters[gpu_id],  h_Homotopy_Sols[gpu_id],  (Num_Of_Vars+1),  d_Homotopy_Sols[gpu_id], Num_Of_Vars+1,     gpu_queues[gpu_id] );
         magma_csetmatrix( Num_Of_Vars+1,   Num_Of_Tracks,                           h_Start_Sols,     (Num_Of_Vars+1),  d_Start_Sols[gpu_id],    Num_Of_Vars+1,     gpu_queues[gpu_id] );
         magma_csetmatrix( Num_Of_Params+1, (1),                                     h_Start_Params,   Num_Of_Params+1,  d_Start_Params[gpu_id],  Num_Of_Params+1,   gpu_queues[gpu_id] );
@@ -322,6 +351,7 @@ void GPU_HC_Solver<T_index_mat>::Data_Transfer_From_Host_To_Device() {
         magma_csetmatrix( (Num_Of_Params+1)*sub_RANSAC_iters[gpu_id], (1), h_Target_Params[gpu_id], (Num_Of_Params+1)*sub_RANSAC_iters[gpu_id], d_Target_Params[gpu_id], (Num_Of_Params+1)*sub_RANSAC_iters[gpu_id], gpu_queues[gpu_id] );
         cudacheck( cudaMemcpy( d_dHdx_Index[gpu_id], h_dHdx_Index,     dHdx_Index_Size * sizeof(T_index_mat), cudaMemcpyHostToDevice) );
         cudacheck( cudaMemcpy( d_dHdt_Index[gpu_id], h_dHdt_Index,     dHdt_Index_Size * sizeof(T_index_mat), cudaMemcpyHostToDevice) );
+        cudacheck( cudaMemcpy( d_unified_dHdx_dHdt_Index[gpu_id], h_unified_dHdx_dHdt_Index, unified_dHdx_dHdt_Index_Size * sizeof(T_index_mat), cudaMemcpyHostToDevice) );
 
         //> connect pointer to 2d arrays
         magma_cset_pointer( d_Start_Sols_array[gpu_id],    d_Start_Sols[gpu_id],     (Num_Of_Vars+1), 0, 0, (Num_Of_Vars+1), Num_Of_Tracks, gpu_queues[gpu_id] );
@@ -331,142 +361,154 @@ void GPU_HC_Solver<T_index_mat>::Data_Transfer_From_Host_To_Device() {
             magma_csetmatrix( dHdx_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id], (1), h_dHdx_PHC_Coeffs[gpu_id], dHdx_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id], d_dHdx_PHC_Coeffs[gpu_id], dHdx_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id], gpu_queues[gpu_id] );
             magma_csetmatrix( dHdt_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id], (1), h_dHdt_PHC_Coeffs[gpu_id], dHdt_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id], d_dHdt_PHC_Coeffs[gpu_id], dHdt_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id], gpu_queues[gpu_id] );
         }
+    }
+}
 
-        // transfer_h2d_time[gpu_id] = magma_sync_wtime( gpu_queues[gpu_id] ) - transfer_h2d_time[gpu_id];
+template< typename T_index_mat >
+void GPU_HC_Solver<T_index_mat>::Set_CUDA_Stream_Attributes() {
+    if (Use_L2_Persistent_Cache) {
+        //> Set stream attribute
+        for (int gpu_id = 0; gpu_id < Num_Of_GPUs; gpu_id++) {
+            cudaStreamAttrValue stream_attribute_non_thrashing;
+            stream_attribute_non_thrashing.accessPolicyWindow.base_ptr  = reinterpret_cast<void*>(d_unified_dHdx_dHdt_Index[gpu_id]);
+            stream_attribute_non_thrashing.accessPolicyWindow.num_bytes = Num_Of_MBytes_Persistent_Data * 1024 * 1024;
+            stream_attribute_non_thrashing.accessPolicyWindow.hitRatio  = 1.0;
+            stream_attribute_non_thrashing.accessPolicyWindow.hitProp   = cudaAccessPropertyPersisting;
+            stream_attribute_non_thrashing.accessPolicyWindow.missProp  = cudaAccessPropertyStreaming;
+
+            cudacheck( cudaStreamSetAttribute( gpu_queues[gpu_id]->cuda_stream(), cudaStreamAttributeAccessPolicyWindow, &stream_attribute_non_thrashing) );
+        }
     }
 }
 
 template< >
 void GPU_HC_Solver<int>::Solve_by_GPU_HC() {
     std::cout << "GPU computing ..." << std::endl << std::endl;
+
+    //> Get kernel version number (coresponding to the google spreadsheet)
+    kernel_version = get_kernel_version_number();
     
+    //> start the timer
     multi_GPUs_time = magma_wtime();
 
+    //> For now we only solve the trifocal 2op1p 30x30 problem
     if (HC_problem == "trifocal_2op1p_30x30") {
 
         //> Distribute workload across multiple GPUs
         for (int gpu_id = 0; gpu_id < Num_Of_GPUs; gpu_id++) {
             magma_setdevice(gpu_id);
 
-            if ( Use_P2C ) {
-                //> (#1) Naive approach
-                // LOG_INFO_MESG("kernel_GPUHC_trifocal_2op1p_30x30, Naive GPU-HC approach");
-                gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_P2C \
+            switch(kernel_version) {
+                case 1: //> (#1) PH-(x), RKL-(x), inline(x), LimUnroll(x), L2Cache-(x), TrunPaths-(x) (Naive GPU-HC approach)
+                    gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_P2C \
                         (gpu_queues[gpu_id], sub_RANSAC_iters[gpu_id], \
                          GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
                          d_Start_Sols_array[gpu_id], d_Homotopy_Sols_array[gpu_id], \
                          d_dHdx_Index[gpu_id],       d_dHdt_Index[gpu_id], \
                          d_dHdx_PHC_Coeffs[gpu_id],  d_dHdt_PHC_Coeffs[gpu_id], \
                          d_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], d_Debug_Purpose[gpu_id] );
-            }
-            else if ( Mem_for_Indices == "GM" && !Use_Runge_Kutta_in_a_Loop && !Inline_Eval_Functions && !Limit_Loop_Unroll && !Truncate_HC_Path_by_Positive_Depths ) {
-                //> (#2) 32-bit indices in global memory + no Runge-Kutta in a loop + no inlined device functions + no limited loop unroll + no truncated HC paths
-                // LOG_INFO_MESG("kernel_GPUHC_trifocal_2op1p_30x30_GM32b");
-                gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_GM32b \
+                    break;
+                case 2:
+                    gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_PH \
                         (gpu_queues[gpu_id], sub_RANSAC_iters[gpu_id], \
                          GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
                          d_Start_Sols_array[gpu_id],  d_Homotopy_Sols_array[gpu_id], \
                          d_Start_Params[gpu_id],      d_Target_Params[gpu_id], d_diffParams[gpu_id], \
                          d_dHdx_Index[gpu_id],        d_dHdt_Index[gpu_id], \
                          d_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], d_Debug_Purpose[gpu_id] );
-            }
-            else if ( Mem_for_Indices == "GM" && Use_Runge_Kutta_in_a_Loop && !Inline_Eval_Functions && !Limit_Loop_Unroll && !Truncate_HC_Path_by_Positive_Depths) {
-                //> (#3) 32-bit indices in global memory + Runge-Kutta in a loop + inlined device functions + no limited loop unroll + no truncated HC paths
-                // LOG_INFO_MESG("kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL");
-                gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL \
+                    break;
+                case 3:
+                    gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL \
                         (gpu_queues[gpu_id], sub_RANSAC_iters[gpu_id], \
                          GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
                          d_Start_Sols_array[gpu_id],  d_Homotopy_Sols_array[gpu_id], \
                          d_Start_Params[gpu_id],      d_Target_Params[gpu_id], d_diffParams[gpu_id], \
                          d_dHdx_Index[gpu_id],        d_dHdt_Index[gpu_id], \
                          d_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], d_Debug_Purpose[gpu_id] );
-            }
-            else if ( Mem_for_Indices == "GM" && Use_Runge_Kutta_in_a_Loop && Inline_Eval_Functions && !Limit_Loop_Unroll && !Truncate_HC_Path_by_Positive_Depths) {
-                //> (#4) 32-bit indices in global memory + Runge-Kutta in a loop + inlined device functions + no limited loop unroll + no truncated HC paths
-                // LOG_INFO_MESG("kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_inline");
-                gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_inline \
+                    break;
+                case 4:
+                    gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_inline \
                         (gpu_queues[gpu_id], sub_RANSAC_iters[gpu_id], \
                          GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
                          d_Start_Sols_array[gpu_id],  d_Homotopy_Sols_array[gpu_id], \
                          d_Start_Params[gpu_id],      d_Target_Params[gpu_id], d_diffParams[gpu_id], \
                          d_dHdx_Index[gpu_id],        d_dHdt_Index[gpu_id], \
                          d_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], d_Debug_Purpose[gpu_id] );
-            }
-            else if ( Mem_for_Indices == "GM" && Use_Runge_Kutta_in_a_Loop && !Inline_Eval_Functions && Limit_Loop_Unroll && !Truncate_HC_Path_by_Positive_Depths) {
-                //> (#5) 32-bit indices in global memory + Runge-Kutta in a loop + no inlined device functions + limited loop unroll + no truncated HC paths
-                // LOG_INFO_MESG("kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_LimUnroll");
-                gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_LimUnroll \
+                    break;
+                case 5:
+                    gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_inline_LimUnroll \
                         (gpu_queues[gpu_id], sub_RANSAC_iters[gpu_id], \
                          GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
                          d_Start_Sols_array[gpu_id],  d_Homotopy_Sols_array[gpu_id], \
                          d_Start_Params[gpu_id],      d_Target_Params[gpu_id], d_diffParams[gpu_id], \
                          d_dHdx_Index[gpu_id],        d_dHdt_Index[gpu_id], \
                          d_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], d_Debug_Purpose[gpu_id] );
-            }
-            else if ( Mem_for_Indices == "GM" && Use_Runge_Kutta_in_a_Loop && Inline_Eval_Functions && Limit_Loop_Unroll && !Truncate_HC_Path_by_Positive_Depths) {
-                //> (#6) 32-bit indices in global memory + Runge-Kutta in a loop + inlined device functions + limited loop unroll + no truncated HC paths
-                // LOG_INFO_MESG("kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_inline_LimUnroll");
-                gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_inline_LimUnroll \
+                    break;
+                case 6:
+                    gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_inline_LimUnroll_L2Cache \
                         (gpu_queues[gpu_id], sub_RANSAC_iters[gpu_id], \
                          GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
-                         d_Start_Sols_array[gpu_id],  d_Homotopy_Sols_array[gpu_id], \
-                         d_Start_Params[gpu_id],      d_Target_Params[gpu_id], d_diffParams[gpu_id], \
-                         d_dHdx_Index[gpu_id],        d_dHdt_Index[gpu_id], \
+                         d_Start_Sols_array[gpu_id], d_Homotopy_Sols_array[gpu_id], \
+                         d_Start_Params[gpu_id],     d_Target_Params[gpu_id], d_diffParams[gpu_id], 
+                         d_unified_dHdx_dHdt_Index[gpu_id], \
                          d_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], d_Debug_Purpose[gpu_id] );
-            }
-            else if ( Mem_for_Indices == "GM" && Use_Runge_Kutta_in_a_Loop && Inline_Eval_Functions && Limit_Loop_Unroll && Truncate_HC_Path_by_Positive_Depths) {
-                //> (#7) 32-bit indices in global memory + Runge-Kutta in a loop + inlined device functions + limited loop unroll + truncated HC paths
-                // LOG_INFO_MESG("kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_inline_LimUnroll_TrunPaths");
-                gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_inline_LimUnroll_TrunPaths \
+                    break;
+                case 7:
+                    gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_inline_LimUnroll_L2Cache_TrunPaths \
+                        (gpu_queues[gpu_id], sub_RANSAC_iters[gpu_id], \
+                         GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
+                         d_Start_Sols_array[gpu_id], d_Homotopy_Sols_array[gpu_id], \
+                         d_Start_Params[gpu_id],     d_Target_Params[gpu_id], d_diffParams[gpu_id], 
+                         d_unified_dHdx_dHdt_Index[gpu_id], \
+                         d_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], d_Debug_Purpose[gpu_id] );
+                    break;
+                case 8:
+                    gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_LimUnroll \
                         (gpu_queues[gpu_id], sub_RANSAC_iters[gpu_id], \
                          GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
                          d_Start_Sols_array[gpu_id], d_Homotopy_Sols_array[gpu_id], \
                          d_Start_Params[gpu_id],     d_Target_Params[gpu_id], d_diffParams[gpu_id], 
                          d_dHdx_Index[gpu_id],       d_dHdt_Index[gpu_id], \
                          d_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], d_Debug_Purpose[gpu_id] );
-            }
-            else if ( Mem_for_Indices == "GM" && Use_Runge_Kutta_in_a_Loop && !Inline_Eval_Functions && Limit_Loop_Unroll && !Truncate_HC_Path_by_Positive_Depths) {
-                //> (#8) 32-bit indices in global memory + Runge-Kutta in a loop + no inlined device functions + limited loop unroll + truncated HC paths
-                gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_LimUnroll \
+                    break;
+                case 9:
+                    gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_LimUnroll_L2Cache \
                         (gpu_queues[gpu_id], sub_RANSAC_iters[gpu_id], \
                          GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
                          d_Start_Sols_array[gpu_id], d_Homotopy_Sols_array[gpu_id], \
                          d_Start_Params[gpu_id],     d_Target_Params[gpu_id], d_diffParams[gpu_id], 
-                         d_dHdx_Index[gpu_id],       d_dHdt_Index[gpu_id], \
+                         d_unified_dHdx_dHdt_Index[gpu_id], \
                          d_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], d_Debug_Purpose[gpu_id] );
-            }
-            else if ( Mem_for_Indices == "GM" && Use_Runge_Kutta_in_a_Loop && !Inline_Eval_Functions && Limit_Loop_Unroll && Truncate_HC_Path_by_Positive_Depths) {
-                //> (#9) 32-bit indices in global memory + Runge-Kutta in a loop + no inlined device functions + limited loop unroll + truncated HC paths
-                gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_GM32b_RKL_LimUnroll_TrunPaths \
+                    break;
+                case 10:
+                    gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_LimUnroll_L2Cache_TrunPaths \
                         (gpu_queues[gpu_id], sub_RANSAC_iters[gpu_id], \
                          GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
                          d_Start_Sols_array[gpu_id], d_Homotopy_Sols_array[gpu_id], \
                          d_Start_Params[gpu_id],     d_Target_Params[gpu_id], d_diffParams[gpu_id], 
-                         d_dHdx_Index[gpu_id],       d_dHdt_Index[gpu_id], \
+                         d_unified_dHdx_dHdt_Index[gpu_id], \
                          d_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], d_Debug_Purpose[gpu_id] );
-            }
-            else {
-                LOG_ERROR("Invalid configurations on the GPU settings / Algorithmic settings!");
-                return;
-            }
-        }
-    }
+                    break;
+                default:
+                    break;
+            }   //> switch statement
+        }   //> for-loop over gpu_ids
+    }   //> if HC_problem statement
 
     //> Sync across all GPUs before measuring elapsed time
     for(magma_int_t gpu_id = 0; gpu_id < Num_Of_GPUs; gpu_id++) {
         magma_setdevice(gpu_id);
         magma_queue_sync( gpu_queues[gpu_id] );
     }
+    //> End the timer
     multi_GPUs_time = magma_wtime() - multi_GPUs_time;
 
     //> Check returns from the GPU kernel
     for (int gpu_id = 0; gpu_id < Num_Of_GPUs; gpu_id++) {
         magma_setdevice(gpu_id);
-        // transfer_d2h_time[gpu_id] = magma_sync_wtime( gpu_queues[gpu_id] );
         magma_cgetmatrix( (Num_Of_Vars+1), Num_Of_Tracks*sub_RANSAC_iters[gpu_id], d_Homotopy_Sols[gpu_id],  (Num_Of_Vars+1), h_GPU_HC_Track_Sols[gpu_id],    (Num_Of_Vars+1), gpu_queues[gpu_id] );
         cudacheck( cudaMemcpy( h_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Converge[gpu_id], Num_Of_Tracks*sub_RANSAC_iters[gpu_id]*sizeof(bool), cudaMemcpyDeviceToHost) );
         cudacheck( cudaMemcpy( h_is_GPU_HC_Sol_Infinity[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], Num_Of_Tracks*sub_RANSAC_iters[gpu_id]*sizeof(bool), cudaMemcpyDeviceToHost) );
-        // transfer_d2h_time[gpu_id] = magma_sync_wtime( gpu_queues[gpu_id] ) - transfer_d2h_time[gpu_id];
     }
 
 #if GPU_DEBUG
@@ -507,7 +549,6 @@ void GPU_HC_Solver<int>::Solve_by_GPU_HC() {
 #if WRITE_GPUHC_CONVERGED_SOLS
     Evaluate_GPUHC_Sols->Write_Converged_Sols( h_GPU_HC_Track_Sols[0], h_is_GPU_HC_Sol_Converge[0] );
 #endif
-    // Evaluate_GPUHC_Sols->Flush_Out_Data();
     Evaluate_GPUHC_Sols->Evaluate_RANSAC_GPUHC_Sols( h_GPU_HC_Track_Sols_Stack, h_is_GPU_HC_Sol_Converge_Stack, h_is_GPU_HC_Sol_Infinity_Stack );
     // Evaluate_GPUHC_Sols->Find_Unique_Sols( h_GPU_HC_Track_Sols, h_is_GPU_HC_Sol_Converge );
 
@@ -520,6 +561,9 @@ void GPU_HC_Solver<int>::Solve_by_GPU_HC() {
 
     Evaluate_GPUHC_Sols->Transform_GPUHC_Sols_to_Trifocal_Relative_Pose( h_GPU_HC_Track_Sols_Stack, h_is_GPU_HC_Sol_Converge_Stack, h_Camera_Intrinsic_Matrix );
     bool find_good_sol = Evaluate_GPUHC_Sols->get_Solution_with_Maximal_Support( Num_Of_Triplet_Edgels, h_Triplet_Edge_Locations, h_Triplet_Edge_Tangents, h_Camera_Intrinsic_Matrix );
+
+    //> Reset the number of solutions
+    Evaluate_GPUHC_Sols->Flush_Out_Data();
     // if (find_good_sol)
     //     Evaluate_GPUHC_Sols->Measure_Relative_Pose_Error( h_Camera_Pose21, h_Camera_Pose31, h_Debug_Purpose );
 
@@ -551,113 +595,7 @@ void GPU_HC_Solver<int>::Solve_by_GPU_HC() {
 }
 
 template< >
-void GPU_HC_Solver<char>::Solve_by_GPU_HC() {
-//     std::cout << "GPU computing ..." << std::endl << std::endl;
-
-//     if (HC_problem == "trifocal_2op1p_30x30") {
-
-//         if ( Mem_for_Indices == "GM" && Use_Runge_Kutta_in_a_Loop && Inline_Eval_Functions && !Limit_Loop_Unroll && !Truncate_HC_Path_by_Positive_Depths) {
-//             //> (#3) 8-bit indices in global memory + Runge-Kutta in a loop + inlined device functions + no limited loop unroll + no truncated HC paths
-//             LOG_INFO_MESG("kernel_GPUHC_trifocal_2op1p_30x30_GM8b_RKL_inline");
-//             gpu_time = kernel_GPUHC_trifocal_2op1p_30x30_GM8b_RKL_inline \
-//                        (gpu_queues[0], GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, d_Start_Sols_array,  d_Homotopy_Sols_array, \
-//                         d_Start_Params, d_Target_Params, d_diffParams, d_dHdx_Index, d_dHdt_Index, \
-//                         d_is_GPU_HC_Sol_Converge, d_is_GPU_HC_Sol_Infinity, d_Debug_Purpose );
-//         }
-//         else if ( Mem_for_Indices == "SM" && Use_Runge_Kutta_in_a_Loop && Inline_Eval_Functions && !Limit_Loop_Unroll && !Truncate_HC_Path_by_Positive_Depths) {
-//             //> (#4) 8-bit indices in shared memory + Runge-Kutta in a loop + inlined device functions + no limited loop unroll + no truncated HC paths
-//             LOG_INFO_MESG("kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL_inline");
-//             gpu_time = kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL_inline \
-//                        (gpu_queues[0], GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, d_Start_Sols_array,  d_Homotopy_Sols_array, \
-//                         d_Start_Params, d_Target_Params, d_diffParams, d_dHdx_Index, d_dHdt_Index, \
-//                         d_is_GPU_HC_Sol_Converge, d_is_GPU_HC_Sol_Infinity, d_Debug_Purpose );
-//         }
-//         else if ( Mem_for_Indices == "SM" && Use_Runge_Kutta_in_a_Loop && !Inline_Eval_Functions && !Limit_Loop_Unroll && !Truncate_HC_Path_by_Positive_Depths) {
-//             //> (#5) 8-bit indices in shared memory + Runge-Kutta in a loop + no inlined device functions + no limited loop unroll + no truncated HC paths
-//             LOG_INFO_MESG("kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL");
-//             gpu_time = kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL \
-//                        (gpu_queues[0], GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, d_Start_Sols_array,  d_Homotopy_Sols_array, \
-//                         d_Start_Params, d_Target_Params, d_diffParams, d_dHdx_Index, d_dHdt_Index, \
-//                         d_is_GPU_HC_Sol_Converge, d_is_GPU_HC_Sol_Infinity, d_Debug_Purpose );
-//         }
-//         else if ( Mem_for_Indices == "SM" && Use_Runge_Kutta_in_a_Loop && !Inline_Eval_Functions && Limit_Loop_Unroll && !Truncate_HC_Path_by_Positive_Depths) {
-//             //> (#6) 8-bit indices in shared memory + Runge-Kutta in a loop + no inlined device functions + limited loop unroll + no truncated HC paths
-//             LOG_INFO_MESG("kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL_LimUnroll");
-//             gpu_time = kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL_LimUnroll \
-//                        (gpu_queues[0], GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, d_Start_Sols_array,  d_Homotopy_Sols_array, \
-//                         d_Start_Params, d_Target_Params, d_diffParams, d_dHdx_Index, d_dHdt_Index, \
-//                         d_is_GPU_HC_Sol_Converge, d_is_GPU_HC_Sol_Infinity, d_Debug_Purpose );
-//         }
-//         else {
-//             LOG_ERROR("Invalid configurations on the GPU settings / Algorithmic settings!");
-//             return;
-//         }
-//     }
-
-//     //> Check returns from the GPU kernel
-//     transfer_d2h_time = magma_sync_wtime( gpu_queues[0] );
-//     magma_cgetmatrix( (Num_Of_Vars+1), Num_Of_Tracks*NUM_OF_RANSAC_ITERATIONS, d_Homotopy_Sols,  (Num_Of_Vars+1), h_GPU_HC_Track_Sols,    (Num_Of_Vars+1), gpu_queues[0] );
-//     cudacheck( cudaMemcpy( h_is_GPU_HC_Sol_Converge, d_is_GPU_HC_Sol_Converge, Num_Of_Tracks*NUM_OF_RANSAC_ITERATIONS*sizeof(bool), cudaMemcpyDeviceToHost) );
-//     cudacheck( cudaMemcpy( h_is_GPU_HC_Sol_Infinity, d_is_GPU_HC_Sol_Infinity, Num_Of_Tracks*NUM_OF_RANSAC_ITERATIONS*sizeof(bool), cudaMemcpyDeviceToHost) );
-//     transfer_d2h_time = magma_sync_wtime( gpu_queues[0] ) - transfer_d2h_time;
-
-// #if GPU_DEBUG
-//     magma_cgetmatrix( Num_Of_Tracks, NUM_OF_RANSAC_ITERATIONS, d_Debug_Purpose, Num_Of_Tracks, h_Debug_Purpose, Num_Of_Tracks, gpu_queues[0] );
-// #endif
-
-//     std::cout << "---------------------------------------------------------------------------------" << std::endl;
-//     std::cout << "## Solving " << HC_print_problem_name << std::endl;
-
-//     //> Print out timings
-//     printf("## Timings:\n");
-//     printf(" - GPU Computation Time = %7.2f (ms)\n", (gpu_time)*1000);
-//     printf(" - H2D Transfer Time    = %7.2f (ms)\n", (transfer_h2d_time)*1000);
-//     printf(" - D2H Transfer Time    = %7.2f (ms)\n", (transfer_d2h_time)*1000);
-
-//     //> Object for the Evaluations class
-//     // Evaluate_GPUHC_Sols->Write_Converged_Sols( h_GPU_HC_Track_Sols, h_is_GPU_HC_Sol_Converge );
-//     Evaluate_GPUHC_Sols->Flush_Out_Data();
-//     Evaluate_GPUHC_Sols->Evaluate_RANSAC_GPUHC_Sols( h_GPU_HC_Track_Sols, h_is_GPU_HC_Sol_Converge, h_is_GPU_HC_Sol_Infinity );
-//     // Evaluate_GPUHC_Sols->Find_Unique_Sols( h_GPU_HC_Track_Sols, h_is_GPU_HC_Sol_Converge );
-
-//     //> Print out evaluation results
-//     std::cout << "## Evaluation of GPU-HC Solutions: "      << std::endl;
-//     std::cout << " - Number of Converged Solutions:       " << Evaluate_GPUHC_Sols->Num_Of_Coverged_Sols << std::endl;
-//     std::cout << " - Number of Real Solutions:            " << Evaluate_GPUHC_Sols->Num_Of_Real_Sols << std::endl;
-//     std::cout << " - Number of Infinity Failed Solutions: " << Evaluate_GPUHC_Sols->Num_Of_Inf_Sols << std::endl;
-//     // std::cout << " - Number of Unique Solutions:          " << Evaluate_GPUHC_Sols->Num_Of_Unique_Sols << std::endl;
-
-//     Evaluate_GPUHC_Sols->Transform_GPUHC_Sols_to_Trifocal_Relative_Pose( h_GPU_HC_Track_Sols, h_is_GPU_HC_Sol_Converge, h_Camera_Intrinsic_Matrix );
-//     bool find_good_sol = Evaluate_GPUHC_Sols->get_Solution_with_Maximal_Support( Num_Of_Triplet_Edgels, h_Triplet_Edge_Locations, h_Triplet_Edge_Tangents, h_Camera_Intrinsic_Matrix );
-//     if (find_good_sol)
-//         Evaluate_GPUHC_Sols->Measure_Relative_Pose_Error( h_Camera_Pose21, h_Camera_Pose31, h_Debug_Purpose );
-
-    // Evaluate_GPUHC_Sols->get_HC_Steps_of_Actual_Sols( h_Debug_Purpose );
-    // Evaluate_GPUHC_Sols->Flush_Out_Data();
-    // Evaluate_GPUHC_Sols->Transform_GPUHC_Sols_to_Trifocal_Relative_Pose( h_GPU_HC_Track_Sols, h_is_GPU_HC_Sol_Converge, h_Camera_Intrinsic_Matrix );
-    // Evaluate_GPUHC_Sols->Measure_Relative_Pose_Error_from_All_Real_Sols( h_Camera_Pose21, h_Camera_Pose31, h_Debug_Purpose );
-    
-    // for (int i = 0; i < Evaluate_GPUHC_Sols->HC_steps_of_actual_solutions.size(); i++) {
-    //     std::cout << Evaluate_GPUHC_Sols->HC_steps_of_actual_solutions[i] << ", ";
-    //     GPUHC_Actual_Sols_Steps_Collections.push_back( Evaluate_GPUHC_Sols->HC_steps_of_actual_solutions[i] );
-    // }
-    // std::cout << std::endl;
-
-    // if (Evaluate_GPUHC_Sols->success_flag) {
-    //     std::cout << "## Found solution matched with GT: " << std::endl;
-    //     std::cout << " - Residual of R21: " << Evaluate_GPUHC_Sols->Min_Residual_R21 << " (rad)" << std::endl;
-    //     std::cout << " - Residual of R31: " << Evaluate_GPUHC_Sols->Min_Residual_R31 << " (rad)" << std::endl;
-    //     std::cout << " - Residual of t21: " << Evaluate_GPUHC_Sols->Min_Residual_t21 << " (m)" << std::endl;
-    //     std::cout << " - Residual of t31: " << Evaluate_GPUHC_Sols->Min_Residual_t31 << " (m)" << std::endl;
-    // }
-    // else {
-    //     std::cout << "## Not found a solution matched with GT: " << std::endl;
-    //     std::cout << " - Residual of R21: " << Evaluate_GPUHC_Sols->Min_Residual_R21 << " (rad)" << std::endl;
-    //     std::cout << " - Residual of R31: " << Evaluate_GPUHC_Sols->Min_Residual_R31 << " (rad)" << std::endl;
-    //     std::cout << " - Residual of t21: " << Evaluate_GPUHC_Sols->Min_Residual_t21 << " (m)" << std::endl;
-    //     std::cout << " - Residual of t31: " << Evaluate_GPUHC_Sols->Min_Residual_t31 << " (m)" << std::endl;
-    // }
-}
+void GPU_HC_Solver<char>::Solve_by_GPU_HC() { }
 
 // template< typename T_index_mat >
 // void GPU_HC_Solver<T_index_mat>::Export_Data() {
@@ -692,10 +630,11 @@ GPU_HC_Solver<T_index_mat>::~GPU_HC_Solver() {
         magma_free_cpu( h_dHdx_PHC_Coeffs[gpu_id] );
         magma_free_cpu( h_dHdt_PHC_Coeffs[gpu_id] );
     }
-    delete [] h_dHdx_Index;
-    delete [] h_dHdt_Index;
     delete [] h_is_GPU_HC_Sol_Converge_Stack;
     delete [] h_is_GPU_HC_Sol_Infinity_Stack;
+    delete [] h_unified_dHdx_dHdt_Index;
+    delete [] h_dHdx_Index;
+    delete [] h_dHdt_Index;
 
     magma_free_cpu( h_Start_Sols );
     magma_free_cpu( h_Start_Params );
@@ -715,6 +654,7 @@ GPU_HC_Solver<T_index_mat>::~GPU_HC_Solver() {
         magma_free( d_Debug_Purpose[gpu_id] );
         magma_free( d_Homotopy_Sols_array[gpu_id] );
         magma_free( d_Start_Sols_array[gpu_id] );
+        magma_free( d_unified_dHdx_dHdt_Index[gpu_id] );
         cudacheck( cudaFree( d_dHdx_Index[gpu_id] ) );
         cudacheck( cudaFree( d_dHdt_Index[gpu_id] ) );
     }

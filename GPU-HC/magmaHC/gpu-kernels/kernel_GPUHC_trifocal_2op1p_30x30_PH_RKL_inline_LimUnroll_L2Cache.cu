@@ -1,13 +1,12 @@
-#ifndef kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL_LimUnroll_cu
-#define kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL_LimUnroll_cu
+#ifndef kernel_GPUHC_trifocal_2op1p_30x30_PH_inline_LimUnroll_L2Cache_cu
+#define kernel_GPUHC_trifocal_2op1p_30x30_PH_inline_LimUnroll_L2Cache_cu
 // ===========================================================================================
 // GPU homotopy continuation solver for the trifocal 2op1p 30x30 problem
 //
 // Major Modifications
-//    Chiang-Heng Chien  22-10-03:   Edited from the first version 
-//                                   (kernel_HC_Solver_trifocal_2op1p_30.cu)
+//    Chiang-Heng Chien  22-10-03:   Edited from the first version (kernel_HC_Solver_trifocal_2op1p_30.cu)
 //    Chiang-Heng Chien  23-12-28:   Add macros
-//    Chiang-Heng Chien  24-06-12:   
+//    Chiang-Heng Chien  24-06-27:   Change the kernel name to reflect the configurations
 //
 // ============================================================================================
 #include <stdio.h>
@@ -39,7 +38,7 @@
 #include "../definitions.hpp"
 
 //> device functions
-#include "../gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_8b_SM_LimUnroll.cuh"
+#include "../gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_inline_LimUnroll_L2Cache.cuh"
 #include "../dev-cgesv-batched-small.cuh"
 #include "../dev-get-new-data.cuh"
 
@@ -48,20 +47,19 @@ template< int Num_Of_Vars,    int Num_Of_Params, \
           int dHdt_Max_Terms, int dHdt_Max_Parts, \
           int dHdx_Index_Matrix_Size, int dHdt_Index_Matrix_Size >
 __global__ void
-kernel_GPUHC_trifocal_rel_pos_SM8b_RKL_LimUnroll(
-  const int           HC_max_steps, 
-  const int           HC_max_correction_steps, 
-  const int           HC_delta_t_incremental_steps,
-  magmaFloatComplex** d_startSols_array,
-  magmaFloatComplex** d_Track_array,
-  magmaFloatComplex*  d_startParams,
-  magmaFloatComplex*  d_targetParams,
-  magmaFloatComplex*  d_diffParams,
-  const char* __restrict__ d_dHdx_indices,
-  const char* __restrict__ d_dHdt_indices,
-  bool* d_is_GPU_HC_Sol_Converge,
-  bool* d_is_GPU_HC_Sol_Infinity,
-  magmaFloatComplex* d_Debug_Purpose
+kernel_GPUHC_trifocal_pose_PH_RKL_inline_LimUnroll_L2Cache(
+  const int               HC_max_steps, 
+  const int               HC_max_correction_steps, 
+  const int               HC_delta_t_incremental_steps,
+  magmaFloatComplex**     d_startSols_array,
+  magmaFloatComplex**     d_Track_array,
+  magmaFloatComplex*      d_startParams,
+  magmaFloatComplex*      d_targetParams,
+  magmaFloatComplex*      d_diffParams,
+  const int* __restrict__ d_unified_dHdx_dHdt_Index,
+  bool*                   d_is_GPU_HC_Sol_Converge,
+  bool*                   d_is_GPU_HC_Sol_Infinity,
+  magmaFloatComplex*      d_Debug_Purpose
 )
 {
   extern __shared__ magmaFloatComplex zdata[];
@@ -97,15 +95,7 @@ kernel_GPUHC_trifocal_rel_pos_SM8b_RKL_LimUnroll(
   float* s_delta_t_scale                  = (float*)(sipiv       + (Num_Of_Vars+1));
   int* s_RK_Coeffs                        = (int*)(s_delta_t_scale + 1);
 
-  //> Static allocated shared memories
-  __shared__ char dHdx_indices[36000];
-  __shared__ char dHdt_indices[2880];
-  #pragma unroll
-  for (int i = 0; i < 1200; i++) 
-    dHdx_indices[ tx + (i)*(Num_Of_Vars) ] = d_dHdx_indices[ tx + (i)*(Num_Of_Vars) ];
-  #pragma unroll
-  for (int i = 0; i < 96; i++) 
-    dHdt_indices[ tx + (i)*(Num_Of_Vars) ] = d_dHdt_indices[ tx + (i)*(Num_Of_Vars) ];
+  const int* __restrict__ dHdx_dHdt_Index = d_unified_dHdx_dHdt_Index;
 
   //> read data from global memory to shared memories or do initializations
   s_sols[tx]               = d_startSols[tx];
@@ -180,8 +170,8 @@ kernel_GPUHC_trifocal_rel_pos_SM8b_RKL_LimUnroll(
         compute_param_homotopy< float, Num_Of_Vars >( tx, t0, s_param_homotopy, s_startParams, s_targetParams );
 
         //> Evaluate dH/dx and dH/dt
-        eval_Jacobian_Hx< Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Index_Matrix_Size >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdx_indices );
-        eval_Jacobian_Ht< Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Index_Matrix_Size >( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdt_indices, s_diffParams );
+        eval_Jacobian_Hx< Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdx_dHdt_Index );
+        eval_Jacobian_Ht< Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, dHdx_Index_Matrix_Size >( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdx_dHdt_Index, s_diffParams );
 
         //> linear system solver: solve for k1, k2, k3, or k4
         cgesv_batched_small_device< Num_Of_Vars >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
@@ -216,10 +206,10 @@ kernel_GPUHC_trifocal_rel_pos_SM8b_RKL_LimUnroll(
       for(int i = 0; i < hc_max_correction_steps; i++) {
 
         //> evaluate the Jacobian Hx and the parameter homotopy
-        eval_Jacobian_Hx< Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Index_Matrix_Size >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdx_indices );
-        eval_Homotopy< Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Index_Matrix_Size >( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdt_indices );
+        eval_Jacobian_Hx< Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdx_dHdt_Index );
+        eval_Homotopy< Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, dHdx_Index_Matrix_Size >( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdx_dHdt_Index );
 
-        //> G-Num_Of_Vars corrector first solve
+        //> G-N corrector first solve
         cgesv_batched_small_device< Num_Of_Vars >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
         magmablas_syncwarp();
 
@@ -288,9 +278,8 @@ kernel_GPUHC_trifocal_rel_pos_SM8b_RKL_LimUnroll(
 #endif
 }
 
-
 real_Double_t
-kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL_LimUnroll(
+kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_inline_LimUnroll_L2Cache(
   magma_queue_t       my_queue,
   int                 sub_RANSAC_iters,
   int                 HC_max_steps, 
@@ -301,8 +290,7 @@ kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL_LimUnroll(
   magmaFloatComplex*  d_startParams,
   magmaFloatComplex*  d_targetParams,
   magmaFloatComplex*  d_diffParams,
-  char*                d_dHdx_indx, 
-  char*                d_dHdt_indx,
+  int*                d_unified_dHdx_dHdt_Index,
   bool*               d_is_GPU_HC_Sol_Converge,
   bool*               d_is_GPU_HC_Sol_Infinity,
   magmaFloatComplex*  d_Debug_Purpose
@@ -348,7 +336,7 @@ kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL_LimUnroll(
 #if CUDA_VERSION >= 9000
   cudacheck( cudaDeviceGetAttribute (&shmem_max, cudaDevAttrMaxSharedMemoryPerBlockOptin, 0) );
   if (shmem <= shmem_max) {
-    cudacheck( cudaFuncSetAttribute(kernel_GPUHC_trifocal_rel_pos_SM8b_RKL_LimUnroll \
+    cudacheck( cudaFuncSetAttribute(kernel_GPUHC_trifocal_pose_PH_RKL_inline_LimUnroll_L2Cache \
                                     <num_of_vars, num_of_params, \
                                      dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdt_Max_Terms, dHdt_Max_Parts, \
                                      dHdx_Index_Matrix_Size, dHdt_Index_Matrix_Size >, //dHdx_Num_Of_Read_Loops, dHdt_Num_Of_Read_Loops >,
@@ -367,23 +355,21 @@ kernel_GPUHC_trifocal_2op1p_30x30_SM8b_RKL_LimUnroll(
                           &HC_delta_t_incremental_steps,
                           &d_startSols_array, &d_Track_array,
                           &d_startParams, &d_targetParams, &d_diffParams,
-                          &d_dHdx_indx, &d_dHdt_indx,
+                          &d_unified_dHdx_dHdt_Index,
                           &d_is_GPU_HC_Sol_Converge,
                           &d_is_GPU_HC_Sol_Infinity,
                           &d_Debug_Purpose
                         };
 
-  // gpu_time = magma_sync_wtime( my_queue );
-
   //> launch the GPU kernel
-  e = cudaLaunchKernel((void*)kernel_GPUHC_trifocal_rel_pos_SM8b_RKL_LimUnroll \
+  e = cudaLaunchKernel((void*)kernel_GPUHC_trifocal_pose_PH_RKL_inline_LimUnroll_L2Cache \
                         <num_of_vars, num_of_params, \
                          dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdt_Max_Terms, dHdt_Max_Parts, \
-                         dHdx_Index_Matrix_Size, dHdt_Index_Matrix_Size >, // dHdx_Num_Of_Read_Loops, dHdt_Num_Of_Read_Loops >,
+                         dHdx_Index_Matrix_Size, dHdt_Index_Matrix_Size >,
                         grid, threads, kernel_args, shmem, my_queue->cuda_stream());
 
   // gpu_time = magma_sync_wtime( my_queue ) - gpu_time;
-  if( e != cudaSuccess ) printf("cudaLaunchKernel of kernel_GPUHC_trifocal_rel_pos_SM8b_RKL_LimUnroll is not successful!\n");
+  if( e != cudaSuccess ) printf("cudaLaunchKernel of kernel_GPUHC_trifocal_pose_PH_RKL_inline_LimUnroll_L2Cache is not successful!\n");
 
   return gpu_time;
 }

@@ -171,6 +171,30 @@ bool Data_Reader::Read_dHdt_Indices( T* &h_dHdt_Index ) {
     }
 }
 
+template< typename T >
+bool Data_Reader::Read_unified_dHdx_dHdt_Indices( T* &h_unified_dHdx_dHdt_Index, T* h_dHdx_Index, T* h_dHdt_Index, int dHdx_size, int dHdt_size ) {
+
+    //> First copy dH/dx evaluation indices
+    for (int i = 0; i < dHdx_size; i++) {
+        h_unified_dHdx_dHdt_Index[i] = h_dHdx_Index[i];
+    }
+
+    //> Second, copy dH/dt evaluation indices
+    int d = 0;
+    for (int i = dHdx_size; i < dHdx_size + dHdt_size; i++) {
+        h_unified_dHdx_dHdt_Index[i] = h_dHdt_Index[d];
+        d++;
+    }
+
+#if DATA_READER_DEBUG
+    printf("Printing h_unified_dHdx_dHdt_Index starting at dHdt indices:\n");
+    for (int i = 0; i < 10; i++) printf("%d\t", (int)h_unified_dHdx_dHdt_Index[dHdx_size + i]);
+    printf("\n");
+#endif
+    
+    return true;
+}
+
 bool Data_Reader::Construct_Coeffs_From_Params( std::string HC_Problem, \
         magmaFloatComplex* h_Target_Params,     magmaFloatComplex* h_Start_Params, \
         magmaFloatComplex* h_dHdx_PHC_Coeffs,   magmaFloatComplex* h_dHdt_PHC_Coeffs ) 
@@ -345,8 +369,12 @@ void Data_Reader::Print_Out_Target_Params_from_Triplet_Edgels(int sample_index, 
 
 template bool Data_Reader::Read_dHdx_Indices< int >( int* & );
 template bool Data_Reader::Read_dHdt_Indices< int >( int* & );
+template bool Data_Reader::Read_unified_dHdx_dHdt_Indices< int >( int* &, int*, int*, int, int );
 
 template bool Data_Reader::Read_dHdx_Indices< char >( char* & );
 template bool Data_Reader::Read_dHdt_Indices< char >( char* & );
+template bool Data_Reader::Read_unified_dHdx_dHdt_Indices< char >( char* &, char*, char*, int, int );
+
+// T* &h_unified_dHdx_dHdt_Index, T* h_dHdx_Index, T* h_dHdt_Index, int dHdx_size, int dHdt_size
 
 #endif

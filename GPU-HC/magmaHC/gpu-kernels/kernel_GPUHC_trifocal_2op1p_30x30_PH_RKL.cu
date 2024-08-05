@@ -1,20 +1,13 @@
-#ifndef kernel_HC_Solver_trifocal_2op1p_30x30_GM32b_cu
-#define kernel_HC_Solver_trifocal_2op1p_30x30_GM32b_cu
+#ifndef kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_cu
+#define kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_cu
 // ===========================================================================================
 // GPU homotopy continuation solver for the trifocal 2op1p 30x30 problem
-// Version 2: Direct evaluation of parameter homotopy. The coefficient 
-//            part of each polynomial is not expanded to an uni-variable 
-//            polynomial. Rather, depending on the order of t, the parameter 
-//            homotopy formulation is explicitly hard-coded such that we do not 
-//            need to compute coefficients from parameters first then use 
-//            index-based to evaluate the Jacobians. The required amount of data 
-//            to be stored in a kernel in this method is reduced which expects 
-//            to speedup over the first version.
 //
 // Major Modifications
 //    Chiang-Heng Chien  22-10-03:   Edited from the first version 
 //                                   (kernel_HC_Solver_trifocal_2op1p_30.cu)
-//    Chiang-Heng Chien  23-12-28:   Add macros and circular arc homotopy for gamma-trick
+//    Chiang-Heng Chien  23-12-28:   Add macros
+//    Chiang-Heng Chien  24-06-12:   
 //
 // ============================================================================================
 #include <stdio.h>
@@ -46,7 +39,7 @@
 #include "../definitions.hpp"
 
 //> device functions
-#include "../gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_32b.cuh"
+#include "../gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30.cuh"
 #include "../dev-cgesv-batched-small.cuh"
 #include "../dev-get-new-data.cuh"
 
@@ -55,7 +48,7 @@ template< int Num_Of_Vars,    int Num_Of_Params, \
           int dHdt_Max_Terms, int dHdt_Max_Parts, \
           int dHdx_Index_Matrix_Size, int dHdt_Index_Matrix_Size >
 __global__ void
-kernel_GPUHC_trifocal_rel_pos_GM32b(
+kernel_GPUHC_trifocal_pose_PH_RKL(
   const int           HC_max_steps, 
   const int           HC_max_correction_steps, 
   const int           HC_delta_t_incremental_steps,
@@ -101,6 +94,11 @@ kernel_GPUHC_trifocal_rel_pos_GM32b(
   magmaFloatComplex *sx                   = sB                   + Num_Of_Vars;
   float* dsx                              = (float*)(sx          + Num_Of_Vars);
   int* sipiv                              = (int*)(dsx           + Num_Of_Vars);
+  float* s_delta_t_scale                  = (float*)(sipiv       + (Num_Of_Vars+1));
+  int* s_RK_Coeffs                        = (int*)(s_delta_t_scale + 1);
+
+  const int* __restrict__ dHdx_indices = d_dHdx_indices;
+  const int* __restrict__ dHdt_indices = d_dHdt_indices;
 
   //> read data from global memory to shared memories or do initializations
   s_sols[tx]               = d_startSols[tx];
@@ -161,52 +159,45 @@ kernel_GPUHC_trifocal_rel_pos_GM32b(
       // ===================================================================
       // Prediction: 4-th order Runge-Kutta method
       // ===================================================================
-      //> get HxHt for k1
-      compute_param_homotopy< float, Num_Of_Vars >( tx, t0, s_param_homotopy, s_startParams, s_targetParams );
-
-      eval_Jacobian_Hx< Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Index_Matrix_Size >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, d_dHdx_indices );
-      eval_Jacobian_Ht< Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Index_Matrix_Size >( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, d_dHdt_indices, s_diffParams );
-      
-      //> solve k1
-      cgesv_batched_small_device< Num_Of_Vars >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
+      unsigned char scales[3] = {1, 0, 1};
+      if (tx == 0) {
+        s_delta_t_scale[0] = 0.0;
+        s_RK_Coeffs[0] = 1;
+      }
       magmablas_syncwarp();
 
-      //> compute x for the creation of HxHt for k2 and get HxHt for k2
-      create_x_for_k2( tx, t0, delta_t, one_half_delta_t, s_sols, s_track, sB, MAGMA_C_ONE );
-      magmablas_syncwarp();
-      compute_param_homotopy< float, Num_Of_Vars >( tx, t0, s_param_homotopy, s_startParams, s_targetParams );
+      //> For simplicity, let's stay with no gamma-trick mode
+      for (int rk_step = 0; rk_step < 4; rk_step++ ) {
 
-      eval_Jacobian_Hx< Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Index_Matrix_Size >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, d_dHdx_indices );
-      eval_Jacobian_Ht< Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Index_Matrix_Size >( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, d_dHdt_indices, s_diffParams );
+        //> Evaluate parameter homotopy
+        compute_param_homotopy< float, Num_Of_Vars >( tx, t0, s_param_homotopy, s_startParams, s_targetParams );
 
-      //> solve k2
-      cgesv_batched_small_device< Num_Of_Vars >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
-      magmablas_syncwarp();
+        //> Evaluate dH/dx and dH/dt
+        eval_Jacobian_Hx< Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Index_Matrix_Size >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdx_indices );
+        eval_Jacobian_Ht< Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Index_Matrix_Size >( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdt_indices, s_diffParams );
 
-      //> compute x for the generation of HxHt for k3 and get HxHt for k3
-      create_x_for_k3( tx, delta_t, one_half_delta_t, s_sols, s_track, s_track_last_success, sB, MAGMA_C_ONE );
-      magmablas_syncwarp();
+        //> linear system solver: solve for k1, k2, k3, or k4
+        cgesv_batched_small_device< Num_Of_Vars >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
+        magmablas_syncwarp();
 
-      eval_Jacobian_Hx< Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Index_Matrix_Size >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, d_dHdx_indices );
-      eval_Jacobian_Ht< Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Index_Matrix_Size >( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, d_dHdt_indices, s_diffParams );
+        if (rk_step < 3) {
 
-      //> solve k3
-      cgesv_batched_small_device< Num_Of_Vars >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
-      magmablas_syncwarp();
+          s_sols[tx] += sB[tx] * delta_t * (s_RK_Coeffs[0] * 1.0/6.0);
+          s_track[tx] = (s_RK_Coeffs[0] > 1) ? s_track_last_success[tx] : s_track[tx];
+          
+          if (tx == 0) {
+            s_delta_t_scale[0] += scales[rk_step] * one_half_delta_t;
+            s_RK_Coeffs[0] = s_RK_Coeffs[0] << scales[rk_step];           //> Shift one bit
+          }
+          magmablas_syncwarp();
 
-      //> compute x for the generation of HxHt for k4 and get HxHt for k4
-      create_x_for_k4( tx, t0, delta_t, one_half_delta_t, s_sols, s_track, s_track_last_success, sB, MAGMA_C_ONE );
-      magmablas_syncwarp();
-      compute_param_homotopy< float, Num_Of_Vars >( tx, t0, s_param_homotopy, s_startParams, s_targetParams );
-
-      eval_Jacobian_Hx< Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Index_Matrix_Size >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, d_dHdx_indices );
-      eval_Jacobian_Ht< Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Index_Matrix_Size >( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, d_dHdt_indices, s_diffParams );
-
-      //> solve k4
-      cgesv_batched_small_device< Num_Of_Vars >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
-      magmablas_syncwarp();
-
-      //> make prediction
+          sB[tx] *= s_delta_t_scale[0];
+          s_track[tx] += sB[tx];
+          t0 += scales[rk_step] * one_half_delta_t;
+        }
+        magmablas_syncwarp();
+      }
+      //> Make prediction
       s_sols[tx] += sB[tx] * delta_t * 1.0/6.0;
       s_track[tx] = s_sols[tx];
       magmablas_syncwarp();
@@ -214,15 +205,14 @@ kernel_GPUHC_trifocal_rel_pos_GM32b(
       // ===================================================================
       //> Gauss-Newton Corrector
       // ===================================================================
-      //#pragma unroll
       volatile int hc_max_correction_steps = HC_max_correction_steps;
       for(int i = 0; i < hc_max_correction_steps; i++) {
 
         //> evaluate the Jacobian Hx and the parameter homotopy
-        eval_Jacobian_Hx< Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Index_Matrix_Size >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, d_dHdx_indices );
-        eval_Homotopy< Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Index_Matrix_Size >( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, d_dHdt_indices );
+        eval_Jacobian_Hx< Num_Of_Vars, dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Index_Matrix_Size >( tx, r_cgesvA, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdx_indices );
+        eval_Homotopy< Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Index_Matrix_Size >( tx, r_cgesvB, s_track, s_startParams, s_targetParams, s_param_homotopy, dHdt_indices );
 
-        //> G-N corrector first solve
+        //> G-Num_Of_Vars corrector first solve
         cgesv_batched_small_device< Num_Of_Vars >( tx, r_cgesvA, sipiv, r_cgesvB, sB, sx, dsx, rowid, linfo );
         magmablas_syncwarp();
 
@@ -291,8 +281,9 @@ kernel_GPUHC_trifocal_rel_pos_GM32b(
 #endif
 }
 
+
 real_Double_t
-kernel_GPUHC_trifocal_2op1p_30x30_GM32b(
+kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL(
   magma_queue_t       my_queue,
   int                 sub_RANSAC_iters,
   int                 HC_max_steps, 
@@ -321,7 +312,7 @@ kernel_GPUHC_trifocal_2op1p_30x30_GM32b(
   const int dHdx_Entry_Offset = dHdx_Max_Terms * dHdx_Max_Parts;
   const int dHdx_Index_Matrix_Size = num_of_vars * num_of_vars * dHdx_Max_Terms * dHdx_Max_Parts;
   const int dHdt_Index_Matrix_Size = num_of_vars * dHdt_Max_Terms * dHdt_Max_Parts;
-  
+
   real_Double_t gpu_time = 0.0;
   dim3 threads(num_of_vars, 1, 1);
   dim3 grid(num_of_tracks*sub_RANSAC_iters, 1, 1);
@@ -341,6 +332,8 @@ kernel_GPUHC_trifocal_2op1p_30x30_GM32b(
   shmem += (num_of_vars)     * sizeof(float);                       //> intermediate varaible for cgesv
   shmem += (num_of_vars+1)   * sizeof(int);                         //> sipiv
   shmem += (1)               * sizeof(int);                         //> predictor successes counter
+  shmem += (1)               * sizeof(int);                         //> Loopy Runge-Kutta coefficients
+  shmem += (1)               * sizeof(float);                       //> Loopy Runge-Kutta delta t
 
   //> Get max. dynamic shared memory on the GPU
   int nthreads_max, shmem_max = 0;
@@ -348,10 +341,10 @@ kernel_GPUHC_trifocal_2op1p_30x30_GM32b(
 #if CUDA_VERSION >= 9000
   cudacheck( cudaDeviceGetAttribute (&shmem_max, cudaDevAttrMaxSharedMemoryPerBlockOptin, 0) );
   if (shmem <= shmem_max) {
-    cudacheck( cudaFuncSetAttribute(kernel_GPUHC_trifocal_rel_pos_GM32b \
+    cudacheck( cudaFuncSetAttribute(kernel_GPUHC_trifocal_pose_PH_RKL \
                                     <num_of_vars, num_of_params, \
                                      dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdt_Max_Terms, dHdt_Max_Parts, \
-                                     dHdx_Index_Matrix_Size, dHdt_Index_Matrix_Size >, \
+                                     dHdx_Index_Matrix_Size, dHdt_Index_Matrix_Size >, //dHdx_Num_Of_Read_Loops, dHdt_Num_Of_Read_Loops >,
                                     cudaFuncAttributeMaxDynamicSharedMemorySize, shmem) );
   }
 #else
@@ -376,14 +369,14 @@ kernel_GPUHC_trifocal_2op1p_30x30_GM32b(
   // gpu_time = magma_sync_wtime( my_queue );
 
   //> launch the GPU kernel
-  e = cudaLaunchKernel((void*)kernel_GPUHC_trifocal_rel_pos_GM32b \
+  e = cudaLaunchKernel((void*)kernel_GPUHC_trifocal_pose_PH_RKL \
                         <num_of_vars, num_of_params, \
                          dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdt_Max_Terms, dHdt_Max_Parts, \
-                         dHdx_Index_Matrix_Size, dHdt_Index_Matrix_Size >, \
+                         dHdx_Index_Matrix_Size, dHdt_Index_Matrix_Size >, // dHdx_Num_Of_Read_Loops, dHdt_Num_Of_Read_Loops >,
                         grid, threads, kernel_args, shmem, my_queue->cuda_stream());
 
   // gpu_time = magma_sync_wtime( my_queue ) - gpu_time;
-  if( e != cudaSuccess ) printf("cudaLaunchKernel of kernel_GPUHC_trifocal_rel_pos_GM32b is not successful!\n");
+  if( e != cudaSuccess ) printf("cudaLaunchKernel of kernel_GPUHC_trifocal_pose_PH_RKL is not successful!\n");
 
   return gpu_time;
 }

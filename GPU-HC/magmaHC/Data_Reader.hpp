@@ -36,11 +36,15 @@ public:
     bool Read_Target_Params( magmaFloatComplex* &h_Target_Params );
     bool Read_Start_Sols( magmaFloatComplex* &h_Start_Sols );
 
+    //> Jacobians evaluation indices
     template< typename T >
     bool Read_dHdx_Indices( T* &h_dHdx_Index );
 
     template< typename T >
     bool Read_dHdt_Indices( T* &h_dHdt_Index );
+
+    template< typename T >
+    bool Read_unified_dHdx_dHdt_Indices( T* &h_unified_dHdx_dHdt_Index, T* h_dHdx_Index, T* h_dHdt_Index, int dHdx_size, int dHdt_size );
 
     bool Construct_Coeffs_From_Params( std::string HC_Problem, \
         magmaFloatComplex* h_Target_Params,    magmaFloatComplex* h_Start_Params, \

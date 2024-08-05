@@ -40,10 +40,9 @@ class GPU_HC_Solver {
     //> Varaibles as sizes of arrays
     magma_int_t             dHdx_Index_Size;
     magma_int_t             dHdt_Index_Size;
+    magma_int_t             unified_dHdx_dHdt_Index_Size;
     magma_int_t             dHdx_PHC_Coeffs_Size;
     magma_int_t             dHdt_PHC_Coeffs_Size;
-    magma_int_t             ldd_phc_Params_Hx;
-    magma_int_t             ldd_phc_Params_Ht;
 
     //> Variables and arrays on the CPU side
     magmaFloatComplex                *h_Homotopy_Sols[MAX_NUM_OF_GPUS] = {NULL};
@@ -59,6 +58,7 @@ class GPU_HC_Solver {
     magmaFloatComplex       *h_Start_Params;
     T_index_mat             *h_dHdx_Index;
     T_index_mat             *h_dHdt_Index;
+    T_index_mat             *h_unified_dHdx_dHdt_Index;
     float                   *h_Triplet_Edge_Locations;      //> in metrics
     float                   *h_Triplet_Edge_Tangents;       //> in metrics
     float                   h_Camera_Intrinsic_Matrix[9];
@@ -83,6 +83,7 @@ class GPU_HC_Solver {
     magmaFloatComplex_ptr   d_dHdt_PHC_Coeffs[MAX_NUM_OF_GPUS] = {NULL};
     T_index_mat                 *d_dHdx_Index[MAX_NUM_OF_GPUS] = {NULL};
     T_index_mat                 *d_dHdt_Index[MAX_NUM_OF_GPUS] = {NULL};
+    T_index_mat    *d_unified_dHdx_dHdt_Index[MAX_NUM_OF_GPUS] = {NULL};
     magmaFloatComplex    **d_Start_Sols_array[MAX_NUM_OF_GPUS] = {NULL};
     
 public:
@@ -105,6 +106,7 @@ public:
     void Allocate_Arrays();
     void Prepare_Target_Params( unsigned rand_seed_ );
     void Data_Transfer_From_Host_To_Device();
+    void Set_CUDA_Stream_Attributes();
     void Solve_by_GPU_HC();
     void Export_Data();
     void Free_Triplet_Edgels_Mem();
@@ -136,26 +138,49 @@ private:
     int dHdt_Max_Parts;
     int Max_Order_Of_T;
 
+    double Num_Of_MBytes_Persistent_Data;
+    double Num_Of_MBytes_Persistent_Cache;
+
     //> GPU kernel settings from YAML file
     bool Use_Runge_Kutta_in_a_Loop;
     int Data_Size_for_Indices;
     std::string Mem_for_Indices;
     bool Inline_Eval_Functions;
     bool Limit_Loop_Unroll;
+    bool Use_L2_Persistent_Cache;
 
     //> Algorithmic settings from YAML file
     bool Truncate_HC_Path_by_Positive_Depths;
 
     void print_kernel_mode() {
-        std::string str_32b = (Data_Size_for_Indices == 32) ? "v" : "x";
-        std::string str_GM  = (Mem_for_Indices == "GM") ? "v" : "x";
-        std::string str_RKL = (Use_Runge_Kutta_in_a_Loop) ? "v" : "x";
-        std::string str_inline = (Inline_Eval_Functions) ? "v" : "x";
-        std::string str_lim_unroll = (Limit_Loop_Unroll) ? "v" : "x";
-        std::string str_trunc_path = (Truncate_HC_Path_by_Positive_Depths) ? "v" : "x";
+        std::string str_32b         = (Data_Size_for_Indices == 32) ? "v" : "x";
+        std::string str_GM          = (Mem_for_Indices == "GM") ? "v" : "x";
+        std::string str_RKL         = (Use_Runge_Kutta_in_a_Loop) ? "v" : "x";
+        std::string str_inline      = (Inline_Eval_Functions) ? "v" : "x";
+        std::string str_lim_unroll  = (Limit_Loop_Unroll) ? "v" : "x";
+        std::string str_trunc_path  = (Truncate_HC_Path_by_Positive_Depths) ? "v" : "x";
+        std::string str_l2_cache    = (Use_L2_Persistent_Cache) ? "v" : "x";
 
         if (Use_P2C) printf("PHC-(x) RKL-(x) inline-(x) LimUnroll-(x) TrunPaths-(x)\n");
-        else printf("PHC-(v) RKL-(%s) inline-(%s) LimUnroll-(%s) TrunPaths-(%s)\n", str_RKL.c_str(), str_inline.c_str(), str_lim_unroll.c_str(), str_trunc_path.c_str());
+        else printf("PHC-(v) RKL-(%s) inline-(%s) LimUnroll-(%s) L2Cache-(%s) TrunPaths-(%s)\n", str_RKL.c_str(), str_inline.c_str(), str_lim_unroll.c_str(), str_l2_cache.c_str(), str_trunc_path.c_str());
+    }
+
+    unsigned kernel_version;
+    unsigned get_kernel_version_number() {
+        if (Use_P2C) return 1;
+        else if ( !Use_Runge_Kutta_in_a_Loop && !Inline_Eval_Functions && !Limit_Loop_Unroll && !Use_L2_Persistent_Cache && !Truncate_HC_Path_by_Positive_Depths ) return 2;
+        else if (  Use_Runge_Kutta_in_a_Loop && !Inline_Eval_Functions && !Limit_Loop_Unroll && !Use_L2_Persistent_Cache && !Truncate_HC_Path_by_Positive_Depths ) return 3;
+        else if (  Use_Runge_Kutta_in_a_Loop &&  Inline_Eval_Functions && !Limit_Loop_Unroll && !Use_L2_Persistent_Cache && !Truncate_HC_Path_by_Positive_Depths ) return 4;
+        else if (  Use_Runge_Kutta_in_a_Loop &&  Inline_Eval_Functions &&  Limit_Loop_Unroll && !Use_L2_Persistent_Cache && !Truncate_HC_Path_by_Positive_Depths ) return 5;
+        else if (  Use_Runge_Kutta_in_a_Loop &&  Inline_Eval_Functions &&  Limit_Loop_Unroll &&  Use_L2_Persistent_Cache && !Truncate_HC_Path_by_Positive_Depths ) return 6;
+        else if (  Use_Runge_Kutta_in_a_Loop &&  Inline_Eval_Functions &&  Limit_Loop_Unroll &&  Use_L2_Persistent_Cache &&  Truncate_HC_Path_by_Positive_Depths ) return 7;
+        else if (  Use_Runge_Kutta_in_a_Loop && !Inline_Eval_Functions &&  Limit_Loop_Unroll && !Use_L2_Persistent_Cache && !Truncate_HC_Path_by_Positive_Depths ) return 8;
+        else if (  Use_Runge_Kutta_in_a_Loop && !Inline_Eval_Functions &&  Limit_Loop_Unroll &&  Use_L2_Persistent_Cache && !Truncate_HC_Path_by_Positive_Depths ) return 9;
+        else if (  Use_Runge_Kutta_in_a_Loop && !Inline_Eval_Functions &&  Limit_Loop_Unroll &&  Use_L2_Persistent_Cache &&  Truncate_HC_Path_by_Positive_Depths ) return 10;
+        else {
+            LOG_ERROR("Invalid configurations on the GPU settings / Algorithmic settings!");
+            exit(1);
+        }
     }
 
     //> RANSAC data

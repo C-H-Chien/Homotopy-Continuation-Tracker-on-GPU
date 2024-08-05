@@ -57,6 +57,9 @@ bool run_GPU_HC_Solver( YAML::Node Problem_Settings_Map, int Data_Size_for_Indic
     //> (5) Transfer data from CPU to GPU
     GPU_HC_.Data_Transfer_From_Host_To_Device();
 
+    //> (?) Set CUDA stream attribute values, if necessary
+    GPU_HC_.Set_CUDA_Stream_Attributes();
+
     //> (6) Solve the problem by GPU-HC
     GPU_HC_.Solve_by_GPU_HC();
 

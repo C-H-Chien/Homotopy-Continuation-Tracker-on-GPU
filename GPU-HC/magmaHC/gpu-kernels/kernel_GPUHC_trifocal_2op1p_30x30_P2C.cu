@@ -30,7 +30,7 @@
 #include "../definitions.hpp"
 
 //> device functions
-#include "../gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_32b_P2C.cuh"
+#include "../gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_P2C.cuh"
 #include "../dev-cgesv-batched-small.cuh"
 #include "../dev-get-new-data.cuh"
 
@@ -45,7 +45,7 @@ template< int Num_Of_Vars, int Num_of_Coeffs_from_Params, int Max_Order_of_t, \
           unsigned Partial_Parallel_Index_Offset_Hx, \
           unsigned Partial_Parallel_Index_Offset_Ht >
 __global__ void
-kernel_GPUHC_trifocal_rel_pos_Naive(
+kernel_GPUHC_trifocal_pose_P2C(
   int HC_max_steps, int HC_max_correction_steps, int HC_delta_t_incremental_steps,
   magmaFloatComplex** d_startSols_array, magmaFloatComplex** d_Track_array,
   magma_int_t* d_Hx_indices, magma_int_t* d_Ht_indices,
@@ -336,7 +336,7 @@ kernel_GPUHC_trifocal_2op1p_30x30_P2C(
 #if CUDA_VERSION >= 9000
   cudacheck( cudaDeviceGetAttribute (&shmem_max, cudaDevAttrMaxSharedMemoryPerBlockOptin, 0) );
   if (shmem <= shmem_max) {
-    cudacheck( cudaFuncSetAttribute(kernel_GPUHC_trifocal_rel_pos_Naive \
+    cudacheck( cudaFuncSetAttribute(kernel_GPUHC_trifocal_pose_P2C \
                                     < num_of_vars, num_of_coeffs_from_params, max_order_of_t, \
                                       dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Row_Offset, \
                                       dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Row_Offset, \
@@ -366,7 +366,7 @@ kernel_GPUHC_trifocal_2op1p_30x30_P2C(
   // gpu_time = magma_sync_wtime( my_queue );
 
   // cudacheck( cudaEventRecord(start) );
-  e = cudaLaunchKernel((void*)kernel_GPUHC_trifocal_rel_pos_Naive \
+  e = cudaLaunchKernel((void*)kernel_GPUHC_trifocal_pose_P2C \
                         < num_of_vars, num_of_coeffs_from_params, max_order_of_t, \
                           dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdx_Row_Offset, \
                           dHdt_Max_Terms, dHdt_Max_Parts, dHdt_Row_Offset, \
@@ -380,7 +380,7 @@ kernel_GPUHC_trifocal_2op1p_30x30_P2C(
                         grid, threads, kernel_args, shmem, my_queue->cuda_stream());
 
   // gpu_time = magma_sync_wtime( my_queue ) - gpu_time;
-  if( e != cudaSuccess ) printf("cudaLaunchKernel of kernel_GPUHC_trifocal_rel_pos_Naive is not successful!\n");
+  if( e != cudaSuccess ) printf("cudaLaunchKernel of kernel_GPUHC_trifocal_pose_P2C is not successful!\n");
 
   return gpu_time;
 }
