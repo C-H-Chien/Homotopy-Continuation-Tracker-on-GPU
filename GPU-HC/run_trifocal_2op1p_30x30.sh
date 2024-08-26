@@ -40,16 +40,12 @@ write_yaml() {
 
     echo  "#> Kernel Settings"                                                      >> $fname
     echo  "GPUHC_Type: " $2 "    #> PH or P2C"                                      >> $fname
-    echo  "Use_Runge_Kutta_in_a_Loop: " $3                                          >> $fname
-    echo  "Data_Size_for_Indices: 32       #> 32: 32-bit, 8: 8-bit"                 >> $fname
-    echo  "Mem_for_Indices: GM             #> GM: Global Memory, SM: Shared Memory" >> $fname
-    echo  "Inline_Eval_Functions: " $4                                              >> $fname
-    echo  "Limit_Loop_Unroll: " $5                                                  >> $fname
-    echo  "Use_L2_Persistent_Cache: " $6                                            >> $fname
+    echo  "Code_Merged_Optimization: " $3                                           >> $fname
     echo  ""                                                                        >> $fname
 
     echo  "#> Algorithmic Settings"                  >> $fname
-    echo  "Truncate_HC_Path_by_Positive_Depths: " $7 >> $fname
+    echo  "Truncate_HC_Path_by_Positive_Depths: " $4 >> $fname
+    echo  "Abort_RANSAC_by_Good_Sol: " $5            >> $fname
     echo  ""                                         >> $fname
 
     echo  "#> RANSAC data"                        >> $fname
@@ -63,43 +59,23 @@ write_yaml_version() {
     version=$1
     ngpus=$2
     if [ $version -eq 1 ]; then
-        write_yaml $2 "P2C" "false" "false" "false" "false" "false"
+        write_yaml $2 "P2C" "false" "false" "false"
     fi
 
     if [ $version -eq 2 ]; then
-        write_yaml $2 "PH" "false" "false" "false" "false" "false"
+        write_yaml $2 "PH" "false" "false" "false"
     fi
 
     if [ $version -eq 3 ]; then
-        write_yaml $2 "PH" "true" "false" "false" "false" "false"
+        write_yaml $2 "PH" "true" "false" "false"
     fi
 
     if [ $version -eq 4 ]; then
-        write_yaml $2 "PH" "true" "true" "false" "false" "false"
+        write_yaml $2 "PH" "true" "true" "false"
     fi
 
     if [ $version -eq 5 ]; then
-        write_yaml $2 "PH" "true" "true" "true" "false" "false"
-    fi
-
-    if [ $version -eq 6 ]; then
-        write_yaml $2 "PH" "true" "true" "true" "true" "false"
-    fi
-
-    if [ $version -eq 7 ]; then
-        write_yaml $2 "PH" "true" "true" "true" "true" "true"
-    fi
-
-    if [ $version -eq 8 ]; then
-        write_yaml $2 "PH" "true" "false" "true" "false" "false"
-    fi
-
-    if [ $version -eq 9 ]; then
-        write_yaml $2 "PH" "true" "false" "true" "true" "false"
-    fi
-
-    if [ $version -eq 10 ]; then
-        write_yaml $2 "PH" "true" "false" "true" "true" "true"
+        write_yaml $2 "PH" "true" "true" "true"
     fi
 }
 

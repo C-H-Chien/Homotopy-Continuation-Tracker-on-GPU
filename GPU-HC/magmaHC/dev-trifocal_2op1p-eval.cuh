@@ -130,7 +130,6 @@ evaluate_trifocal_2op1p_30x30_sol(
                       - (s_hypothesis_Rs[2]*dsx[18] + s_hypothesis_Rs[5]*dsx[19] + s_hypothesis_Rs[8]*dsx[20]);
         r_sqrt_corr = 1 - (s_hypothesis_Rs[6]*d_Triplet_Edges(tx + Num_Of_Vars*(i), 0) + s_hypothesis_Rs[7]*d_Triplet_Edges(tx + Num_Of_Vars*(i), 1) + s_hypothesis_Rs[8]) \
                           *(s_hypothesis_Rs[2]*d_Triplet_Edges(tx + Num_Of_Vars*(i), 2) + s_hypothesis_Rs[5]*d_Triplet_Edges(tx + Num_Of_Vars*(i), 3) + s_hypothesis_Rs[8]);
-        // one_half_delta_t = r_sqrt_sols / r_sqrt_corr; //> this is rho
 
         //> Now vec_3d is the projected point in meters from rho_numer*R21*gamma1 + rho_denom*T21
         vec_3d[2] = r_sqrt_sols*(s_hypothesis_Rs[6]*d_Triplet_Edges(tx + Num_Of_Vars*(i), 0) + s_hypothesis_Rs[7]*d_Triplet_Edges(tx + Num_Of_Vars*(i), 1) + s_hypothesis_Rs[8]) + r_sqrt_corr*dsx[20];
@@ -244,10 +243,6 @@ evaluate_trifocal_2op1p_30x30_sol(
 
           d_Found_Trifocal_Sols[0] = 1; 
           d_Trifocal_Sols_Batch_Index[batchid] = batchid;
-
-          // printf("- Identified bath id = %d, # of local supports for (P21, P31) = (%d, %d)\n", batchid, s_local_num_of_inlier_supports_21[0], s_local_num_of_inlier_supports_31[0]);
-          // printf("  t21 = [%2.7f, %2.7f, %2.7f]\n", dsx[18], dsx[19], dsx[20]);
-          // printf("  t31 = [%2.7f, %2.7f, %2.7f]\n", dsx[21], dsx[22], dsx[23]);
         }
       }
       
