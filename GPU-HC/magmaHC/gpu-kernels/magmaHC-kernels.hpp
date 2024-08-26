@@ -20,7 +20,7 @@
 
 #include "magma_v2.h"
 
-//> (#1) PH-(x), RKL-(x), inline(x), LimUnroll(x), L2Cache-(x), TrunPaths-(x) (Naive GPU-HC approach)
+//> (#1) PH-(x), CodeOpt-(x), TrunPaths-(x), TrunRANSAC-(x) (Naive GPU-HC approach)
 real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_P2C(
   magma_queue_t         my_queue,
   int                   sub_RANSAC_iters,
@@ -38,7 +38,7 @@ real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_P2C(
   magmaFloatComplex*    d_Debug_Purpose
 );
 
-//> (#2) PH-(v), RKL-(x), inline(x), LimUnroll(x), L2Cache-(x), TrunPaths-(x)
+//> (#2) PH-(v), CodeOpt-(x), TrunPaths-(x), TrunRANSAC-(x)
 real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_PH(
   magma_queue_t         my_queue,
   int                   sub_RANSAC_iters,
@@ -57,65 +57,8 @@ real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_PH(
   magmaFloatComplex*    d_Debug_Purpose
 );
 
-//> (#3) PH-(v), RKL-(v), inline(x), LimUnroll(x), L2Cache-(x), TrunPaths-(x)
-real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL(
-  magma_queue_t         my_queue,
-  int                   sub_RANSAC_iters,
-  int                   HC_max_steps, 
-  int                   HC_max_correction_steps, 
-  int                   HC_delta_t_incremental_steps,
-  magmaFloatComplex**   d_startSols_array,  
-  magmaFloatComplex**   d_Track_array,
-  magmaFloatComplex*    d_startParams,      
-  magmaFloatComplex*    d_targetParams,
-  magmaFloatComplex*    d_diffParams,
-  int*                  d_dHdx_indx, 
-  int*                  d_dHdt_indx,
-  bool*                 d_is_GPU_HC_Sol_Converge,        
-  bool*                 d_is_GPU_HC_Sol_Infinity,
-  magmaFloatComplex*    d_Debug_Purpose
-);
-
-//> (#4) PH-(v), RKL-(v), inline(v), LimUnroll(x), L2Cache-(x), TrunPaths-(x)
-real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_inline(
-  magma_queue_t         my_queue,
-  int                   sub_RANSAC_iters,
-  int                   HC_max_steps, 
-  int                   HC_max_correction_steps, 
-  int                   HC_delta_t_incremental_steps,
-  magmaFloatComplex**   d_startSols_array,  
-  magmaFloatComplex**   d_Track_array,
-  magmaFloatComplex*    d_startParams,      
-  magmaFloatComplex*    d_targetParams,
-  magmaFloatComplex*    d_diffParams,
-  int*                  d_dHdx_indx, 
-  int*                  d_dHdt_indx,
-  bool*                 d_is_GPU_HC_Sol_Converge,        
-  bool*                 d_is_GPU_HC_Sol_Infinity,
-  magmaFloatComplex*    d_Debug_Purpose
-);
-
-//> (#5) PH-(v), RKL-(v), inline(v), LimUnroll(v), L2Cache-(x), TrunPaths-(x)
-real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_inline_LimUnroll(
-  magma_queue_t         my_queue,
-  int                   sub_RANSAC_iters,
-  int                   HC_max_steps, 
-  int                   HC_max_correction_steps, 
-  int                   HC_delta_t_incremental_steps,
-  magmaFloatComplex**   d_startSols_array,  
-  magmaFloatComplex**   d_Track_array,
-  magmaFloatComplex*    d_startParams,      
-  magmaFloatComplex*    d_targetParams,
-  magmaFloatComplex*    d_diffParams,
-  int*                  d_dHdx_indx, 
-  int*                  d_dHdt_indx,
-  bool*                 d_is_GPU_HC_Sol_Converge,        
-  bool*                 d_is_GPU_HC_Sol_Infinity,
-  magmaFloatComplex*    d_Debug_Purpose
-);
-
-//> (#6) PH-(v), RKL-(v), inline(x), LimUnroll(v), L2Cache-(v), TrunPaths-(x)
-real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_inline_LimUnroll_L2Cache(
+//> (#3-Ampere and above) PH-(v), CodeOpt-(v), TrunPaths-(x), TrunRANSAC-(x)
+real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_PH_CodeOpt(
   magma_queue_t         my_queue,
   int                   sub_RANSAC_iters,
   int                   HC_max_steps, 
@@ -132,8 +75,27 @@ real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_inline_LimUnroll_L2Cache(
   magmaFloatComplex*    d_Debug_Purpose
 );
 
-//> (#7) PH-(v), RKL-(v), inline(x), LimUnroll(v), L2Cache-(v), TrunPaths-(v)
-real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_inline_LimUnroll_L2Cache_TrunPaths(
+//> (#3-Volta) PH-(v), CodeOpt-(v), TrunPaths-(x), TrunRANSAC-(x)
+real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_PH_CodeOpt_Volta(
+  magma_queue_t       my_queue,
+  int                 sub_RANSAC_iters,
+  int                 HC_max_steps, 
+  int                 HC_max_correction_steps, 
+  int                 HC_delta_t_incremental_steps,
+  magmaFloatComplex** d_startSols_array, 
+  magmaFloatComplex** d_Track_array,
+  magmaFloatComplex*  d_startParams,
+  magmaFloatComplex*  d_targetParams,
+  magmaFloatComplex*  d_diffParams,
+  int*                d_dHdx_indx, 
+  int*                d_dHdt_indx,
+  bool*               d_is_GPU_HC_Sol_Converge,
+  bool*               d_is_GPU_HC_Sol_Infinity,
+  magmaFloatComplex*  d_Debug_Purpose
+);
+
+//> (#4-Ampere and above) PH-(v), CodeOpt-(v), TrunPaths-(v), TrunRANSAC-(x)
+real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_PH_CodeOpt_TrunPaths(
   magma_queue_t       my_queue,
   int                 sub_RANSAC_iters,
   int                 HC_max_steps, 
@@ -150,27 +112,8 @@ real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_inline_LimUnroll_L2Cache_
   magmaFloatComplex*  d_Debug_Purpose
 );
 
-//> (#8) PH-(v), RKL-(v), inline(x), LimUnroll(v), L2Cache-(x), TrunPaths-(x)
-real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_LimUnroll(
-  magma_queue_t         my_queue,
-  int                   sub_RANSAC_iters,
-  int                   HC_max_steps, 
-  int                   HC_max_correction_steps, 
-  int                   HC_delta_t_incremental_steps,
-  magmaFloatComplex**   d_startSols_array,  
-  magmaFloatComplex**   d_Track_array,
-  magmaFloatComplex*    d_startParams,      
-  magmaFloatComplex*    d_targetParams,
-  magmaFloatComplex*    d_diffParams,
-  int*                  d_dHdx_indx, 
-  int*                  d_dHdt_indx,
-  bool*                 d_is_GPU_HC_Sol_Converge,        
-  bool*                 d_is_GPU_HC_Sol_Infinity,
-  magmaFloatComplex*    d_Debug_Purpose
-);
-
-//> (#9) PH-(v), RKL-(v), inline(x), LimUnroll(v), L2Cache-(v), TrunPaths-(x)
-real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_LimUnroll_L2Cache(
+//> (#4-Volta) PH-(v), CodeOpt-(v), TrunPaths-(v), TrunRANSAC-(x)
+real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_PH_CodeOpt_TrunPaths_Volta(
   magma_queue_t       my_queue,
   int                 sub_RANSAC_iters,
   int                 HC_max_steps, 
@@ -181,16 +124,18 @@ real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_LimUnroll_L2Cache(
   magmaFloatComplex*  d_startParams,
   magmaFloatComplex*  d_targetParams,
   magmaFloatComplex*  d_diffParams,
-  int*                d_unified_dHdx_dHdt_Index,
+  int*                d_dHdx_indx, 
+  int*                d_dHdt_indx,
   bool*               d_is_GPU_HC_Sol_Converge,
   bool*               d_is_GPU_HC_Sol_Infinity,
   magmaFloatComplex*  d_Debug_Purpose
 );
 
-//> (#10) PH-(v), RKL-(v), inline(x), LimUnroll(v), L2Cache-(v), TrunPaths-(v)
-real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_LimUnroll_L2Cache_TrunPaths(
+//> (#5-Ampere and above) PH-(v), CodeOpt-(v), TrunPaths-(v), TrunRANSAC-(v)
+real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_PH_CodeOpt_TrunPaths_TrunRANSAC(
   magma_queue_t       my_queue,
   int                 sub_RANSAC_iters,
+  int                 Num_Of_Triplet_Edgels,
   int                 HC_max_steps, 
   int                 HC_max_correction_steps, 
   int                 HC_delta_t_incremental_steps,
@@ -200,9 +145,37 @@ real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_LimUnroll_L2Cache_TrunPat
   magmaFloatComplex*  d_targetParams,
   magmaFloatComplex*  d_diffParams,
   int*                d_unified_dHdx_dHdt_Index,
+  float*              d_Triplet_Edge_Locations,
+  float*              d_Intrinsic_Matrix,
   bool*               d_is_GPU_HC_Sol_Converge,
   bool*               d_is_GPU_HC_Sol_Infinity,
-  magmaFloatComplex*  d_Debug_Purpose
+  magmaFloatComplex*  d_Debug_Purpose,
+  bool*               d_Found_Trifocal_Sols, 
+  int*                d_Trifocal_Sols_Batch_Index
+);
+
+//> (#5-Volta) PH-(v), CodeOpt-(v), TrunPaths-(v), TrunRANSAC-(v)
+real_Double_t kernel_GPUHC_trifocal_2op1p_30x30_PH_CodeOpt_TrunPaths_TrunRANSAC_Volta(
+  magma_queue_t       my_queue,
+  int                 sub_RANSAC_iters,
+  int                 Num_Of_Triplet_Edgels,
+  int                 HC_max_steps, 
+  int                 HC_max_correction_steps, 
+  int                 HC_delta_t_incremental_steps,
+  magmaFloatComplex** d_startSols_array, 
+  magmaFloatComplex** d_Track_array,
+  magmaFloatComplex*  d_startParams,
+  magmaFloatComplex*  d_targetParams,
+  magmaFloatComplex*  d_diffParams,
+  int*                d_dHdx_indx, 
+  int*                d_dHdt_indx,
+  float*              d_Triplet_Edge_Locations,
+  float*              d_Intrinsic_Matrix,
+  bool*               d_is_GPU_HC_Sol_Converge,
+  bool*               d_is_GPU_HC_Sol_Infinity,
+  magmaFloatComplex*  d_Debug_Purpose,
+  bool*               d_Found_Trifocal_Sols, 
+  int*                d_Trifocal_Sols_Batch_Index
 );
 
 #endif

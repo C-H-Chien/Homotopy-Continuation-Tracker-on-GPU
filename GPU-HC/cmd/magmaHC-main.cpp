@@ -27,8 +27,7 @@
 
 #include <yaml-cpp/yaml.h>
 
-template<typename T>
-bool run_GPU_HC_Solver( YAML::Node Problem_Settings_Map, int Data_Size_for_Indices) {
+bool run_GPU_HC_Solver( YAML::Node Problem_Settings_Map) {
 
   double GPUHC_time_ms = 0.0;
   double avg_gpu_runtime = 0.0;
@@ -36,7 +35,7 @@ bool run_GPU_HC_Solver( YAML::Node Problem_Settings_Map, int Data_Size_for_Indic
   double min_gpu_runtime = 10000.0;
   double all_gpu_runtime[TEST_RANSAC_TIMES];
 
-  GPU_HC_Solver<T> GPU_HC_( Problem_Settings_Map, Data_Size_for_Indices );
+  GPU_HC_Solver GPU_HC_( Problem_Settings_Map );
 
   //> (1) Allocate CPU and GPU arrays
   GPU_HC_.Allocate_Arrays();
@@ -54,17 +53,23 @@ bool run_GPU_HC_Solver( YAML::Node Problem_Settings_Map, int Data_Size_for_Indic
     //> (4) Convert from triplet edgels to target parameters
     GPU_HC_.Prepare_Target_Params( ti );
 
-    //> (5) Transfer data from CPU to GPU
+    //> (5) Set arrays used for early aborting RANSAC process
+    GPU_HC_.Set_RANSAC_Abort_Arrays();
+
+    //> (6) Transfer data from CPU to GPU
     GPU_HC_.Data_Transfer_From_Host_To_Device();
 
-    //> (?) Set CUDA stream attribute values, if necessary
+    //> (7) Set CUDA stream attribute values, if necessary
     GPU_HC_.Set_CUDA_Stream_Attributes();
 
-    //> (6) Solve the problem by GPU-HC
+    //> (8) Solve the problem by GPU-HC
     GPU_HC_.Solve_by_GPU_HC();
 
-    //> (7) Free triplet edgels memory
+    //> (9) Free triplet edgels memory
     GPU_HC_.Free_Triplet_Edgels_Mem();
+
+    //> (10) Free allocated arrays for early aborting RANSAC
+    GPU_HC_.Free_Arrays_for_Aborting_RANSAC();
 
     // GPUHC_time_ms = (GPU_HC_.gpu_max_time_from_multiple_GPUs)*1000;
     GPUHC_time_ms = (GPU_HC_.multi_GPUs_time)*1000;
@@ -156,24 +161,8 @@ int main(int argc, char **argv) {
     return 0;
 	}
 
-  //> Get data dize (32-bit or 8-bit) for indices in evaluations
-  int Data_Size_for_Indices = Problem_Settings_Map["Data_Size_for_Indices"].as<int>();
-
   //> Initialization from GPU-HC constructor
-  bool should_continue = false;
-  if (Data_Size_for_Indices == 8) {
-    should_continue = run_GPU_HC_Solver<char>( Problem_Settings_Map, Data_Size_for_Indices );
-  }
-  else if (Data_Size_for_Indices == 32) {
-    should_continue = run_GPU_HC_Solver<int>( Problem_Settings_Map, Data_Size_for_Indices );
-  }
-  else
-    LOG_ERROR("Data size for indices defined in the YAML file is incorrect!");
-
-  if (!should_continue)
-    LOG_ERROR("Something's wrong with run_GPU_HC_Solver!");
-
-  //> Maybe we can do something with should_continue
+  run_GPU_HC_Solver( Problem_Settings_Map );
 
   return 0;
 }

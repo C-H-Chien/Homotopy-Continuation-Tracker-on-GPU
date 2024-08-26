@@ -26,17 +26,12 @@ Num_Of_Coeffs_From_Params: 37
 
 #> Kernel Settings
 GPUHC_Type:  PH     #> PH or P2C
-Use_Runge_Kutta_in_a_Loop:  true
-Data_Size_for_Indices: 32       #> 32: 32-bit, 8: 8-bit
-Mem_for_Indices: GM             #> GM: Global Memory, SM: Shared Memory
-Inline_Eval_Functions:  false
-Limit_Loop_Unroll:  true
-Use_L2_Persistent_Cache:  true
+Code_Merged_Optimization: true
 
 #> Algorithmic Settings
 Truncate_HC_Path_by_Positive_Depths:  true
+Abort_RANSAC_by_Good_Sol: true
 
 #> RANSAC data
 #RANSAC_Dataset: Synthetic / ICL-NUIM
 RANSAC_Dataset: ICL-NUIM
-#5117

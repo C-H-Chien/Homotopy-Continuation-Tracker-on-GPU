@@ -46,14 +46,20 @@ public:
     void Evaluate_RANSAC_GPUHC_Sols( magmaFloatComplex *h_GPU_HC_Track_Sols, bool *h_is_GPU_HC_Sol_Converge, bool *h_is_GPU_HC_Sol_Infinity );
     void Find_Unique_Sols( magmaFloatComplex *h_GPU_HC_Track_Sols, bool *h_is_GPU_HC_Sol_Converge );
 
+    //> Processing rotations and translations from the GPU-HC solutions of trifocal pose estimation problem (30x30)
+    void Convert_Trifocal_Translation( magmaFloatComplex *h_GPU_HC_Track_Sols );
+    void Convert_Trifocal_Rotation( magmaFloatComplex *h_GPU_HC_Track_Sols );
+
     //> Evaluate RANSAC solutions with the ground-truths
-    void Transform_GPUHC_Sols_to_Trifocal_Relative_Pose( magmaFloatComplex *h_GPU_HC_Track_Sols, bool *h_is_GPU_HC_Sol_Converge, float IntrinsicMatrix[9] );
+    void Transform_GPUHC_Sols_to_Trifocal_Relative_Pose( magmaFloatComplex *h_GPU_HC_Track_Sols, bool *h_is_GPU_HC_Sol_Converge, float *IntrinsicMatrix );
     float get_Rotation_Residual( float* GT_R, std::array<float, 9> Sol_R );
     float get_Translation_Residual( float* GT_Transl, std::array<float, 3> Sol_Transl );
     void get_HC_Steps_of_Actual_Sols( magmaFloatComplex *h_Debug_Purpose );
     void Measure_Relative_Pose_Error_from_All_Real_Sols( float GT_Pose21[12], float GT_Pose31[12], magmaFloatComplex *h_Debug_Purpose );
-    void Measure_Relative_Pose_Error( float GT_Pose21[12], float GT_Pose31[12], magmaFloatComplex *h_Debug_Purpose );
-    bool get_Solution_with_Maximal_Support( unsigned Num_Of_Triplet_Edgels, float* h_Triplet_Edge_Locations, float* h_Triplet_Edge_Tangents, float K[9] );
+    void Measure_Relative_Pose_Error( float GT_Pose21[12], float GT_Pose31[12] );
+    bool get_Solution_with_Maximal_Support( unsigned Num_Of_Triplet_Edgels, float* h_Triplet_Edge_Locations, float* h_Triplet_Edge_Tangents, float *K );
+
+    void Check_Deviations_of_Veridical_Sol_from_GT( magmaFloatComplex *h_GPU_HC_Track_Sols, float GT_Pose21[12], float GT_Pose31[12] );
 
     //> Others
     void Flush_Out_Data();

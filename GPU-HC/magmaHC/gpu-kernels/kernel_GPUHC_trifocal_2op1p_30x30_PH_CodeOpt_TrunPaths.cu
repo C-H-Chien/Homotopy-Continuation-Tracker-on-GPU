@@ -1,5 +1,5 @@
-#ifndef kernel_GPUHC_trifocal_2op1p_30x30_PH_inline_LimUnroll_L2Cache_TrunPaths_cu
-#define kernel_GPUHC_trifocal_2op1p_30x30_PH_inline_LimUnroll_L2Cache_TrunPaths_cu
+#ifndef kernel_GPUHC_trifocal_2op1p_30x30_PH_CODEOPT_TrunPaths_cu
+#define kernel_GPUHC_trifocal_2op1p_30x30_PH_CODEOPT_TrunPaths_cu
 // ===========================================================================================
 // GPU homotopy continuation solver for the trifocal 2op1p 30x30 problem
 //
@@ -38,7 +38,7 @@
 #include "../definitions.hpp"
 
 //> device functions
-#include "../gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_inline_LimUnroll_L2Cache.cuh"
+#include "../gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_LimUnroll_L2Cache.cuh"
 #include "../dev-cgesv-batched-small.cuh"
 #include "../dev-get-new-data.cuh"
 
@@ -47,7 +47,7 @@ template< int Num_Of_Vars,    int Num_Of_Params, \
           int dHdt_Max_Terms, int dHdt_Max_Parts, \
           int dHdx_Index_Matrix_Size, int dHdt_Index_Matrix_Size >
 __global__ void
-kernel_GPUHC_trifocal_pose_PH_RKL_inline_LimUnroll_L2Cache_TrunPaths(
+kernel_GPUHC_trifocal_pose_PH_CodeOpt_TrunPaths(
   const int               HC_max_steps, 
   const int               HC_max_correction_steps, 
   const int               HC_delta_t_incremental_steps,
@@ -290,7 +290,7 @@ kernel_GPUHC_trifocal_pose_PH_RKL_inline_LimUnroll_L2Cache_TrunPaths(
 }
 
 real_Double_t
-kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_inline_LimUnroll_L2Cache_TrunPaths(
+kernel_GPUHC_trifocal_2op1p_30x30_PH_CodeOpt_TrunPaths(
   magma_queue_t       my_queue,
   int                 sub_RANSAC_iters,
   int                 HC_max_steps, 
@@ -347,7 +347,7 @@ kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_inline_LimUnroll_L2Cache_TrunPaths(
 #if CUDA_VERSION >= 9000
   cudacheck( cudaDeviceGetAttribute (&shmem_max, cudaDevAttrMaxSharedMemoryPerBlockOptin, 0) );
   if (shmem <= shmem_max) {
-    cudacheck( cudaFuncSetAttribute(kernel_GPUHC_trifocal_pose_PH_RKL_inline_LimUnroll_L2Cache_TrunPaths \
+    cudacheck( cudaFuncSetAttribute(kernel_GPUHC_trifocal_pose_PH_CodeOpt_TrunPaths \
                                     <num_of_vars, num_of_params, \
                                      dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdt_Max_Terms, dHdt_Max_Parts, \
                                      dHdx_Index_Matrix_Size, dHdt_Index_Matrix_Size >, //dHdx_Num_Of_Read_Loops, dHdt_Num_Of_Read_Loops >,
@@ -373,14 +373,14 @@ kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_inline_LimUnroll_L2Cache_TrunPaths(
                         };
 
   //> launch the GPU kernel
-  e = cudaLaunchKernel((void*)kernel_GPUHC_trifocal_pose_PH_RKL_inline_LimUnroll_L2Cache_TrunPaths \
+  e = cudaLaunchKernel((void*)kernel_GPUHC_trifocal_pose_PH_CodeOpt_TrunPaths \
                         <num_of_vars, num_of_params, \
                          dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdt_Max_Terms, dHdt_Max_Parts, \
                          dHdx_Index_Matrix_Size, dHdt_Index_Matrix_Size >,
                         grid, threads, kernel_args, shmem, my_queue->cuda_stream());
 
   // gpu_time = magma_sync_wtime( my_queue ) - gpu_time;
-  if( e != cudaSuccess ) printf("cudaLaunchKernel of kernel_GPUHC_trifocal_pose_PH_RKL_inline_LimUnroll_L2Cache_TrunPaths is not successful!\n");
+  if( e != cudaSuccess ) printf("cudaLaunchKernel of kernel_GPUHC_trifocal_pose_PH_CodeOpt_TrunPaths is not successful!\n");
 
   return gpu_time;
 }

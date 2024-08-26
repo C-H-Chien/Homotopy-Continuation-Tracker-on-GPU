@@ -209,7 +209,7 @@ bool Data_Reader::Construct_Coeffs_From_Params( std::string HC_Problem, \
     return true;
 }
 
-bool Data_Reader::Read_Camera_Matrices( float Pose21[12], float Pose31[12], float K[9], int tp_index ) {
+bool Data_Reader::Read_Camera_Poses( float Pose21[12], float Pose31[12], int tp_index ) {
 
     //> Create padded file index
     std::string str_File_Index = std::to_string(tp_index);
@@ -217,21 +217,6 @@ bool Data_Reader::Read_Camera_Matrices( float Pose21[12], float Pose31[12], floa
     auto padded_Index = std::string(3 - min_str_length, '0') + str_File_Index;
     File_Name_Pose21  = RANSAC_Data_Path_ + "/GT_Poses21/GT_Poses21_" + padded_Index + ".txt";
     File_Name_Pose31  = RANSAC_Data_Path_ + "/GT_Poses31/GT_Poses31_" + padded_Index + ".txt";
-
-    //> Intrinsic matrix
-    File_Intrinsic_Matrix.open(File_Name_Intrinsic_Matrix, std::ios_base::in);
-    if (!File_Intrinsic_Matrix) {
-        LOG_FILE_ERROR(File_Name_Intrinsic_Matrix);
-        return false;
-    }
-    else {
-        int d = 0;
-        float entry = 0.0;
-        while (File_Intrinsic_Matrix >> entry) {
-            K[d] = entry;
-            d++;
-        }
-    }
 
     //> Extrinsic matrix - Camera relative pose view 1 & 2
     File_Pose21.open(File_Name_Pose21, std::ios_base::in);
@@ -284,6 +269,24 @@ bool Data_Reader::Read_Camera_Matrices( float Pose21[12], float Pose31[12], floa
         printf("\n");
     }
 #endif
+    return true;
+}
+
+bool Data_Reader::Read_Intrinsic_Matrix( float *h_Intrinsic_Matrix ) {
+    //> Intrinsic matrix
+    File_Intrinsic_Matrix.open(File_Name_Intrinsic_Matrix, std::ios_base::in);
+    if (!File_Intrinsic_Matrix) {
+        LOG_FILE_ERROR(File_Name_Intrinsic_Matrix);
+        return false;
+    }
+    else {
+        int d = 0;
+        float entry = 0.0;
+        while (File_Intrinsic_Matrix >> entry) {
+            h_Intrinsic_Matrix[d] = entry;
+            d++;
+        }
+    }
     return true;
 }
 

@@ -52,7 +52,8 @@ public:
 
     //> RANSAC Data
     int get_Num_Of_Triplet_Edgels( int tp_index );
-    bool Read_Camera_Matrices( float Pose21[12], float Pose31[12], float K[9], int tp_index );
+    bool Read_Camera_Poses( float Pose21[12], float Pose31[12], int tp_index );
+    bool Read_Intrinsic_Matrix( float *h_Intrinsic_Matrix );
     void Read_Triplet_Edgels( float* &Triplet_Edge_Locations, float* &Triplet_Edge_Tangents );
 
     //> From Triplet Edgels to target parameters printed out for debugging

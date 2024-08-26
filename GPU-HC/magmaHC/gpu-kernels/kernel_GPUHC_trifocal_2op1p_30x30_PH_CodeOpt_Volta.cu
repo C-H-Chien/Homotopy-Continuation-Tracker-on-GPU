@@ -1,5 +1,5 @@
-#ifndef kernel_GPUHC_trifocal_2op1p_30x30_PH_inline_limitUnroll_cu
-#define kernel_GPUHC_trifocal_2op1p_30x30_PH_inline_limitUnroll_cu
+#ifndef kernel_GPUHC_trifocal_2op1p_30x30_PH_CODEOPT_VOLTA_cu
+#define kernel_GPUHC_trifocal_2op1p_30x30_PH_CODEOPT_VOLTA_cu
 // ===========================================================================================
 // GPU homotopy continuation solver for the trifocal 2op1p 30x30 problem
 //
@@ -48,7 +48,7 @@ template< int Num_Of_Vars,    int Num_Of_Params, \
           int dHdt_Max_Terms, int dHdt_Max_Parts, \
           int dHdx_Index_Matrix_Size, int dHdt_Index_Matrix_Size >
 __global__ void
-kernel_GPUHC_trifocal_pose_RKL_inline_LimUnroll(
+kernel_GPUHC_trifocal_pose_PH_CodeOpt_Volta(
   const int               HC_max_steps, 
   const int               HC_max_correction_steps, 
   const int               HC_delta_t_incremental_steps,
@@ -106,7 +106,7 @@ kernel_GPUHC_trifocal_pose_RKL_inline_LimUnroll(
   s_track_last_success[tx] = s_track[tx];
   
   //> start and target parameters
-  //>>>>>>>>>>>>>>>>>>>>>>>>>>>>> REUSE MEMORY? >>>>>>>>>>>>>>>>>>>>>>>
+  //>>>>>>>>>>>>>>>>>>>>>>>>>>>>> REUSE MEMORY >>>>>>>>>>>>>>>>>>>>>>>
   s_startParams[tx]  = d_startParams[tx];
   s_targetParams[tx] = d_targetParams[tx + ransac_id*(Num_Of_Params+1)];
   s_diffParams[tx]   = d_diffParams[tx + ransac_id*(Num_Of_Params+1)];
@@ -281,9 +281,8 @@ kernel_GPUHC_trifocal_pose_RKL_inline_LimUnroll(
 #endif
 }
 
-
 real_Double_t
-kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_inline_LimUnroll(
+kernel_GPUHC_trifocal_2op1p_30x30_PH_CodeOpt_Volta(
   magma_queue_t       my_queue,
   int                 sub_RANSAC_iters,
   int                 HC_max_steps, 
@@ -341,7 +340,7 @@ kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_inline_LimUnroll(
 #if CUDA_VERSION >= 9000
   cudacheck( cudaDeviceGetAttribute (&shmem_max, cudaDevAttrMaxSharedMemoryPerBlockOptin, 0) );
   if (shmem <= shmem_max) {
-    cudacheck( cudaFuncSetAttribute(kernel_GPUHC_trifocal_pose_RKL_inline_LimUnroll \
+    cudacheck( cudaFuncSetAttribute(kernel_GPUHC_trifocal_pose_PH_CodeOpt_Volta \
                                     <num_of_vars, num_of_params, \
                                      dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdt_Max_Terms, dHdt_Max_Parts, \
                                      dHdx_Index_Matrix_Size, dHdt_Index_Matrix_Size >, //dHdx_Num_Of_Read_Loops, dHdt_Num_Of_Read_Loops >,
@@ -369,14 +368,14 @@ kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_inline_LimUnroll(
   // gpu_time = magma_sync_wtime( my_queue );
 
   //> launch the GPU kernel
-  e = cudaLaunchKernel((void*)kernel_GPUHC_trifocal_pose_RKL_inline_LimUnroll \
+  e = cudaLaunchKernel((void*)kernel_GPUHC_trifocal_pose_PH_CodeOpt_Volta \
                         <num_of_vars, num_of_params, \
                          dHdx_Max_Terms, dHdx_Max_Parts, dHdx_Entry_Offset, dHdt_Max_Terms, dHdt_Max_Parts, \
                          dHdx_Index_Matrix_Size, dHdt_Index_Matrix_Size >, // dHdx_Num_Of_Read_Loops, dHdt_Num_Of_Read_Loops >,
                         grid, threads, kernel_args, shmem, my_queue->cuda_stream());
 
   // gpu_time = magma_sync_wtime( my_queue ) - gpu_time;
-  if( e != cudaSuccess ) printf("cudaLaunchKernel of kernel_GPUHC_trifocal_pose_RKL_inline_LimUnroll is not successful!\n");
+  if( e != cudaSuccess ) printf("cudaLaunchKernel of kernel_GPUHC_trifocal_pose_PH_CodeOpt_Volta is not successful!\n");
 
   return gpu_time;
 }

@@ -38,9 +38,8 @@
 #include "gpu-kernels/magmaHC-kernels.hpp"
 
 //> Constructor
-template< typename T_index_mat >
-GPU_HC_Solver<T_index_mat>::GPU_HC_Solver(YAML::Node Problem_Settings_File, int Data_Size_for_Indices_)
-    : Problem_Setting_YAML_File(Problem_Settings_File), Data_Size_for_Indices(Data_Size_for_Indices_) 
+GPU_HC_Solver::GPU_HC_Solver(YAML::Node Problem_Settings_File)
+    : Problem_Setting_YAML_File(Problem_Settings_File)
 {
     //> Parse data from the YAML file
     //> (1) Problem Name and GPU-HC Type
@@ -61,13 +60,10 @@ GPU_HC_Solver<T_index_mat>::GPU_HC_Solver(YAML::Node Problem_Settings_File, int 
     dHdt_Max_Parts                  = Problem_Setting_YAML_File["dHdt_Max_Parts"].as<int>();
     Max_Order_Of_T                  = Problem_Setting_YAML_File["Max_Order_Of_T"].as<int>();
     //> (4) GPU Kernel Settings
-    Use_Runge_Kutta_in_a_Loop       = Problem_Setting_YAML_File["Use_Runge_Kutta_in_a_Loop"].as<bool>();
-    Mem_for_Indices                 = Problem_Setting_YAML_File["Mem_for_Indices"].as<std::string>();
-    Inline_Eval_Functions           = Problem_Setting_YAML_File["Inline_Eval_Functions"].as<bool>();
-    Limit_Loop_Unroll               = Problem_Setting_YAML_File["Limit_Loop_Unroll"].as<bool>();
-    Use_L2_Persistent_Cache         = Problem_Setting_YAML_File["Use_L2_Persistent_Cache"].as<bool>();
+    Use_Merge_Code_Optimization     = Problem_Setting_YAML_File["Code_Merged_Optimization"].as<bool>();
     //> (5) Algorithmic Settings
     Truncate_HC_Path_by_Positive_Depths = Problem_Setting_YAML_File["Truncate_HC_Path_by_Positive_Depths"].as<bool>();
+    Abort_RANSAC_by_Good_Sol            = Problem_Setting_YAML_File["Abort_RANSAC_by_Good_Sol"].as<bool>();
     //> (6) RANSAC data
     RANSAC_Dataset_Name             = Problem_Setting_YAML_File["RANSAC_Dataset"].as<std::string>();
     //> (7) Multiple GPUs
@@ -91,14 +87,9 @@ GPU_HC_Solver<T_index_mat>::GPU_HC_Solver(YAML::Node Problem_Settings_File, int 
 
     //> MAGMA queues on multiple GPUs, one queue per GPU
     for (int gpu_id = 0; gpu_id < Num_Of_GPUs; gpu_id++) {
-        magma_setdevice( gpu_id );
-        magma_queue_create( gpu_id, &gpu_queues[gpu_id] );
-
-        //> Try to get the L2-cache size and maximal persisting cache size
-        cudaDeviceProp device_prop;
-        cudacheck(cudaGetDeviceProperties( &device_prop, gpu_id ));
-        std::cout << "L2 Cache Size: " << device_prop.l2CacheSize / 1024 / 1024 << " MB" << std::endl;
-        std::cout << "Max Persistent L2 Cache Size: " << device_prop.persistingL2CacheMaxSize / 1024 / 1024 << " MB" << std::endl;
+        dev_id = (Num_Of_GPUs == 1) ? (SET_GPU_DEVICE_ID) : (gpu_id);
+        magma_setdevice( dev_id );
+        magma_queue_create( dev_id, &gpu_queues[gpu_id] );
     }
 
     //> Calculate the share of each GPU: divide the number of RANSAC iterations by the number of requested GPUs
@@ -114,8 +105,8 @@ GPU_HC_Solver<T_index_mat>::GPU_HC_Solver(YAML::Node Problem_Settings_File, int 
     dHdx_PHC_Coeffs_Size            = (Use_P2C) ? ((Num_Of_Coeffs_From_Params+1)*(Max_Order_Of_T+1)) : 0;
     dHdt_PHC_Coeffs_Size            = (Use_P2C) ? ((Num_Of_Coeffs_From_Params+1)*(Max_Order_Of_T)) : 0;
 #if SHOW_EVAL_INDX_DATA_SIZE
-    printf("dHdx_Index_Size      = %5.2f KB\n", (double)(dHdx_Index_Size     *sizeof(T_index_mat))       / 1024.);
-    printf("dHdt_Index_Size      = %5.2f KB\n", (double)(dHdt_Index_Size     *sizeof(T_index_mat))       / 1024.);
+    printf("dHdx_Index_Size      = %5.2f KB\n", (double)(dHdx_Index_Size     *sizeof(int))       / 1024.);
+    printf("dHdt_Index_Size      = %5.2f KB\n", (double)(dHdt_Index_Size     *sizeof(int))       / 1024.);
     if (GPUHC_type == std::string("P2C")) {
         printf("dHdx_PHC_Coeffs_Size = %5.2f KB\n", (double)(dHdx_PHC_Coeffs_Size*sizeof(magmaFloatComplex)) / 1024.);
         printf("dHdt_PHC_Coeffs_Size = %5.2f KB\n", (double)(dHdt_PHC_Coeffs_Size*sizeof(magmaFloatComplex)) / 1024.);
@@ -124,25 +115,32 @@ GPU_HC_Solver<T_index_mat>::GPU_HC_Solver(YAML::Node Problem_Settings_File, int 
     magmaFloatComplex **d_Start_Sols_array      = NULL;
     magmaFloatComplex **d_Homotopy_Sols_array   = NULL;
 
-    //> Persistent L2 cache
-    if (Use_L2_Persistent_Cache) {
-        //> (1) First check GPU is Ampere or higher
-        magma_int_t arch = magma_getdevice_arch();
-        if (arch >= 800) {
-            double Num_Of_MBytes_dHdx      = (double)((dHdx_Index_Size*sizeof(T_index_mat)) / 1024.) / 1024.;
-            double Num_Of_MBytes_dHdt      = (double)((dHdt_Index_Size*sizeof(T_index_mat)) / 1024.) / 1024.;
-            Num_Of_MBytes_Persistent_Data  = Num_Of_MBytes_dHdx + Num_Of_MBytes_dHdt;
-            Num_Of_MBytes_Persistent_Cache = Num_Of_MBytes_Persistent_Data + (1); //> 1 MB extra size to be cached
-            cudacheck( cudaDeviceSetLimit(cudaLimitPersistingL2CacheSize, Num_Of_MBytes_Persistent_Cache * 1024 * 1024));
+    //> (1) First check GPU is Ampere or higher
+    magma_int_t arch = magma_getdevice_arch();
+    if (arch >= 800) {
+        GPU_arch_Ampere_and_above = true;
+
+        //> Try to get the L2-cache size and maximal persisting cache size
+        for (int gpu_id = 0; gpu_id < Num_Of_GPUs; gpu_id++) {
+            dev_id = (Num_Of_GPUs == 1) ? (SET_GPU_DEVICE_ID) : (gpu_id);
+            cudaDeviceProp device_prop;
+            cudacheck(cudaGetDeviceProperties( &device_prop, dev_id ));
+            std::cout << "L2 Cache Size: " << device_prop.l2CacheSize / 1024 / 1024 << " MB" << std::endl;
+            std::cout << "Max Persistent L2 Cache Size: " << device_prop.persistingL2CacheMaxSize / 1024 / 1024 << " MB" << std::endl;
+        }
+
+        double Num_Of_MBytes_dHdx      = (double)((dHdx_Index_Size*sizeof(int)) / 1024.) / 1024.;
+        double Num_Of_MBytes_dHdt      = (double)((dHdt_Index_Size*sizeof(int)) / 1024.) / 1024.;
+        Num_Of_MBytes_Persistent_Data  = Num_Of_MBytes_dHdx + Num_Of_MBytes_dHdt;
+        Num_Of_MBytes_Persistent_Cache = Num_Of_MBytes_Persistent_Data + (1); //> 1 MB extra size to be cached
+        cudacheck( cudaDeviceSetLimit(cudaLimitPersistingL2CacheSize, Num_Of_MBytes_Persistent_Cache * 1024 * 1024));
 #if DEBUG_L2_PERSISTENT_CACHE
-            printf("Size of dH/dx + dH/dt = %5.2f MB\n", Num_Of_MBytes_Persistent_Data);
-            printf("L2 Persistent Cache   = %5.2f MB\n", Num_Of_MBytes_Persistent_Cache);
+        printf("Size of dH/dx + dH/dt = %5.2f MB\n", Num_Of_MBytes_Persistent_Data);
+        printf("L2 Persistent Cache   = %5.2f MB\n", Num_Of_MBytes_Persistent_Cache);
 #endif
-        }
-        else {
-            LOG_ERROR("Invalid device architecture when using L2 persistent cache!");
-            exit(1);
-        }
+    }
+    else {
+        GPU_arch_Ampere_and_above = false;
     }
 
     //> Define problem file path for problem data reader and output file path for results evaluations
@@ -154,59 +152,60 @@ GPU_HC_Solver<T_index_mat>::GPU_HC_Solver(YAML::Node Problem_Settings_File, int 
     Evaluate_GPUHC_Sols = std::shared_ptr<Evaluations>(new Evaluations(Write_Files_Path, Num_Of_Tracks, Num_Of_Vars));
 }
 
-template< typename T_index_mat >
-void GPU_HC_Solver<T_index_mat>::Allocate_Arrays() {
+void GPU_HC_Solver::Allocate_Arrays() {
 
     //> CPU Allocations
     magma_cmalloc_cpu( &h_Start_Sols,           Num_Of_Tracks*(Num_Of_Vars+1) );
     magma_cmalloc_cpu( &h_Start_Params,         (Num_Of_Params+1) );
 
-    h_unified_dHdx_dHdt_Index = new T_index_mat[ unified_dHdx_dHdt_Index_Size ];
-    h_dHdx_Index = new T_index_mat[ dHdx_Index_Size ];
-    h_dHdt_Index = new T_index_mat[ dHdt_Index_Size ];
+    h_unified_dHdx_dHdt_Index = new int[ unified_dHdx_dHdt_Index_Size ];
+    h_dHdx_Index = new int[ dHdx_Index_Size ];
+    h_dHdt_Index = new int[ dHdt_Index_Size ];
     
     magma_cmalloc_cpu( &h_GPU_HC_Track_Sols_Stack, Num_Of_Tracks*(Num_Of_Vars+1)*NUM_OF_RANSAC_ITERATIONS ); //> Use to store GPU results from the CPU side
     h_is_GPU_HC_Sol_Converge_Stack = new bool[ Num_Of_Tracks*NUM_OF_RANSAC_ITERATIONS ];
     h_is_GPU_HC_Sol_Infinity_Stack = new bool[ Num_Of_Tracks*NUM_OF_RANSAC_ITERATIONS ];
+    h_Camera_Intrinsic_Matrix = new float[9];
 
     //> Allocate sizes according to sub RANSAC iterations for multiple GPUs, if necessary
     for (int gpu_id = 0; gpu_id < Num_Of_GPUs; gpu_id++) {
-        magma_setdevice(gpu_id);
-        magma_cmalloc_cpu( &h_Homotopy_Sols[gpu_id],        Num_Of_Tracks*(Num_Of_Vars+1)*sub_RANSAC_iters[gpu_id] );
-        magma_cmalloc_cpu( &h_Target_Params[gpu_id],        (Num_Of_Params+1)*sub_RANSAC_iters[gpu_id] );
-        magma_cmalloc_cpu( &h_diffParams[gpu_id],           (Num_Of_Params+1)*sub_RANSAC_iters[gpu_id] );
-        magma_cmalloc_cpu( &h_GPU_HC_Track_Sols[gpu_id],    Num_Of_Tracks*(Num_Of_Vars+1)*sub_RANSAC_iters[gpu_id] ); //> Use to store GPU results from the CPU side
-        magma_cmalloc_cpu( &h_Debug_Purpose[gpu_id],        Num_Of_Tracks*sub_RANSAC_iters[gpu_id] );
-        magma_cmalloc_cpu( &h_dHdx_PHC_Coeffs[gpu_id],      dHdx_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id] );
-        magma_cmalloc_cpu( &h_dHdt_PHC_Coeffs[gpu_id],      dHdt_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id] );
-        h_is_GPU_HC_Sol_Converge[gpu_id]  = new bool[ Num_Of_Tracks*sub_RANSAC_iters[gpu_id] ];
-        h_is_GPU_HC_Sol_Infinity[gpu_id]  = new bool[ Num_Of_Tracks*sub_RANSAC_iters[gpu_id] ];
+        dev_id = (Num_Of_GPUs == 1) ? (SET_GPU_DEVICE_ID) : (gpu_id);
+        magma_setdevice(dev_id);
+        magma_cmalloc_cpu( &h_Homotopy_Sols[gpu_id],            Num_Of_Tracks*(Num_Of_Vars+1)*sub_RANSAC_iters[gpu_id] );
+        magma_cmalloc_cpu( &h_Target_Params[gpu_id],            (Num_Of_Params+1)*sub_RANSAC_iters[gpu_id] );
+        magma_cmalloc_cpu( &h_diffParams[gpu_id],               (Num_Of_Params+1)*sub_RANSAC_iters[gpu_id] );
+        magma_cmalloc_cpu( &h_GPU_HC_Track_Sols[gpu_id],        Num_Of_Tracks*(Num_Of_Vars+1)*sub_RANSAC_iters[gpu_id] ); //> Use to store GPU results from the CPU side
+        magma_cmalloc_cpu( &h_Debug_Purpose[gpu_id],            Num_Of_Tracks*sub_RANSAC_iters[gpu_id] );
+        magma_cmalloc_cpu( &h_dHdx_PHC_Coeffs[gpu_id],          dHdx_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id] );
+        magma_cmalloc_cpu( &h_dHdt_PHC_Coeffs[gpu_id],          dHdt_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id] );
+        h_is_GPU_HC_Sol_Converge[gpu_id]        = new bool[ Num_Of_Tracks*sub_RANSAC_iters[gpu_id] ];
+        h_is_GPU_HC_Sol_Infinity[gpu_id]        = new bool[ Num_Of_Tracks*sub_RANSAC_iters[gpu_id] ];
     }
     
     //> GPU Allocations
     for (int gpu_id = 0; gpu_id < Num_Of_GPUs; gpu_id++) {
-        magma_setdevice(gpu_id);
-        magma_cmalloc( &d_Homotopy_Sols[gpu_id],                    Num_Of_Tracks*(Num_Of_Vars+1)*sub_RANSAC_iters[gpu_id] );
-        magma_cmalloc( &d_Target_Params[gpu_id],                    (Num_Of_Params+1)*sub_RANSAC_iters[gpu_id] );
-        magma_cmalloc( &d_diffParams[gpu_id],                       (Num_Of_Params+1)*sub_RANSAC_iters[gpu_id] );
-        magma_cmalloc( &d_Debug_Purpose[gpu_id],                    Num_Of_Tracks*sub_RANSAC_iters[gpu_id] );
-        magma_malloc( (void**) &d_Homotopy_Sols_array[gpu_id],      (Num_Of_Tracks+1)*(sub_RANSAC_iters[gpu_id]) * sizeof(magmaFloatComplex*) );
-        cudacheck( cudaMalloc( &d_is_GPU_HC_Sol_Converge[gpu_id],   (Num_Of_Tracks*sub_RANSAC_iters[gpu_id]) * sizeof(bool) ));
-        cudacheck( cudaMalloc( &d_is_GPU_HC_Sol_Infinity[gpu_id],   (Num_Of_Tracks*sub_RANSAC_iters[gpu_id]) * sizeof(bool) ));
+        dev_id = (Num_Of_GPUs == 1) ? (SET_GPU_DEVICE_ID) : (gpu_id);
+        magma_setdevice(dev_id);
+        magma_cmalloc( &d_Homotopy_Sols[gpu_id],                        Num_Of_Tracks*(Num_Of_Vars+1)*sub_RANSAC_iters[gpu_id] );
+        magma_cmalloc( &d_Target_Params[gpu_id],                        (Num_Of_Params+1)*sub_RANSAC_iters[gpu_id] );
+        magma_cmalloc( &d_diffParams[gpu_id],                           (Num_Of_Params+1)*sub_RANSAC_iters[gpu_id] );
+        magma_cmalloc( &d_Debug_Purpose[gpu_id],                        Num_Of_Tracks*sub_RANSAC_iters[gpu_id] );
+        magma_malloc( (void**) &d_Homotopy_Sols_array[gpu_id],          (Num_Of_Tracks+1)*(sub_RANSAC_iters[gpu_id]) * sizeof(magmaFloatComplex*) );
+        magma_malloc( (void**) &d_Start_Sols_array[gpu_id],             Num_Of_Tracks * sizeof(magmaFloatComplex*) );
+        cudacheck( cudaMalloc( &d_is_GPU_HC_Sol_Converge[gpu_id],       (Num_Of_Tracks*sub_RANSAC_iters[gpu_id]) * sizeof(bool) ));
+        cudacheck( cudaMalloc( &d_is_GPU_HC_Sol_Infinity[gpu_id],       (Num_Of_Tracks*sub_RANSAC_iters[gpu_id]) * sizeof(bool) ));
 
-        magma_cmalloc( &d_Start_Sols[gpu_id],                       Num_Of_Tracks*(Num_Of_Vars+1) );
-        magma_cmalloc( &d_Start_Params[gpu_id],                     (Num_Of_Params+1) );
-        magma_cmalloc( &d_dHdx_PHC_Coeffs[gpu_id],                  dHdx_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id] );
-        magma_cmalloc( &d_dHdt_PHC_Coeffs[gpu_id],                  dHdt_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id] );
-        cudacheck( cudaMalloc( &d_dHdx_Index[gpu_id],               (dHdx_Index_Size) * sizeof(T_index_mat)) );
-        cudacheck( cudaMalloc( &d_dHdt_Index[gpu_id],               (dHdt_Index_Size) * sizeof(T_index_mat)) );
-        cudacheck( cudaMalloc( &d_unified_dHdx_dHdt_Index[gpu_id],  (unified_dHdx_dHdt_Index_Size) * sizeof(T_index_mat) ) );
-        magma_malloc( (void**) &d_Start_Sols_array[gpu_id],         Num_Of_Tracks * sizeof(magmaFloatComplex*) );
+        magma_cmalloc( &d_Start_Sols[gpu_id],                           Num_Of_Tracks*(Num_Of_Vars+1) );
+        magma_cmalloc( &d_Start_Params[gpu_id],                         (Num_Of_Params+1) );
+        magma_cmalloc( &d_dHdx_PHC_Coeffs[gpu_id],                      dHdx_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id] );
+        magma_cmalloc( &d_dHdt_PHC_Coeffs[gpu_id],                      dHdt_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id] );
+        cudacheck( cudaMalloc( &d_dHdx_Index[gpu_id],                   (dHdx_Index_Size) * sizeof(int)) );
+        cudacheck( cudaMalloc( &d_dHdt_Index[gpu_id],                   (dHdt_Index_Size) * sizeof(int)) );
+        cudacheck( cudaMalloc( &d_unified_dHdx_dHdt_Index[gpu_id],      (unified_dHdx_dHdt_Index_Size) * sizeof(int) ) );
     }
 }
 
-template< typename T_index_mat >
-bool GPU_HC_Solver<T_index_mat>::Read_Problem_Data() {
+bool GPU_HC_Solver::Read_Problem_Data() {
 
     //> Load problem data to arrays
     bool is_Data_Read_Successfully = false;
@@ -233,19 +232,18 @@ bool GPU_HC_Solver<T_index_mat>::Read_Problem_Data() {
     }
     
     //> (5) dH/dx and dH/dt evaluation indices
-    is_Data_Read_Successfully = Load_Problem_Data->Read_dHdx_Indices<T_index_mat>( h_dHdx_Index );
+    is_Data_Read_Successfully = Load_Problem_Data->Read_dHdx_Indices<int>( h_dHdx_Index );
     if (!is_Data_Read_Successfully) { LOG_DATA_LOAD_ERROR("dH/dx Evaluation Indices"); return false; }
 
-    is_Data_Read_Successfully = Load_Problem_Data->Read_dHdt_Indices<T_index_mat>( h_dHdt_Index );
+    is_Data_Read_Successfully = Load_Problem_Data->Read_dHdt_Indices<int>( h_dHdt_Index );
     if (!is_Data_Read_Successfully) { LOG_DATA_LOAD_ERROR("dH/dt Evaluation Indices"); return false; }
 
-    Load_Problem_Data->Read_unified_dHdx_dHdt_Indices<T_index_mat>( h_unified_dHdx_dHdt_Index, h_dHdx_Index, h_dHdt_Index, dHdx_Index_Size, dHdt_Index_Size );
+    Load_Problem_Data->Read_unified_dHdx_dHdt_Indices<int>( h_unified_dHdx_dHdt_Index, h_dHdx_Index, h_dHdt_Index, dHdx_Index_Size, dHdt_Index_Size );
     
     return true;
 }
 
-template< typename T_index_mat >
-bool GPU_HC_Solver<T_index_mat>::Read_RANSAC_Data( int tp_index ) {
+bool GPU_HC_Solver::Read_RANSAC_Data( int tp_index ) {
     //> Load problem data to arrays
     bool is_Data_Read_Successfully = false;
 
@@ -259,18 +257,21 @@ bool GPU_HC_Solver<T_index_mat>::Read_RANSAC_Data( int tp_index ) {
     h_Triplet_Edge_Locations  = new float[ Num_Of_Triplet_Edgels*2*3 ];
     h_Triplet_Edge_Tangents   = new float[ Num_Of_Triplet_Edgels*2*3 ];
 
-    //> (1) Camera intrinsic/extrinsic matrices
-    is_Data_Read_Successfully = Load_Problem_Data->Read_Camera_Matrices( h_Camera_Pose21, h_Camera_Pose31, h_Camera_Intrinsic_Matrix, tp_index );
-    if (!is_Data_Read_Successfully) { LOG_DATA_LOAD_ERROR("Camera Matrices"); return false; }
+    //> (1) Camera extrinsic matrices
+    is_Data_Read_Successfully = Load_Problem_Data->Read_Camera_Poses( h_Camera_Pose21, h_Camera_Pose31, tp_index );
+    if (!is_Data_Read_Successfully) { LOG_DATA_LOAD_ERROR("Camera Extrinsic Matrices"); return false; }
 
-    //> (2) Triplet edgel correspondences, convert data to edgel locations and tangents arrays
+    //> (2) Camera intrinsic matrix
+    is_Data_Read_Successfully = Load_Problem_Data->Read_Intrinsic_Matrix( h_Camera_Intrinsic_Matrix );
+    if (!is_Data_Read_Successfully) { LOG_DATA_LOAD_ERROR("Camera Intrinsic Matrices"); return false; }
+
+    //> (3) Triplet edgel correspondences, convert data to edgel locations and tangents arrays
     Load_Problem_Data->Read_Triplet_Edgels( h_Triplet_Edge_Locations, h_Triplet_Edge_Tangents );
 
     return true;
 }
 
-template< typename T_index_mat >
-void GPU_HC_Solver<T_index_mat>::Prepare_Target_Params( unsigned rand_seed_ ) {
+void GPU_HC_Solver::Prepare_Target_Params( unsigned rand_seed_ ) {
     unsigned Edgel_Indx[3] = {0};
     const int offset_for_tangents = 18;
     std::array<int, 3> picked_samples;
@@ -309,7 +310,7 @@ void GPU_HC_Solver<T_index_mat>::Prepare_Target_Params( unsigned rand_seed_ ) {
             }
             (h_Target_Params[gpu_id] + ti*(Num_Of_Params+1))[30] = MAGMA_C_MAKE(1.0, 0.0);
             (h_Target_Params[gpu_id] + ti*(Num_Of_Params+1))[31] = MAGMA_C_MAKE(0.5, 0.0);
-            (h_Target_Params[gpu_id] + ti*(Num_Of_Params+1))[32] = MAGMA_C_MAKE(-1.0, 0.0);
+            (h_Target_Params[gpu_id] + ti*(Num_Of_Params+1))[32] = MAGMA_C_MAKE(1.0, 0.0);
             (h_Target_Params[gpu_id] + ti*(Num_Of_Params+1))[33] = MAGMA_C_ONE;
 
             //> (2) Compute the difference of the start and target parameters in h_diffParams
@@ -337,36 +338,68 @@ void GPU_HC_Solver<T_index_mat>::Prepare_Target_Params( unsigned rand_seed_ ) {
 #endif
 }
 
-template< typename T_index_mat >
-void GPU_HC_Solver<T_index_mat>::Data_Transfer_From_Host_To_Device() {
+void GPU_HC_Solver::Set_RANSAC_Abort_Arrays() {
+
+    //> Allocate arrays and assign values to arrays for initialization
+    if (Abort_RANSAC_by_Good_Sol) {
+        for (int gpu_id = 0; gpu_id < Num_Of_GPUs; gpu_id++) {
+            dev_id = (Num_Of_GPUs == 1) ? (SET_GPU_DEVICE_ID) : (gpu_id);
+            magma_setdevice(dev_id);
+
+            //> CPU side
+            h_Found_Trifocal_Sols[gpu_id]           = new bool[ 1 ];
+            h_Trifocal_Sols_Batch_Index[gpu_id]     = new int[ Num_Of_Tracks * sub_RANSAC_iters[gpu_id] ];
+
+            //> Assign zeros for h_Found_Trifocal_Sols
+            h_Found_Trifocal_Sols[gpu_id][0] = 0;
+
+            //> Assign -1 to batch index of trifocal solutions
+            initialize_trifocal_sols_batch_index( Num_Of_Tracks*sub_RANSAC_iters[gpu_id], h_Trifocal_Sols_Batch_Index[gpu_id] );
+
+            //> GPU side
+            cudacheck( cudaMalloc( &d_Intrinsic_Matrix[gpu_id],             (9) * sizeof(float) ) );
+            cudacheck( cudaMalloc( &d_Triplet_Edge_Locations[gpu_id],       (Num_Of_Triplet_Edgels*2*3) * sizeof(float) ) );
+            cudacheck( cudaMalloc( &d_Found_Trifocal_Sols[gpu_id],          (1) * sizeof(bool) ) );
+            cudacheck( cudaMalloc( &d_Trifocal_Sols_Batch_Index[gpu_id],    (Num_Of_Tracks*sub_RANSAC_iters[gpu_id]) * sizeof(int) ) );
+        }
+    }
+    
+}
+
+void GPU_HC_Solver::Data_Transfer_From_Host_To_Device() {
 
     //> Loop over all requested GPUs
     for (int gpu_id = 0; gpu_id < Num_Of_GPUs; gpu_id++) {
-        magma_setdevice(gpu_id);
+        dev_id = (Num_Of_GPUs == 1) ? (SET_GPU_DEVICE_ID) : (gpu_id);
+        magma_setdevice(dev_id);
 
         magma_csetmatrix( Num_Of_Vars+1,   Num_Of_Tracks*sub_RANSAC_iters[gpu_id],  h_Homotopy_Sols[gpu_id],  (Num_Of_Vars+1),  d_Homotopy_Sols[gpu_id], Num_Of_Vars+1,     gpu_queues[gpu_id] );
         magma_csetmatrix( Num_Of_Vars+1,   Num_Of_Tracks,                           h_Start_Sols,     (Num_Of_Vars+1),  d_Start_Sols[gpu_id],    Num_Of_Vars+1,     gpu_queues[gpu_id] );
         magma_csetmatrix( Num_Of_Params+1, (1),                                     h_Start_Params,   Num_Of_Params+1,  d_Start_Params[gpu_id],  Num_Of_Params+1,   gpu_queues[gpu_id] );
         magma_csetmatrix( (Num_Of_Params+1)*sub_RANSAC_iters[gpu_id], (1), h_diffParams[gpu_id],    (Num_Of_Params+1)*sub_RANSAC_iters[gpu_id], d_diffParams[gpu_id],    (Num_Of_Params+1)*sub_RANSAC_iters[gpu_id], gpu_queues[gpu_id] );
         magma_csetmatrix( (Num_Of_Params+1)*sub_RANSAC_iters[gpu_id], (1), h_Target_Params[gpu_id], (Num_Of_Params+1)*sub_RANSAC_iters[gpu_id], d_Target_Params[gpu_id], (Num_Of_Params+1)*sub_RANSAC_iters[gpu_id], gpu_queues[gpu_id] );
-        cudacheck( cudaMemcpy( d_dHdx_Index[gpu_id], h_dHdx_Index,     dHdx_Index_Size * sizeof(T_index_mat), cudaMemcpyHostToDevice) );
-        cudacheck( cudaMemcpy( d_dHdt_Index[gpu_id], h_dHdt_Index,     dHdt_Index_Size * sizeof(T_index_mat), cudaMemcpyHostToDevice) );
-        cudacheck( cudaMemcpy( d_unified_dHdx_dHdt_Index[gpu_id], h_unified_dHdx_dHdt_Index, unified_dHdx_dHdt_Index_Size * sizeof(T_index_mat), cudaMemcpyHostToDevice) );
-
+        cudacheck( cudaMemcpy( d_dHdx_Index[gpu_id], h_dHdx_Index,     dHdx_Index_Size * sizeof(int), cudaMemcpyHostToDevice) );
+        cudacheck( cudaMemcpy( d_dHdt_Index[gpu_id], h_dHdt_Index,     dHdt_Index_Size * sizeof(int), cudaMemcpyHostToDevice) );
+        cudacheck( cudaMemcpy( d_unified_dHdx_dHdt_Index[gpu_id], h_unified_dHdx_dHdt_Index, unified_dHdx_dHdt_Index_Size * sizeof(int), cudaMemcpyHostToDevice) );
+        
         //> connect pointer to 2d arrays
         magma_cset_pointer( d_Start_Sols_array[gpu_id],    d_Start_Sols[gpu_id],     (Num_Of_Vars+1), 0, 0, (Num_Of_Vars+1), Num_Of_Tracks, gpu_queues[gpu_id] );
         magma_cset_pointer( d_Homotopy_Sols_array[gpu_id], d_Homotopy_Sols[gpu_id],  (Num_Of_Vars+1), 0, 0, (Num_Of_Vars+1), Num_Of_Tracks*sub_RANSAC_iters[gpu_id], gpu_queues[gpu_id] );
 
-        if (Use_P2C) {
+        if (Abort_RANSAC_by_Good_Sol) {
+            cudacheck( cudaMemcpy( d_Triplet_Edge_Locations[gpu_id], h_Triplet_Edge_Locations, (Num_Of_Triplet_Edgels*2*3) * sizeof(float), cudaMemcpyHostToDevice ) );
+            cudacheck( cudaMemcpy( d_Intrinsic_Matrix[gpu_id], h_Camera_Intrinsic_Matrix, (9) * sizeof(float), cudaMemcpyHostToDevice ) );
+            cudacheck( cudaMemcpy( d_Trifocal_Sols_Batch_Index[gpu_id], h_Trifocal_Sols_Batch_Index[gpu_id], (Num_Of_Tracks*sub_RANSAC_iters[gpu_id])*sizeof(int), cudaMemcpyHostToDevice ) );
+            cudacheck( cudaMemcpy( d_Found_Trifocal_Sols[gpu_id], h_Found_Trifocal_Sols[gpu_id], (1)*sizeof(bool), cudaMemcpyHostToDevice ) );
+
             magma_csetmatrix( dHdx_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id], (1), h_dHdx_PHC_Coeffs[gpu_id], dHdx_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id], d_dHdx_PHC_Coeffs[gpu_id], dHdx_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id], gpu_queues[gpu_id] );
             magma_csetmatrix( dHdt_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id], (1), h_dHdt_PHC_Coeffs[gpu_id], dHdt_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id], d_dHdt_PHC_Coeffs[gpu_id], dHdt_PHC_Coeffs_Size*sub_RANSAC_iters[gpu_id], gpu_queues[gpu_id] );
         }
     }
 }
 
-template< typename T_index_mat >
-void GPU_HC_Solver<T_index_mat>::Set_CUDA_Stream_Attributes() {
-    if (Use_L2_Persistent_Cache) {
+void GPU_HC_Solver::Set_CUDA_Stream_Attributes() {
+    if (GPU_arch_Ampere_and_above) {
         //> Set stream attribute
         for (int gpu_id = 0; gpu_id < Num_Of_GPUs; gpu_id++) {
             cudaStreamAttrValue stream_attribute_non_thrashing;
@@ -381,8 +414,7 @@ void GPU_HC_Solver<T_index_mat>::Set_CUDA_Stream_Attributes() {
     }
 }
 
-template< >
-void GPU_HC_Solver<int>::Solve_by_GPU_HC() {
+void GPU_HC_Solver::Solve_by_GPU_HC() {
     std::cout << "GPU computing ..." << std::endl << std::endl;
 
     //> Get kernel version number (coresponding to the google spreadsheet)
@@ -396,10 +428,11 @@ void GPU_HC_Solver<int>::Solve_by_GPU_HC() {
 
         //> Distribute workload across multiple GPUs
         for (int gpu_id = 0; gpu_id < Num_Of_GPUs; gpu_id++) {
-            magma_setdevice(gpu_id);
+            dev_id = (Num_Of_GPUs == 1) ? (SET_GPU_DEVICE_ID) : (gpu_id);
+            magma_setdevice(dev_id);
 
             switch(kernel_version) {
-                case 1: //> (#1) PH-(x), RKL-(x), inline(x), LimUnroll(x), L2Cache-(x), TrunPaths-(x) (Naive GPU-HC approach)
+                case 1: //> (#1) PH-(x), CodeOpt-(x), TrunPaths-(x), TrunRANSAC-(x) (Naive GPU-HC approach)
                     gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_P2C \
                         (gpu_queues[gpu_id], sub_RANSAC_iters[gpu_id], \
                          GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
@@ -408,7 +441,7 @@ void GPU_HC_Solver<int>::Solve_by_GPU_HC() {
                          d_dHdx_PHC_Coeffs[gpu_id],  d_dHdt_PHC_Coeffs[gpu_id], \
                          d_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], d_Debug_Purpose[gpu_id] );
                     break;
-                case 2:
+                case 2: //> (#2) PH-(v), CodeOpt-(x), TrunPaths-(x), TrunRANSAC-(x)
                     gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_PH \
                         (gpu_queues[gpu_id], sub_RANSAC_iters[gpu_id], \
                          GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
@@ -417,77 +450,68 @@ void GPU_HC_Solver<int>::Solve_by_GPU_HC() {
                          d_dHdx_Index[gpu_id],        d_dHdt_Index[gpu_id], \
                          d_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], d_Debug_Purpose[gpu_id] );
                     break;
-                case 3:
-                    gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL \
-                        (gpu_queues[gpu_id], sub_RANSAC_iters[gpu_id], \
-                         GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
-                         d_Start_Sols_array[gpu_id],  d_Homotopy_Sols_array[gpu_id], \
-                         d_Start_Params[gpu_id],      d_Target_Params[gpu_id], d_diffParams[gpu_id], \
-                         d_dHdx_Index[gpu_id],        d_dHdt_Index[gpu_id], \
-                         d_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], d_Debug_Purpose[gpu_id] );
+                case 3: //> (#3) PH-(v), CodeOpt-(v), TrunPaths-(x), TrunRANSAC-(x)
+                    if (GPU_arch_Ampere_and_above) {
+                        gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_PH_CodeOpt \
+                            (gpu_queues[gpu_id], sub_RANSAC_iters[gpu_id], \
+                            GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
+                            d_Start_Sols_array[gpu_id],  d_Homotopy_Sols_array[gpu_id], \
+                            d_Start_Params[gpu_id],      d_Target_Params[gpu_id], d_diffParams[gpu_id], \
+                            d_unified_dHdx_dHdt_Index[gpu_id], \
+                            d_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], d_Debug_Purpose[gpu_id] );
+                    }
+                    else {
+                        gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_PH_CodeOpt_Volta \
+                            (gpu_queues[gpu_id], sub_RANSAC_iters[gpu_id], \
+                            GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
+                            d_Start_Sols_array[gpu_id],  d_Homotopy_Sols_array[gpu_id], \
+                            d_Start_Params[gpu_id],      d_Target_Params[gpu_id], d_diffParams[gpu_id], \
+                            d_dHdx_Index[gpu_id],        d_dHdt_Index[gpu_id], \
+                            d_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], d_Debug_Purpose[gpu_id] );
+                    }
                     break;
-                case 4:
-                    gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_inline \
-                        (gpu_queues[gpu_id], sub_RANSAC_iters[gpu_id], \
-                         GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
-                         d_Start_Sols_array[gpu_id],  d_Homotopy_Sols_array[gpu_id], \
-                         d_Start_Params[gpu_id],      d_Target_Params[gpu_id], d_diffParams[gpu_id], \
-                         d_dHdx_Index[gpu_id],        d_dHdt_Index[gpu_id], \
-                         d_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], d_Debug_Purpose[gpu_id] );
+                case 4: //> (#4) PH-(v), CodeOpt-(v), TrunPaths-(v), TrunRANSAC-(x)
+                    if (GPU_arch_Ampere_and_above) {
+                        gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_PH_CodeOpt_TrunPaths \
+                            (gpu_queues[gpu_id], sub_RANSAC_iters[gpu_id], \
+                            GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
+                            d_Start_Sols_array[gpu_id], d_Homotopy_Sols_array[gpu_id], \
+                            d_Start_Params[gpu_id],     d_Target_Params[gpu_id], d_diffParams[gpu_id], 
+                            d_unified_dHdx_dHdt_Index[gpu_id], \
+                            d_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], d_Debug_Purpose[gpu_id] );
+                    }
+                    else {
+                        gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_PH_CodeOpt_TrunPaths_Volta \
+                            (gpu_queues[gpu_id], sub_RANSAC_iters[gpu_id], \
+                            GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
+                            d_Start_Sols_array[gpu_id], d_Homotopy_Sols_array[gpu_id], \
+                            d_Start_Params[gpu_id],     d_Target_Params[gpu_id], d_diffParams[gpu_id], 
+                            d_dHdx_Index[gpu_id],       d_dHdt_Index[gpu_id], \
+                            d_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], d_Debug_Purpose[gpu_id] );
+                    }
                     break;
-                case 5:
-                    gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_inline_LimUnroll \
-                        (gpu_queues[gpu_id], sub_RANSAC_iters[gpu_id], \
-                         GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
-                         d_Start_Sols_array[gpu_id],  d_Homotopy_Sols_array[gpu_id], \
-                         d_Start_Params[gpu_id],      d_Target_Params[gpu_id], d_diffParams[gpu_id], \
-                         d_dHdx_Index[gpu_id],        d_dHdt_Index[gpu_id], \
-                         d_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], d_Debug_Purpose[gpu_id] );
-                    break;
-                case 6:
-                    gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_inline_LimUnroll_L2Cache \
-                        (gpu_queues[gpu_id], sub_RANSAC_iters[gpu_id], \
-                         GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
-                         d_Start_Sols_array[gpu_id], d_Homotopy_Sols_array[gpu_id], \
-                         d_Start_Params[gpu_id],     d_Target_Params[gpu_id], d_diffParams[gpu_id], 
-                         d_unified_dHdx_dHdt_Index[gpu_id], \
-                         d_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], d_Debug_Purpose[gpu_id] );
-                    break;
-                case 7:
-                    gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_inline_LimUnroll_L2Cache_TrunPaths \
-                        (gpu_queues[gpu_id], sub_RANSAC_iters[gpu_id], \
-                         GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
-                         d_Start_Sols_array[gpu_id], d_Homotopy_Sols_array[gpu_id], \
-                         d_Start_Params[gpu_id],     d_Target_Params[gpu_id], d_diffParams[gpu_id], 
-                         d_unified_dHdx_dHdt_Index[gpu_id], \
-                         d_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], d_Debug_Purpose[gpu_id] );
-                    break;
-                case 8:
-                    gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_LimUnroll \
-                        (gpu_queues[gpu_id], sub_RANSAC_iters[gpu_id], \
-                         GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
-                         d_Start_Sols_array[gpu_id], d_Homotopy_Sols_array[gpu_id], \
-                         d_Start_Params[gpu_id],     d_Target_Params[gpu_id], d_diffParams[gpu_id], 
-                         d_dHdx_Index[gpu_id],       d_dHdt_Index[gpu_id], \
-                         d_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], d_Debug_Purpose[gpu_id] );
-                    break;
-                case 9:
-                    gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_LimUnroll_L2Cache \
-                        (gpu_queues[gpu_id], sub_RANSAC_iters[gpu_id], \
-                         GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
-                         d_Start_Sols_array[gpu_id], d_Homotopy_Sols_array[gpu_id], \
-                         d_Start_Params[gpu_id],     d_Target_Params[gpu_id], d_diffParams[gpu_id], 
-                         d_unified_dHdx_dHdt_Index[gpu_id], \
-                         d_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], d_Debug_Purpose[gpu_id] );
-                    break;
-                case 10:
-                    gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_LimUnroll_L2Cache_TrunPaths \
-                        (gpu_queues[gpu_id], sub_RANSAC_iters[gpu_id], \
-                         GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
-                         d_Start_Sols_array[gpu_id], d_Homotopy_Sols_array[gpu_id], \
-                         d_Start_Params[gpu_id],     d_Target_Params[gpu_id], d_diffParams[gpu_id], 
-                         d_unified_dHdx_dHdt_Index[gpu_id], \
-                         d_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], d_Debug_Purpose[gpu_id] );
+                case 5: //> (#5) PH-(v), CodeOpt-(v), TrunPaths-(v), TrunRANSAC-(v)
+                    if (GPU_arch_Ampere_and_above) {
+                        gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_PH_CodeOpt_TrunPaths_TrunRANSAC \
+                            (gpu_queues[gpu_id], sub_RANSAC_iters[gpu_id], \
+                            Num_Of_Triplet_Edgels, GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
+                            d_Start_Sols_array[gpu_id], d_Homotopy_Sols_array[gpu_id], \
+                            d_Start_Params[gpu_id],     d_Target_Params[gpu_id], d_diffParams[gpu_id], 
+                            d_unified_dHdx_dHdt_Index[gpu_id], d_Triplet_Edge_Locations[gpu_id], d_Intrinsic_Matrix[gpu_id], \
+                            d_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], d_Debug_Purpose[gpu_id], \
+                            d_Found_Trifocal_Sols[gpu_id], d_Trifocal_Sols_Batch_Index[gpu_id] );
+                    }
+                    else {
+                        gpu_time[gpu_id] = kernel_GPUHC_trifocal_2op1p_30x30_PH_CodeOpt_TrunPaths_TrunRANSAC_Volta \
+                            (gpu_queues[gpu_id], sub_RANSAC_iters[gpu_id], \
+                            Num_Of_Triplet_Edgels, GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
+                            d_Start_Sols_array[gpu_id], d_Homotopy_Sols_array[gpu_id], \
+                            d_Start_Params[gpu_id],     d_Target_Params[gpu_id], d_diffParams[gpu_id], 
+                            d_dHdx_Index[gpu_id],       d_dHdt_Index[gpu_id], \
+                            d_Triplet_Edge_Locations[gpu_id], d_Intrinsic_Matrix[gpu_id], \
+                            d_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], d_Debug_Purpose[gpu_id], \
+                            d_Found_Trifocal_Sols[gpu_id], d_Trifocal_Sols_Batch_Index[gpu_id] );
+                    }
                     break;
                 default:
                     break;
@@ -497,7 +521,8 @@ void GPU_HC_Solver<int>::Solve_by_GPU_HC() {
 
     //> Sync across all GPUs before measuring elapsed time
     for(magma_int_t gpu_id = 0; gpu_id < Num_Of_GPUs; gpu_id++) {
-        magma_setdevice(gpu_id);
+        dev_id = (Num_Of_GPUs == 1) ? (SET_GPU_DEVICE_ID) : (gpu_id);
+        magma_setdevice(dev_id);
         magma_queue_sync( gpu_queues[gpu_id] );
     }
     //> End the timer
@@ -505,11 +530,36 @@ void GPU_HC_Solver<int>::Solve_by_GPU_HC() {
 
     //> Check returns from the GPU kernel
     for (int gpu_id = 0; gpu_id < Num_Of_GPUs; gpu_id++) {
-        magma_setdevice(gpu_id);
+        dev_id = (Num_Of_GPUs == 1) ? (SET_GPU_DEVICE_ID) : (gpu_id);
+        magma_setdevice(dev_id);
         magma_cgetmatrix( (Num_Of_Vars+1), Num_Of_Tracks*sub_RANSAC_iters[gpu_id], d_Homotopy_Sols[gpu_id],  (Num_Of_Vars+1), h_GPU_HC_Track_Sols[gpu_id],    (Num_Of_Vars+1), gpu_queues[gpu_id] );
         cudacheck( cudaMemcpy( h_is_GPU_HC_Sol_Converge[gpu_id], d_is_GPU_HC_Sol_Converge[gpu_id], Num_Of_Tracks*sub_RANSAC_iters[gpu_id]*sizeof(bool), cudaMemcpyDeviceToHost) );
         cudacheck( cudaMemcpy( h_is_GPU_HC_Sol_Infinity[gpu_id], d_is_GPU_HC_Sol_Infinity[gpu_id], Num_Of_Tracks*sub_RANSAC_iters[gpu_id]*sizeof(bool), cudaMemcpyDeviceToHost) );
+        
+        if (Abort_RANSAC_by_Good_Sol) {
+            cudacheck( cudaMemcpy( h_Found_Trifocal_Sols[gpu_id], d_Found_Trifocal_Sols[gpu_id], (1)*sizeof(bool), cudaMemcpyDeviceToHost) );
+            cudacheck( cudaMemcpy( h_Trifocal_Sols_Batch_Index[gpu_id], d_Trifocal_Sols_Batch_Index[gpu_id], (Num_Of_Tracks*sub_RANSAC_iters[gpu_id])*sizeof(int), cudaMemcpyDeviceToHost) );
+        }
     }
+
+    //> For early aborting RANSAC process debugging...
+    if (Abort_RANSAC_by_Good_Sol) {
+        for (magma_int_t gpu_id = 0; gpu_id < Num_Of_GPUs; gpu_id++) {
+            std::string found_sol_str = (h_Found_Trifocal_Sols[gpu_id][0]) ? "Yes" : "No";
+            std::cout << "GPU id " << gpu_id << " found solution? " << found_sol_str;
+            if (h_Found_Trifocal_Sols[gpu_id][0]) {
+                std::cout << " / Found solution batch index = ";
+                for (int i = 0; i < Num_Of_Tracks*sub_RANSAC_iters[gpu_id]; i++) {
+                    if ( (h_Trifocal_Sols_Batch_Index[gpu_id])[i] != -1) {
+                        candidate_batch_ids.push_back( h_Trifocal_Sols_Batch_Index[gpu_id][i] );
+                        std::cout << h_Trifocal_Sols_Batch_Index[gpu_id][i] << ", ";
+                    }
+                }
+            }
+            std::cout << std::endl;
+        }
+    }
+    
 
 #if GPU_DEBUG
     magma_cgetmatrix( Num_Of_Tracks, NUM_OF_RANSAC_ITERATIONS, d_Debug_Purpose, Num_Of_Tracks, h_Debug_Purpose, Num_Of_Tracks, gpu_queues[0] );
@@ -523,13 +573,7 @@ void GPU_HC_Solver<int>::Solve_by_GPU_HC() {
 
     //> Print out timings
     printf("## Timings:\n");
-    printf(" - GPU Computation Time from magma_wtime = %7.2f (ms)\n", (multi_GPUs_time)*1000);
-    // printf(" - GPU Computation Time from magma_sync_wtime:\n");
-    // for (int gpu_id = 0; gpu_id < Num_Of_GPUs; gpu_id++) {
-    //     printf("   GPU %d: elapsed time = %5.2f ms (Data transfer time: CPU->GPU = %5.2f ms, GPU->CPU = %5.2f ms)\n", \
-    //                gpu_id, gpu_time[gpu_id]*1000, transfer_h2d_time[gpu_id]*1000, transfer_d2h_time[gpu_id]*1000 );
-    //     gpu_max_time_from_multiple_GPUs = (gpu_time[gpu_id] > gpu_max_time_from_multiple_GPUs) ? gpu_time[gpu_id] : gpu_max_time_from_multiple_GPUs;
-    // }
+    printf(" - GPU Computation Time = %7.2f (ms)\n", (multi_GPUs_time)*1000);
 
     //> First stack all results
     int offset_stack = 0;
@@ -564,6 +608,13 @@ void GPU_HC_Solver<int>::Solve_by_GPU_HC() {
 
     //> Reset the number of solutions
     Evaluate_GPUHC_Sols->Flush_Out_Data();
+
+#if DEBUG_EARLY_RANSAC_ABORT
+    if (Abort_RANSAC_by_Good_Sol) {
+        Evaluate_GPUHC_Sols->Check_Deviations_of_Veridical_Sol_from_GT( h_GPU_HC_Track_Sols_Stack + (Num_Of_Vars+1)*candidate_batch_ids[0], h_Camera_Pose21, h_Camera_Pose31 );
+        candidate_batch_ids.clear();
+    }
+#endif   
     // if (find_good_sol)
     //     Evaluate_GPUHC_Sols->Measure_Relative_Pose_Error( h_Camera_Pose21, h_Camera_Pose31, h_Debug_Purpose );
 
@@ -594,28 +645,40 @@ void GPU_HC_Solver<int>::Solve_by_GPU_HC() {
     // }
 }
 
-template< >
-void GPU_HC_Solver<char>::Solve_by_GPU_HC() { }
-
-// template< typename T_index_mat >
-// void GPU_HC_Solver<T_index_mat>::Export_Data() {
+// template< typename int >
+// void GPU_HC_Solver<int>::Export_Data() {
 //     Evaluate_GPUHC_Sols->Write_HC_Steps_of_Actual_Solutions( GPUHC_Actual_Sols_Steps_Collections );
 // }
 
-template< typename T_index_mat >
-void GPU_HC_Solver<T_index_mat>::Free_Triplet_Edgels_Mem() {
+void GPU_HC_Solver::Free_Arrays_for_Aborting_RANSAC() {
+    if (Abort_RANSAC_by_Good_Sol) {
+        for (int gpu_id = 0; gpu_id < Num_Of_GPUs; gpu_id++) {
+            dev_id = (Num_Of_GPUs == 1) ? (SET_GPU_DEVICE_ID) : (gpu_id);
+            magma_setdevice(dev_id);
+
+            magma_free_cpu( h_Found_Trifocal_Sols[gpu_id] );
+            magma_free_cpu( h_Trifocal_Sols_Batch_Index[gpu_id] );
+            magma_free( d_Triplet_Edge_Locations[gpu_id] );
+            magma_free( d_Found_Trifocal_Sols[gpu_id] );
+            magma_free( d_Trifocal_Sols_Batch_Index[gpu_id] );
+            magma_free( d_Intrinsic_Matrix[gpu_id] );
+        }
+    }
+}
+
+void GPU_HC_Solver::Free_Triplet_Edgels_Mem() {
     delete [] h_Triplet_Edge_Locations;
     delete [] h_Triplet_Edge_Tangents;
 }
 
-template< typename T_index_mat >
-GPU_HC_Solver<T_index_mat>::~GPU_HC_Solver() {
+GPU_HC_Solver::~GPU_HC_Solver() {
 
     // delete [] devices;
     // magma_queue_destroy( gpu_queues[0] );
     //> Destroy queues
 	for(magma_int_t gpu_id = 0; gpu_id < Num_Of_GPUs; gpu_id++) {
-	    magma_setdevice(gpu_id);
+        dev_id = (Num_Of_GPUs == 1) ? (SET_GPU_DEVICE_ID) : (gpu_id);
+	    magma_setdevice(dev_id);
 	    magma_queue_destroy( gpu_queues[gpu_id] );
 	}
 
@@ -635,13 +698,15 @@ GPU_HC_Solver<T_index_mat>::~GPU_HC_Solver() {
     delete [] h_unified_dHdx_dHdt_Index;
     delete [] h_dHdx_Index;
     delete [] h_dHdt_Index;
+    delete [] h_Camera_Intrinsic_Matrix;
 
     magma_free_cpu( h_Start_Sols );
     magma_free_cpu( h_Start_Params );
     magma_free_cpu( h_GPU_HC_Track_Sols_Stack );
     
     for (int gpu_id = 0; gpu_id < Num_Of_GPUs; gpu_id++) {
-        magma_setdevice(gpu_id);
+        dev_id = (Num_Of_GPUs == 1) ? (SET_GPU_DEVICE_ID) : (gpu_id);
+        magma_setdevice(dev_id);
         magma_free( d_diffParams[gpu_id] );
         magma_free( d_is_GPU_HC_Sol_Converge[gpu_id] );
         magma_free( d_is_GPU_HC_Sol_Infinity[gpu_id] );
@@ -654,7 +719,7 @@ GPU_HC_Solver<T_index_mat>::~GPU_HC_Solver() {
         magma_free( d_Debug_Purpose[gpu_id] );
         magma_free( d_Homotopy_Sols_array[gpu_id] );
         magma_free( d_Start_Sols_array[gpu_id] );
-        magma_free( d_unified_dHdx_dHdt_Index[gpu_id] );
+        magma_free( d_unified_dHdx_dHdt_Index[gpu_id] );        
         cudacheck( cudaFree( d_dHdx_Index[gpu_id] ) );
         cudacheck( cudaFree( d_dHdt_Index[gpu_id] ) );
     }
@@ -663,8 +728,5 @@ GPU_HC_Solver<T_index_mat>::~GPU_HC_Solver() {
     printf( "\n" );
     magma_finalize();
 }
-
-template class GPU_HC_Solver<int>;
-template class GPU_HC_Solver<char>;
 
 #endif

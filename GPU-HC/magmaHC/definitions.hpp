@@ -6,7 +6,7 @@
 
 //> GPU Settings
 #define MAX_NUM_OF_GPUS                         (8)
-#define SET_GPU_DEVICE_ID                       (1)     //> This is a TODO. Device id starts from 0
+#define SET_GPU_DEVICE_ID                       (0) //> GPU device ID when only one GPU is used
 
 //> RANSAC Settings
 #define NUM_OF_RANSAC_ITERATIONS                (100)
@@ -15,10 +15,8 @@
 #define TRANSL_RESIDUAL_TOL                     (1e-1)
 #define TEST_RANSAC_TIMES                       (50)
 #define REPROJ_ERROR_INLIER_THRESH              (2) //> in pixels
+#define PASS_RANSAC_INLIER_SUPPORT_RATIO        (0.90)
 #define FEED_RANDOM_SEED                        (false)     //> if true, each run is different
-
-//> Settings for GPU-HC Kernel
-#define TRUNCATE_HC_PATH_THRESH                 (0.95)
 
 //> Evaluation macros
 #define WRITE_GPUHC_CONVERGED_SOLS              (false)
@@ -34,6 +32,7 @@
 #define DATA_READER_DEBUG                       (false)
 #define RANSAC_DEBUG                            (false)
 #define DEBUG_L2_PERSISTENT_CACHE               (true)
+#define DEBUG_EARLY_RANSAC_ABORT                (false)
 
 //> [DO NOT CHANGE] The following macros are constant. They are used for shuffle operation in a warp level.
 #define FULL_MASK                               (0xffffffff)

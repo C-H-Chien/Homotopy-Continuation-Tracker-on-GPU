@@ -218,8 +218,71 @@ void Evaluations::Find_Unique_Sols( magmaFloatComplex *h_GPU_HC_Track_Sols, bool
 #endif
 }
 
+void Evaluations::Convert_Trifocal_Translation( magmaFloatComplex *h_GPU_HC_Track_Sols ) {
+  //> \transl_{21}
+  Transl21[0] = MAGMA_C_REAL(h_GPU_HC_Track_Sols[18]);
+  Transl21[1] = MAGMA_C_REAL(h_GPU_HC_Track_Sols[19]);
+  Transl21[2] = MAGMA_C_REAL(h_GPU_HC_Track_Sols[20]);
+  MVG_Utility->Normalize_Translation_Vector( Transl21 );
+  std::copy(Transl21, Transl21 + 3, begin(normalized_t21));
+  
+  //> \transl_{31}
+  Transl31[0] = MAGMA_C_REAL(h_GPU_HC_Track_Sols[21]);
+  Transl31[1] = MAGMA_C_REAL(h_GPU_HC_Track_Sols[22]);
+  Transl31[2] = MAGMA_C_REAL(h_GPU_HC_Track_Sols[23]);
+  MVG_Utility->Normalize_Translation_Vector( Transl31 );
+  std::copy(Transl31, Transl31 + 3, begin(normalized_t31));
+}
+
+void Evaluations::Convert_Trifocal_Rotation( magmaFloatComplex *h_GPU_HC_Track_Sols ) {
+  //> \rot_{21}
+  Rot21[0] = MAGMA_C_REAL(h_GPU_HC_Track_Sols[24]);
+  Rot21[1] = MAGMA_C_REAL(h_GPU_HC_Track_Sols[25]);
+  Rot21[2] = MAGMA_C_REAL(h_GPU_HC_Track_Sols[26]);
+  MVG_Utility->Cayley_To_Rotation_Matrix( Rot21, Sol_Rotm_21 );
+  std::copy(Sol_Rotm_21, Sol_Rotm_21 + 9, begin(normalized_R21));
+  
+  //> \rot_{31}
+  Rot31[0] = MAGMA_C_REAL(h_GPU_HC_Track_Sols[27]);
+  Rot31[1] = MAGMA_C_REAL(h_GPU_HC_Track_Sols[28]);
+  Rot31[2] = MAGMA_C_REAL(h_GPU_HC_Track_Sols[29]);
+  MVG_Utility->Cayley_To_Rotation_Matrix( Rot31, Sol_Rotm_31 );
+  std::copy(Sol_Rotm_31, Sol_Rotm_31 + 9, begin(normalized_R31));
+}
+
+void Evaluations::Check_Deviations_of_Veridical_Sol_from_GT( magmaFloatComplex *h_GPU_HC_Track_Sols, float GT_Pose21[12], float GT_Pose31[12] ) {
+  //> Retrieve translation. The results are normalized_t21 and normalized_t31.
+  Convert_Trifocal_Translation( h_GPU_HC_Track_Sols );
+
+  //> Retrieve rotation. The results are normalized_R21 and normalized_R31.
+  Convert_Trifocal_Rotation( h_GPU_HC_Track_Sols );
+
+  //> Decompose the GT pose into rotation and translation
+  get_GT_Rotation( GT_Pose21, GT_Rot21 );
+  get_GT_Rotation( GT_Pose31, GT_Rot31 );
+  get_GT_Translation( GT_Pose21, GT_Transl21 );
+  get_GT_Translation( GT_Pose31, GT_Transl31 );
+
+  //> Normalize the GT translations
+  MVG_Utility->Normalize_Translation_Vector( GT_Transl21 );
+  MVG_Utility->Normalize_Translation_Vector( GT_Transl31 );
+  std::cout << "GT translation_21 = (" << GT_Transl21[0] << ", " << GT_Transl21[1] << ", " << GT_Transl21[2] << ")" << std::endl;
+  std::cout << "GT translation_31 = (" << GT_Transl31[0] << ", " << GT_Transl31[1] << ", " << GT_Transl31[2] << ")" << std::endl;
+  std::cout << "Sol translation_21 = (" << normalized_t21[0] << ", " << normalized_t21[1] << ", " << normalized_t21[2] << ")" << std::endl;
+  std::cout << "Sol translation_31 = (" << normalized_t31[0] << ", " << normalized_t31[1] << ", " << normalized_t31[2] << ")" << std::endl;
+
+  //> Calculate the residuals 
+  float residual_R21 = get_Rotation_Residual( GT_Rot21, normalized_R21 );
+  float residual_R31 = get_Rotation_Residual( GT_Rot31, normalized_R31 );
+  float residual_t21 = get_Translation_Residual( GT_Transl21, normalized_t21 );
+  float residual_t31 = get_Translation_Residual( GT_Transl31, normalized_t31 );
+
+  std::cout << "Residuals in Rotations:    (R21) " << residual_R21 << " (R31) " << residual_R31 << std::endl;
+  std::cout << "Residuals in Translations: (t21) " << residual_t21 << " (t31) " << residual_t31 << std::endl;
+}
+
 void Evaluations::Transform_GPUHC_Sols_to_Trifocal_Relative_Pose( \
-  magmaFloatComplex *h_GPU_HC_Track_Sols, bool *h_is_GPU_HC_Sol_Converge, float IntrinsicMatrix[9] ) {
+  magmaFloatComplex *h_GPU_HC_Track_Sols, bool *h_is_GPU_HC_Sol_Converge, float *IntrinsicMatrix ) {
 //> ----------------------------------------------------------------------------------
 //> !!Note!! This function is specifically desgined for trifocal 2op1p 30x30 problem
 //> ----------------------------------------------------------------------------------
@@ -257,36 +320,12 @@ void Evaluations::Transform_GPUHC_Sols_to_Trifocal_Relative_Pose( \
       }
       if (positive_depth_counter < 8) continue;
 
-      //> \transl_{21}
-      Transl21[0] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset)[18]);
-      Transl21[1] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset)[19]);
-      Transl21[2] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset)[20]);
-      MVG_Utility->Normalize_Translation_Vector( Transl21 );
-      std::copy(Transl21, Transl21 + 3, begin(normalized_t21));
+      Convert_Trifocal_Translation( h_GPU_HC_Track_Sols );
       normalized_t21s.push_back( normalized_t21 );
-
-      //> \transl_{31}
-      Transl31[0] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset)[21]);
-      Transl31[1] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset)[22]);
-      Transl31[2] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset)[23]);
-      MVG_Utility->Normalize_Translation_Vector( Transl31 );
-      std::copy(Transl31, Transl31 + 3, begin(normalized_t31));
       normalized_t31s.push_back( normalized_t31 );
 
-      //> \rot_{21}
-      Rot21[0] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset)[24]);
-      Rot21[1] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset)[25]);
-      Rot21[2] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset)[26]);
-      MVG_Utility->Cayley_To_Rotation_Matrix( Rot21, Sol_Rotm_21 );
-      std::copy(Sol_Rotm_21, Sol_Rotm_21 + 9, begin(normalized_R21));
+      Convert_Trifocal_Rotation( h_GPU_HC_Track_Sols );
       normalized_R21s.push_back( normalized_R21 );
-
-      //> \rot_{31}
-      Rot31[0] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset)[27]);
-      Rot31[1] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset)[28]);
-      Rot31[2] = MAGMA_C_REAL((h_GPU_HC_Track_Sols + RANSAC_Sol_Offset)[29]);
-      MVG_Utility->Cayley_To_Rotation_Matrix( Rot31, Sol_Rotm_31 );
-      std::copy(Sol_Rotm_31, Sol_Rotm_31 + 9, begin(normalized_R31));
       normalized_R31s.push_back( normalized_R31 );
 
       //> Compute the fundamental matrix used to find the maximal inliers support
@@ -326,7 +365,7 @@ float Evaluations::get_Translation_Residual(float* GT_Transl, std::array<float, 
   return std::fabs(Transl_Dot_Prod - 1.0);
 }
 
-bool Evaluations::get_Solution_with_Maximal_Support( unsigned Num_Of_Triplet_Edgels, float* h_Triplet_Edge_Locations, float* h_Triplet_Edge_Tangents, float K[9] ) {
+bool Evaluations::get_Solution_with_Maximal_Support( unsigned Num_Of_Triplet_Edgels, float* h_Triplet_Edge_Locations, float* h_Triplet_Edge_Tangents, float *K ) {
 
   std::array<float, 3> Rel_t21;
   std::array<float, 3> Rel_t31;
@@ -467,7 +506,7 @@ void Evaluations::get_HC_Steps_of_Actual_Sols( magmaFloatComplex *h_Debug_Purpos
   } 
 }
 
-void Evaluations::Measure_Relative_Pose_Error( float GT_Pose21[12], float GT_Pose31[12], magmaFloatComplex *h_Debug_Purpose ) {
+void Evaluations::Measure_Relative_Pose_Error( float GT_Pose21[12], float GT_Pose31[12] ) {
   //> Decompose the GT pose into rotation and translation
   get_GT_Rotation( GT_Pose21, GT_Rot21 );
   get_GT_Rotation( GT_Pose31, GT_Rot31 );

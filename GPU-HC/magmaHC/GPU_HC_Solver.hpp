@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <cstdio>
 #include <iostream>
+#include <string>
 #include <iomanip>
 #include <cstring>
 #include <chrono>
@@ -30,12 +31,12 @@
 class Data_Reader;
 class Evaluations;
 
-template< typename T_index_mat >
 class GPU_HC_Solver {
     
     magma_device_t cdev;                        // variable to indicate current gpu id
     magma_device_t cdevs;                       // variable to indicate gpu ids (for multiple GPUs)
     magma_queue_t  gpu_queues[MAX_NUM_OF_GPUS];  // magma queue variable, internally holds a cuda stream and a cublas handle
+    magma_int_t    dev_id;
 
     //> Varaibles as sizes of arrays
     magma_int_t             dHdx_Index_Size;
@@ -54,14 +55,17 @@ class GPU_HC_Solver {
     bool                    *h_is_GPU_HC_Sol_Infinity[MAX_NUM_OF_GPUS] = {NULL};
     magmaFloatComplex              *h_dHdx_PHC_Coeffs[MAX_NUM_OF_GPUS] = {NULL};
     magmaFloatComplex              *h_dHdt_PHC_Coeffs[MAX_NUM_OF_GPUS] = {NULL};
+    bool                       *h_Found_Trifocal_Sols[MAX_NUM_OF_GPUS] = {NULL};    //> Indication of whether solutions are found for early aborting RANSAC process
+    int                  *h_Trifocal_Sols_Batch_Index[MAX_NUM_OF_GPUS] = {NULL};    //> The solution index of which RANSAC is early aborted
+    float                   *h_Camera_Intrinsic_Matrix;
     magmaFloatComplex       *h_Start_Sols;
     magmaFloatComplex       *h_Start_Params;
-    T_index_mat             *h_dHdx_Index;
-    T_index_mat             *h_dHdt_Index;
-    T_index_mat             *h_unified_dHdx_dHdt_Index;
+    int                     *h_dHdx_Index;
+    int                     *h_dHdt_Index;
+    int                     *h_unified_dHdx_dHdt_Index;
+    
     float                   *h_Triplet_Edge_Locations;      //> in metrics
     float                   *h_Triplet_Edge_Tangents;       //> in metrics
-    float                   h_Camera_Intrinsic_Matrix[9];
     float                   h_Camera_Pose21[12];
     float                   h_Camera_Pose31[12];
 
@@ -81,10 +85,14 @@ class GPU_HC_Solver {
     magmaFloatComplex_ptr      d_Start_Params[MAX_NUM_OF_GPUS] = {NULL};
     magmaFloatComplex_ptr   d_dHdx_PHC_Coeffs[MAX_NUM_OF_GPUS] = {NULL};
     magmaFloatComplex_ptr   d_dHdt_PHC_Coeffs[MAX_NUM_OF_GPUS] = {NULL};
-    T_index_mat                 *d_dHdx_Index[MAX_NUM_OF_GPUS] = {NULL};
-    T_index_mat                 *d_dHdt_Index[MAX_NUM_OF_GPUS] = {NULL};
-    T_index_mat    *d_unified_dHdx_dHdt_Index[MAX_NUM_OF_GPUS] = {NULL};
+    int                 *d_dHdx_Index[MAX_NUM_OF_GPUS] = {NULL};
+    int                 *d_dHdt_Index[MAX_NUM_OF_GPUS] = {NULL};
+    int    *d_unified_dHdx_dHdt_Index[MAX_NUM_OF_GPUS] = {NULL};
     magmaFloatComplex    **d_Start_Sols_array[MAX_NUM_OF_GPUS] = {NULL};
+    float           *d_Triplet_Edge_Locations[MAX_NUM_OF_GPUS] = {NULL};
+    float                 *d_Intrinsic_Matrix[MAX_NUM_OF_GPUS] = {NULL};
+    bool               *d_Found_Trifocal_Sols[MAX_NUM_OF_GPUS] = {NULL};
+    int          *d_Trifocal_Sols_Batch_Index[MAX_NUM_OF_GPUS] = {NULL};
     
 public:
     bool                    Use_P2C;
@@ -98,7 +106,7 @@ public:
 
     //> Constructor
     GPU_HC_Solver() {};
-    GPU_HC_Solver( YAML::Node, int );
+    GPU_HC_Solver( YAML::Node );
     
     //> Member functions
     bool Read_Problem_Data();
@@ -107,9 +115,11 @@ public:
     void Prepare_Target_Params( unsigned rand_seed_ );
     void Data_Transfer_From_Host_To_Device();
     void Set_CUDA_Stream_Attributes();
+    void Set_RANSAC_Abort_Arrays();
     void Solve_by_GPU_HC();
     void Export_Data();
     void Free_Triplet_Edgels_Mem();
+    void Free_Arrays_for_Aborting_RANSAC();
 
     //> Destructor
     ~GPU_HC_Solver();
@@ -141,42 +151,39 @@ private:
     double Num_Of_MBytes_Persistent_Data;
     double Num_Of_MBytes_Persistent_Cache;
 
-    //> GPU kernel settings from YAML file
-    bool Use_Runge_Kutta_in_a_Loop;
-    int Data_Size_for_Indices;
-    std::string Mem_for_Indices;
-    bool Inline_Eval_Functions;
-    bool Limit_Loop_Unroll;
-    bool Use_L2_Persistent_Cache;
+    //> GPU kernel settings from YAML file (merging all code implementation optimization)
+    bool Use_Merge_Code_Optimization;
 
     //> Algorithmic settings from YAML file
     bool Truncate_HC_Path_by_Positive_Depths;
+    bool Abort_RANSAC_by_Good_Sol;
+
+    //> GPU atchitecture enabler
+    bool GPU_arch_Ampere_and_above;
+
+    //> Assign -1 to batch index of trifocal solutions. This is used for early aborting RANSAC purpose.
+    void initialize_trifocal_sols_batch_index( int Num_Of_Batches, int* &h_Trifocal_Sols_Batch_Index ) {
+        for (int i = 0; i < Num_Of_Batches; i++)
+            h_Trifocal_Sols_Batch_Index[i] = -1;
+    }
 
     void print_kernel_mode() {
-        std::string str_32b         = (Data_Size_for_Indices == 32) ? "v" : "x";
-        std::string str_GM          = (Mem_for_Indices == "GM") ? "v" : "x";
-        std::string str_RKL         = (Use_Runge_Kutta_in_a_Loop) ? "v" : "x";
-        std::string str_inline      = (Inline_Eval_Functions) ? "v" : "x";
-        std::string str_lim_unroll  = (Limit_Loop_Unroll) ? "v" : "x";
-        std::string str_trunc_path  = (Truncate_HC_Path_by_Positive_Depths) ? "v" : "x";
-        std::string str_l2_cache    = (Use_L2_Persistent_Cache) ? "v" : "x";
+        
+        std::string str_code_opt     = (Use_Merge_Code_Optimization) ? "v" : "x";
+        std::string str_trunc_path   = (Truncate_HC_Path_by_Positive_Depths) ? "v" : "x";
+        std::string str_Abort_RANSAC = (Abort_RANSAC_by_Good_Sol) ? "v" : "x";
 
-        if (Use_P2C) printf("PHC-(x) RKL-(x) inline-(x) LimUnroll-(x) TrunPaths-(x)\n");
-        else printf("PHC-(v) RKL-(%s) inline-(%s) LimUnroll-(%s) L2Cache-(%s) TrunPaths-(%s)\n", str_RKL.c_str(), str_inline.c_str(), str_lim_unroll.c_str(), str_l2_cache.c_str(), str_trunc_path.c_str());
+        if (Use_P2C) printf("PHC-(x) CodeOpt-(x) TrunPaths-(x) TrunRANSAC-(x)\n");
+        else printf("PHC-(v) CodeOpt-(%s) TrunPaths-(%s) TrunRANSAC-(%s)\n", str_code_opt.c_str(), str_trunc_path.c_str(), str_Abort_RANSAC.c_str());
     }
 
     unsigned kernel_version;
     unsigned get_kernel_version_number() {
         if (Use_P2C) return 1;
-        else if ( !Use_Runge_Kutta_in_a_Loop && !Inline_Eval_Functions && !Limit_Loop_Unroll && !Use_L2_Persistent_Cache && !Truncate_HC_Path_by_Positive_Depths ) return 2;
-        else if (  Use_Runge_Kutta_in_a_Loop && !Inline_Eval_Functions && !Limit_Loop_Unroll && !Use_L2_Persistent_Cache && !Truncate_HC_Path_by_Positive_Depths ) return 3;
-        else if (  Use_Runge_Kutta_in_a_Loop &&  Inline_Eval_Functions && !Limit_Loop_Unroll && !Use_L2_Persistent_Cache && !Truncate_HC_Path_by_Positive_Depths ) return 4;
-        else if (  Use_Runge_Kutta_in_a_Loop &&  Inline_Eval_Functions &&  Limit_Loop_Unroll && !Use_L2_Persistent_Cache && !Truncate_HC_Path_by_Positive_Depths ) return 5;
-        else if (  Use_Runge_Kutta_in_a_Loop &&  Inline_Eval_Functions &&  Limit_Loop_Unroll &&  Use_L2_Persistent_Cache && !Truncate_HC_Path_by_Positive_Depths ) return 6;
-        else if (  Use_Runge_Kutta_in_a_Loop &&  Inline_Eval_Functions &&  Limit_Loop_Unroll &&  Use_L2_Persistent_Cache &&  Truncate_HC_Path_by_Positive_Depths ) return 7;
-        else if (  Use_Runge_Kutta_in_a_Loop && !Inline_Eval_Functions &&  Limit_Loop_Unroll && !Use_L2_Persistent_Cache && !Truncate_HC_Path_by_Positive_Depths ) return 8;
-        else if (  Use_Runge_Kutta_in_a_Loop && !Inline_Eval_Functions &&  Limit_Loop_Unroll &&  Use_L2_Persistent_Cache && !Truncate_HC_Path_by_Positive_Depths ) return 9;
-        else if (  Use_Runge_Kutta_in_a_Loop && !Inline_Eval_Functions &&  Limit_Loop_Unroll &&  Use_L2_Persistent_Cache &&  Truncate_HC_Path_by_Positive_Depths ) return 10;
+        else if ( !Use_Merge_Code_Optimization && !Truncate_HC_Path_by_Positive_Depths && !Abort_RANSAC_by_Good_Sol ) return 2;
+        else if (  Use_Merge_Code_Optimization && !Truncate_HC_Path_by_Positive_Depths && !Abort_RANSAC_by_Good_Sol ) return 3;
+        else if (  Use_Merge_Code_Optimization &&  Truncate_HC_Path_by_Positive_Depths && !Abort_RANSAC_by_Good_Sol ) return 4;
+        else if (  Use_Merge_Code_Optimization &&  Truncate_HC_Path_by_Positive_Depths &&  Abort_RANSAC_by_Good_Sol ) return 5;
         else {
             LOG_ERROR("Invalid configurations on the GPU settings / Algorithmic settings!");
             exit(1);
@@ -189,16 +196,19 @@ private:
     int Num_Of_Coeffs_From_Params;
     std::vector<int> GPUHC_Actual_Sols_Steps_Collections;
     int sub_RANSAC_iters[MAX_NUM_OF_GPUS] = {0};
-    int RANSAC_Workload_of_Last_GPU;
+    std::vector<int> candidate_batch_ids;
 
     //> Number of GPUs in use
     magma_int_t device_count = 0;
     int Num_Of_GPUs;
-    // int *devices;
-    // int Num_of_Devices_from_magma;
-    // bool is_workload_even = true;
 
     void check_multiGPUs() {
+        if (Num_Of_GPUs == 1) {
+            std::string out_info = std::string("Only 1 GPU is used. Device ID = ");
+            out_info.append( std::to_string(SET_GPU_DEVICE_ID) );
+            LOG_INFO_MESG(out_info);
+        }
+
         if( Num_Of_GPUs > MAX_NUM_OF_GPUS) {
             LOG_ERROR("Requested GPUs larger than MAX_NUM_OF_GPUS");
             printf("\033[1;31m[Requested GPUs] %d\t[Max GPUs] %d\033[0m\n", Num_Of_GPUs, MAX_NUM_OF_GPUS);

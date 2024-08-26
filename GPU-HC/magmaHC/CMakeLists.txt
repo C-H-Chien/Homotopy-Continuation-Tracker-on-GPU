@@ -16,25 +16,21 @@ set (control_sources
   gpu-kernels/magmaHC-kernels.hpp
   gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_P2C.cu
   gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_PH.cu
-  gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL.cu
-  gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_inline.cu
-  gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_inline_LimUnroll.cu
-  gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_inline_LimUnroll_L2Cache.cu
-  gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_inline_LimUnroll_L2Cache_TrunPaths.cu
-  gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_LimUnroll.cu
-  gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_LimUnroll_L2Cache.cu
-  gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_PH_RKL_LimUnroll_L2Cache_TrunPaths.cu
+  gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_PH_CodeOpt.cu
+  gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_PH_CodeOpt_Volta.cu
+  gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_PH_CodeOpt_TrunPaths.cu
+  gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_PH_CodeOpt_TrunPaths_Volta.cu
+  gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_PH_CodeOpt_TrunPaths_TrunRANSAC.cu
+  gpu-kernels/kernel_GPUHC_trifocal_2op1p_30x30_PH_CodeOpt_TrunPaths_TrunRANSAC_Volta.cu
 
   #>  device function
   dev-cgesv-batched-small.cuh
   dev-cgesv-batched-small-sm.cuh
   dev-get-new-data.cuh
+  dev-trifocal_2op1p-eval.cuh
   gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30.cuh
   gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_P2C.cuh
-  gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_inline.cuh
-  gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_inline_LimUnroll.cuh 
-  gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_inline_LimUnroll_L2Cache.cuh 
-  gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_LimUnroll.cuh
+  gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_inline_LimUnroll.cuh
   gpu-idx-evals/dev-eval-indxing-trifocal_2op1p_30x30_LimUnroll_L2Cache.cuh
   
   #> P2C
