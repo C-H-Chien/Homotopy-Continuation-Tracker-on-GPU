@@ -24,9 +24,12 @@
 
 #include "magmaHC/definitions.hpp"
 #include "magmaHC/GPU_HC_Solver.hpp"
-
+#include "magmaHC/CPU_HC_Solver.hpp"
 #include <yaml-cpp/yaml.h>
 
+//> ======================================
+//> GPU-HC
+//> ======================================
 bool run_GPU_HC_Solver( YAML::Node Problem_Settings_Map) {
 
   double GPUHC_time_ms = 0.0;
@@ -78,9 +81,6 @@ bool run_GPU_HC_Solver( YAML::Node Problem_Settings_Map) {
     avg_gpu_runtime += GPUHC_time_ms;
     max_gpu_runtime = (GPUHC_time_ms > max_gpu_runtime) ? (GPUHC_time_ms) : (max_gpu_runtime);
     min_gpu_runtime = (GPUHC_time_ms < min_gpu_runtime) ? (GPUHC_time_ms) : (min_gpu_runtime);
-
-    //> Reset GPU max elapse time across all GPUs 
-    GPU_HC_.gpu_max_time_from_multiple_GPUs = 0.0;
   }
 
   avg_gpu_runtime /= TEST_RANSAC_TIMES;
@@ -101,6 +101,87 @@ bool run_GPU_HC_Solver( YAML::Node Problem_Settings_Map) {
 
   //> Export all data (HC steps for now) to files
   // GPU_HC_.Export_Data();
+  std::string write_timings_file_dir = std::string("../../GPU_Timings.txt");
+  std::ofstream GPUHC_Timings_File;
+  GPUHC_Timings_File.open(write_timings_file_dir);
+  if ( !GPUHC_Timings_File.is_open() ) LOG_FILE_ERROR(write_timings_file_dir);
+  for (int i = 0; i < TEST_RANSAC_TIMES; i++) {
+    GPUHC_Timings_File << all_gpu_runtime[i] << "\n";
+  }
+  GPUHC_Timings_File.close();
+
+  return true;
+}
+
+//> ======================================
+//> CPU-HC
+//> ======================================
+bool run_CPU_HC_Solver( YAML::Node Problem_Settings_Map) {
+
+  double CPUHC_time_ms = 0.0;
+  double avg_cpu_runtime = 0.0;
+  double max_cpu_runtime = 0.0;
+  double min_cpu_runtime = 10000.0;
+  double all_cpu_runtime[TEST_RANSAC_TIMES];
+
+  CPU_HC_Solver CPU_HC_( Problem_Settings_Map );
+
+  //> (1) Allocate CPU and GPU arrays
+  CPU_HC_.Allocate_Arrays();
+
+  //> Loop over many times of RANSACs
+  for (int ti = 0; ti < TEST_RANSAC_TIMES; ti++) {
+    //> (2) Read Problem-Specific Data
+    bool pass_Data_Read_Test = CPU_HC_.Read_Problem_Data();
+    if (!pass_Data_Read_Test) return false;
+
+    //> (3) Read RANSAC Data
+    pass_Data_Read_Test = CPU_HC_.Read_RANSAC_Data( ti );
+    if (!pass_Data_Read_Test) return false;
+
+    //> (4) Convert from triplet edgels to target parameters
+    CPU_HC_.Prepare_Target_Params( ti );
+
+    CPU_HC_.Set_Initial_Array_Vals();
+
+    //> (8) Solve the problem by GPU-HC
+    CPU_HC_.Solve_by_CPU_HC();
+
+    //> (9) Free triplet edgels memory
+    CPU_HC_.Free_Triplet_Edgels_Mem();
+
+    CPUHC_time_ms = (CPU_HC_.CPU_HC_time)*1000;
+
+    all_cpu_runtime[ti] = CPUHC_time_ms;
+    avg_cpu_runtime += CPUHC_time_ms;
+    max_cpu_runtime = (CPUHC_time_ms > max_cpu_runtime) ? (CPUHC_time_ms) : (max_cpu_runtime);
+    min_cpu_runtime = (CPUHC_time_ms < min_cpu_runtime) ? (CPUHC_time_ms) : (min_cpu_runtime);
+  }
+
+  avg_cpu_runtime /= TEST_RANSAC_TIMES;
+  std::cout << std::endl;
+  printf("## Running %d rounds of %d RANSAC iterations:\n", TEST_RANSAC_TIMES, NUM_OF_RANSAC_ITERATIONS);
+  printf(" - [Average CPU Computation Time] %7.2f (ms)\n", avg_cpu_runtime);
+  printf(" - [Maximal CPU Computation Time] %7.2f (ms)\n", max_cpu_runtime);
+  printf(" - [Minimal CPU Computation Time] %7.2f (ms)\n", min_cpu_runtime);
+
+  //> Calculate the standard deviation
+  double sigma = 0.0;
+  for (int i = 0; i < TEST_RANSAC_TIMES; i++) {
+    sigma += (all_cpu_runtime[i] - avg_cpu_runtime) * (all_cpu_runtime[i] - avg_cpu_runtime);
+  }
+  sigma /= TEST_RANSAC_TIMES;
+  sigma = sqrt(sigma);
+  printf(" - [Std dev CPU Computation Time] %7.2f (ms)\n", sigma);
+
+  // std::string write_timings_file_dir = std::string("../../CPU_Timings.txt");
+  // std::ofstream GPUHC_Timings_File;
+  // GPUHC_Timings_File.open(write_timings_file_dir);
+  // if ( !GPUHC_Timings_File.is_open() ) LOG_FILE_ERROR(write_timings_file_dir);
+  // for (int i = 0; i < TEST_RANSAC_TIMES; i++) {
+  //   GPUHC_Timings_File << all_gpu_runtime[i] << "\n";
+  // }
+  // GPUHC_Timings_File.close();
 
   return true;
 }
@@ -161,8 +242,11 @@ int main(int argc, char **argv) {
     return 0;
 	}
 
-  //> Initialization from GPU-HC constructor
+  //> GPU-HC
   run_GPU_HC_Solver( Problem_Settings_Map );
+
+  //> CPU-HC
+  run_CPU_HC_Solver( Problem_Settings_Map );
 
   return 0;
 }

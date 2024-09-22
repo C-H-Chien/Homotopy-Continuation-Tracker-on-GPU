@@ -13,7 +13,7 @@
 #define IMAG_PART_TOL                           (1e-5)  //(1e-5)
 #define ROT_RESIDUAL_TOL                        (1e-1)
 #define TRANSL_RESIDUAL_TOL                     (1e-1)
-#define TEST_RANSAC_TIMES                       (50)
+#define TEST_RANSAC_TIMES                       (1)
 #define REPROJ_ERROR_INLIER_THRESH              (2) //> in pixels
 #define PASS_RANSAC_INLIER_SUPPORT_RATIO        (0.90)
 #define FEED_RANDOM_SEED                        (false)     //> if true, each run is different

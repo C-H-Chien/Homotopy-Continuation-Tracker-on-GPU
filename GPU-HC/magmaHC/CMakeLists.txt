@@ -1,8 +1,14 @@
 
 set (control_sources
 
+  #> GPU-HC 
   GPU_HC_Solver.hpp
   GPU_HC_Solver.cpp
+
+  #> CPU-HC
+  CPU_HC_Solver.hpp
+  CPU_HC_Solver.cpp
+  cpuhc-solvers/CPUHC_Generic_Solver.cpp
 
   #> Read problem data
   Data_Reader.hpp
@@ -36,16 +42,19 @@ set (control_sources
   #> P2C
   PHC_Coeffs/p2c-trifocal_2op1p_30x30.h
 
+  #> Jacobian evaluations for CPU-HC
+  cpu-jacobian-evals/cpu-eval-dHdX_dHdt_trifocal_2op1p_30x30.hpp
+  cpu-jacobian-evals/cpu-eval-dHdX_H_trifocal_2op1p_30x30.hpp
+
   #> Utilities
   util.hpp
 )
 
 set_source_files_properties(Data_Reader.cpp PROPERTIES LANGUAGE CUDA)
-#set_source_files_properties(Data_Reader.hpp PROPERTIES LANGUAGE CUDA)
 set_source_files_properties(GPU_HC_Solver.cpp PROPERTIES LANGUAGE CUDA)
-#set_source_files_properties(GPU_HC_Solver.hpp PROPERTIES LANGUAGE CUDA)
+set_source_files_properties(CPU_HC_Solver.cpp PROPERTIES LANGUAGE CUDA)
+set_source_files_properties(cpuhc-solvers/CPUHC_Generic_Solver.cpp PROPERTIES LANGUAGE CUDA)
 set_source_files_properties(Evaluations.cpp PROPERTIES LANGUAGE CUDA)
-#set_source_files_properties(Evaluations.hpp PROPERTIES LANGUAGE CUDA)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 

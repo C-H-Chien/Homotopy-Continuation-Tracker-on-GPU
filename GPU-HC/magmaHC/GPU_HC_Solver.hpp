@@ -99,7 +99,6 @@ public:
 
     //> The timers
     real_Double_t           gpu_time[MAX_NUM_OF_GPUS] = {0.0};
-    real_Double_t           gpu_max_time_from_multiple_GPUs = 0.0;
     real_Double_t           transfer_h2d_time[MAX_NUM_OF_GPUS] = {0.0};
     real_Double_t           transfer_d2h_time[MAX_NUM_OF_GPUS] = {0.0};
     double                  multi_GPUs_time;

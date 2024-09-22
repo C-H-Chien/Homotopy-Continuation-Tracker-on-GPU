@@ -26,12 +26,15 @@ Num_Of_Coeffs_From_Params: 37
 
 #> Kernel Settings
 GPUHC_Type:  PH     #> PH or P2C
-Code_Merged_Optimization: true
+Code_Merged_Optimization:  false
 
 #> Algorithmic Settings
-Truncate_HC_Path_by_Positive_Depths:  true
-Abort_RANSAC_by_Good_Sol: true
+Truncate_HC_Path_by_Positive_Depths:  false
+Abort_RANSAC_by_Good_Sol:  false
 
 #> RANSAC data
 #RANSAC_Dataset: Synthetic / ICL-NUIM
-RANSAC_Dataset: ICL-NUIM
+RANSAC_Dataset: Synthetic
+
+#> CPU-HC Settings
+Num_Of_Cores: 1
