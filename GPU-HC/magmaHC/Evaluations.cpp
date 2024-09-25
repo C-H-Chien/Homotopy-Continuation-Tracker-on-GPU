@@ -24,14 +24,14 @@
 #include "Evaluations.hpp"
 
 //> Constructor
-Evaluations::Evaluations( std::string Output_Files_Path, int num_of_tracks, int num_of_vars )
-  : WRITE_FILES_PATH(Output_Files_Path), num_of_tracks(num_of_tracks), num_of_variables(num_of_vars)
+Evaluations::Evaluations( std::string Output_Files_Path, std::string GPU_or_CPU, int num_of_tracks, int num_of_vars )
+  : WRITE_FILES_PATH(Output_Files_Path), evaluate_GPUHC_or_CPUHC(GPU_or_CPU), num_of_tracks(num_of_tracks), num_of_variables(num_of_vars)
 {
   //> Initialize to zeros
-  Num_Of_Inf_Sols = 0;
+  Num_Of_Inf_Sols      = 0;
   Num_Of_Coverged_Sols = 0;
-  Num_Of_Real_Sols = 0;
-  Num_Of_Unique_Sols = 0;
+  Num_Of_Real_Sols     = 0;
+  Num_Of_Unique_Sols   = 0;
 
   Percentage_Of_Convergence = 0.0;
   Percentage_Of_Inf_Sols = 0.0;
@@ -44,14 +44,28 @@ Evaluations::Evaluations( std::string Output_Files_Path, int num_of_tracks, int 
   Min_Residual_t31 = 100.0;
 
   //> Write successful HC track solutions to files
-  std::string write_sols_file_dir = WRITE_FILES_PATH + "GPU_Converged_HC_tracks.txt";
-  GPUHC_Track_Sols_File.open(write_sols_file_dir);
-  if ( !GPUHC_Track_Sols_File.is_open() ) LOG_FILE_ERROR(write_sols_file_dir);
+  std::string sols_file_name;
+  std::string hc_steps_of_actual_sols_file_name;
+  if (evaluate_GPUHC_or_CPUHC == "GPU-HC") {
+    sols_file_name = "GPU_Converged_HC_tracks.txt";
+    hc_steps_of_actual_sols_file_name = "GPUHC_Steps_of_Actual_Solutions.txt";
+  }
+  else if (evaluate_GPUHC_or_CPUHC == "CPU-HC") {
+    sols_file_name = "CPU_Converged_HC_tracks.txt";
+    hc_steps_of_actual_sols_file_name = "CPUHC_Steps_of_Actual_Solutions.txt";
+  }
+  else {
+    LOG_ERROR("Invalid GPU_or_CPU input parameter for the Evaluation constructor.");
+  }
+
+  std::string write_sols_file_dir = WRITE_FILES_PATH + sols_file_name;
+  HC_Track_Sols_File.open(write_sols_file_dir);
+  if ( !HC_Track_Sols_File.is_open() ) LOG_FILE_ERROR(write_sols_file_dir);
 
   //> Write successful HC track solutions to files
-  std::string write_actual_sols_HC_steps_file_dir = WRITE_FILES_PATH + "HC_Steps_of_Actual_Solutions.txt";
-  GPUHC_Actual_Sols_Steps_File.open(write_actual_sols_HC_steps_file_dir);
-  if ( !GPUHC_Actual_Sols_Steps_File.is_open() ) LOG_FILE_ERROR(write_actual_sols_HC_steps_file_dir);
+  std::string write_actual_sols_HC_steps_file_dir = WRITE_FILES_PATH + hc_steps_of_actual_sols_file_name;
+  HC_Actual_Sols_Steps_File.open(write_actual_sols_HC_steps_file_dir);
+  if ( !HC_Actual_Sols_Steps_File.is_open() ) LOG_FILE_ERROR(write_actual_sols_HC_steps_file_dir);
 
   //> util class
   MVG_Utility = std::shared_ptr<util>(new util());
@@ -104,45 +118,45 @@ void Evaluations::Flush_Out_Data() {
 }
 
 void Evaluations::Write_Converged_Sols( \
-    magmaFloatComplex *h_GPU_HC_Track_Sols, \
-    bool *h_is_GPU_HC_Sol_Converge ) 
+    magmaFloatComplex *h_HC_Track_Sols, \
+    bool *h_is_HC_Sol_Converge ) 
 {
-  LOG_INFO_MESG("Writing GPU-HC converged solutions to a file ...");
+  LOG_INFO_MESG("Writing HC converged solutions to a file ...");
   int counter = 0;
   for (int ri = 0; ri < NUM_OF_RANSAC_ITERATIONS; ri++) {
-    GPUHC_Track_Sols_File << "-------------------- RANSAC Iteration " << ri+1 << " --------------------\n\n";
+    HC_Track_Sols_File << "-------------------- RANSAC Iteration " << ri+1 << " --------------------\n\n";
     for (int bs = 0; bs < num_of_tracks; bs++) {
-      GPUHC_Track_Sols_File << std::setprecision(10);
+      HC_Track_Sols_File << std::setprecision(10);
 
-      if ((h_is_GPU_HC_Sol_Converge + ri * num_of_tracks)[ bs ] == 1) {
-        GPUHC_Track_Sols_File << counter << "\n";
+      if ((h_is_HC_Sol_Converge + ri * num_of_tracks)[ bs ] == 1) {
+        HC_Track_Sols_File << counter << "\n";
         for (int vs = 0; vs < num_of_variables; vs++) {
-          GPUHC_Track_Sols_File << std::setprecision(20) << MAGMA_C_REAL((h_GPU_HC_Track_Sols + ri * num_of_tracks * (num_of_variables+1) + bs * (num_of_variables+1))[vs]) << "\t" \
-                                << std::setprecision(20) << MAGMA_C_IMAG((h_GPU_HC_Track_Sols + ri * num_of_tracks * (num_of_variables+1) + bs * (num_of_variables+1))[vs]) << "\n";
+          HC_Track_Sols_File << std::setprecision(20) << MAGMA_C_REAL((h_HC_Track_Sols + ri * num_of_tracks * (num_of_variables+1) + bs * (num_of_variables+1))[vs]) << "\t" \
+                             << std::setprecision(20) << MAGMA_C_IMAG((h_HC_Track_Sols + ri * num_of_tracks * (num_of_variables+1) + bs * (num_of_variables+1))[vs]) << "\n";
         }
-        GPUHC_Track_Sols_File << "\n";
+        HC_Track_Sols_File << "\n";
       }
       counter++;
     }
-    GPUHC_Track_Sols_File << "\n";
+    HC_Track_Sols_File << "\n";
   }
 }
 
-void Evaluations::Evaluate_GPUHC_Sols( \
-    magmaFloatComplex *h_GPU_HC_Track_Sols, \
-    bool *h_is_GPU_HC_Sol_Converge, \
-    bool *h_is_GPU_HC_Sol_Infinity, \
+void Evaluations::Evaluate_HC_Sols( \
+    magmaFloatComplex *h_HC_Track_Sols, \
+    bool *h_is_HC_Sol_Converge, \
+    bool *h_is_HC_Sol_Infinity, \
     int ransac_sample_offset ) 
 {
   //> Count the number of converged solutions, the number of infinity failed solutions, and the number of real solutions
   for (int bs = 0; bs < num_of_tracks; bs++) {
-    if ( (h_is_GPU_HC_Sol_Converge + num_of_tracks * ransac_sample_offset)[ bs ] ) Num_Of_Coverged_Sols++;
-    if ( (h_is_GPU_HC_Sol_Infinity + num_of_tracks * ransac_sample_offset)[ bs ] ) Num_Of_Inf_Sols++;
+    if ( (h_is_HC_Sol_Converge + num_of_tracks * ransac_sample_offset)[ bs ] ) Num_Of_Coverged_Sols++;
+    if ( (h_is_HC_Sol_Infinity + num_of_tracks * ransac_sample_offset)[ bs ] ) Num_Of_Inf_Sols++;
 
     int Num_Of_Real_Vars = 0;
-    if ((h_is_GPU_HC_Sol_Converge + num_of_tracks * ransac_sample_offset)[ bs ] == 1) {
+    if ((h_is_HC_Sol_Converge + num_of_tracks * ransac_sample_offset)[ bs ] == 1) {
       for (int vs = 0; vs < num_of_variables; vs++) {
-        if (fabs(MAGMA_C_IMAG((h_GPU_HC_Track_Sols + num_of_tracks * (num_of_variables+1) * ransac_sample_offset + bs * (num_of_variables+1))[vs])) <= ZERO_IMAG_PART_TOL_FOR_SP) {
+        if (fabs(MAGMA_C_IMAG((h_HC_Track_Sols + num_of_tracks * (num_of_variables+1) * ransac_sample_offset + bs * (num_of_variables+1))[vs])) <= ZERO_IMAG_PART_TOL_FOR_SP) {
             Num_Of_Real_Vars++;
         }
       }
@@ -152,14 +166,14 @@ void Evaluations::Evaluate_GPUHC_Sols( \
   }
 }
 
-void Evaluations::Evaluate_RANSAC_GPUHC_Sols( \
-    magmaFloatComplex *h_GPU_HC_Track_Sols, \
-    bool *h_is_GPU_HC_Sol_Converge, \
-    bool *h_is_GPU_HC_Sol_Infinity )
+void Evaluations::Evaluate_RANSAC_HC_Sols( \
+    magmaFloatComplex *h_HC_Track_Sols, \
+    bool *h_is_HC_Sol_Converge, \
+    bool *h_is_HC_Sol_Infinity )
 {
   //> Loop over all RANSAC iterations
   for (int ri = 0; ri < NUM_OF_RANSAC_ITERATIONS; ri++) {
-    Evaluate_GPUHC_Sols( h_GPU_HC_Track_Sols, h_is_GPU_HC_Sol_Converge, h_is_GPU_HC_Sol_Infinity, ri );
+    Evaluate_HC_Sols( h_HC_Track_Sols, h_is_HC_Sol_Converge, h_is_HC_Sol_Infinity, ri );
   }
 
   Percentage_Of_Convergence = (float)Num_Of_Coverged_Sols / (float)(num_of_tracks * NUM_OF_RANSAC_ITERATIONS);
@@ -577,8 +591,8 @@ void Evaluations::Measure_Relative_Pose_Error_from_All_Real_Sols( float GT_Pose2
 
 Evaluations::~Evaluations() {
   //> Close all files
-  GPUHC_Track_Sols_File.close();
-  GPUHC_Actual_Sols_Steps_File.close();
+  HC_Track_Sols_File.close();
+  HC_Actual_Sols_Steps_File.close();
 
   //> Free memory
   delete [] Rot21;

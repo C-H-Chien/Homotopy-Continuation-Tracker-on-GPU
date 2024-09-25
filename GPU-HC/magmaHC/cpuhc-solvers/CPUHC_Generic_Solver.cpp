@@ -25,19 +25,13 @@ real_Double_t CPU_HC_Solver::CPUHC_Generic_Solver(
     const Eval_dHdX_H&      Eval_dHdX_H_func ) 
 {
     CPU_HC_time = magma_wtime();
-    #if !defined (BATCHED_DISABLE_PARCPU) && defined(_OPENMP)
-        // magma_int_t nthreads = magma_get_lapack_numthreads();
-        // omp_set_num_threads(nthreads);
-        magma_set_lapack_numthreads(1);
-        magma_set_omp_numthreads(num_of_cores);
-        // omp_set_num_threads(num_of_cores);
-        // openblas_set_num_threads(1);
-    #pragma omp parallel for schedule(dynamic) //reduction(+:Num_Of_Inf_Failed_Sols, Num_Of_Successful_Sols)
-    #endif
-    //> Loop over a certain number of RANSAC iterations
+
+    magma_int_t nthreads = num_of_cores;
+    omp_set_num_threads(nthreads);    
     for (magma_int_t ri = 0; ri < NUM_OF_RANSAC_ITERATIONS; ri++) {
 
         //> Loop over all homotopy paths
+        #pragma omp parallel for schedule(dynamic) //reduction(+:Num_Of_Inf_Failed_Sols, Num_Of_Successful_Sols)
         for (magma_int_t s = 0; s < Num_Of_Tracks; s++) {
             //> Local declarations for openmp parallelization to avoid race condition
             int pred_success_count = 0;
@@ -81,7 +75,6 @@ real_Double_t CPU_HC_Solver::CPUHC_Generic_Solver(
                     // ===================================================================
                     // Prediction: 4-th order Runge-Kutta
                     // ===================================================================
-
                     //> (i) a pair of Jacobian evaluation + linear system solver
                     Eval_dHdX_dHdt_func( s, t0, Num_Of_Vars, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_Start_Params, h_Target_Params + target_param_offset, h_cgesvA + cgsevA_offset, h_cgesvB + cgesvB_offset );
                     lapackf77_cgesv( &Num_Of_Vars, &nrhs, h_cgesvA + cgsevA_offset, &Num_Of_Vars, ipiv + ipiv_offset, h_cgesvB + cgesvB_offset, &Num_Of_Vars, &locinfo );
@@ -92,22 +85,17 @@ real_Double_t CPU_HC_Solver::CPUHC_Generic_Solver(
                     lapackf77_cgesv( &Num_Of_Vars, &nrhs, h_cgesvA + cgsevA_offset, &Num_Of_Vars, ipiv + ipiv_offset, h_cgesvB + cgesvB_offset, &Num_Of_Vars, &locinfo );
                     CPUHC_get_Runge_Kutta_x_for_k3( h_Intermediate_Sols + hc_track_sol_offset, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_cgesvB + cgesvB_offset, h_Track_Last_Success + hc_track_sol_offset, one_half_delta_t, delta_t );
 
-                    std::cout << "Come here?" << std::endl;
-
                     //> (iii) linear system solver (Jacobian evaluation is unnecessary)
+                    Eval_dHdX_dHdt_func( s, t0, Num_Of_Vars, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_Start_Params, h_Target_Params + target_param_offset, h_cgesvA + cgsevA_offset, h_cgesvB + cgesvB_offset );
                     lapackf77_cgesv( &Num_Of_Vars, &nrhs, h_cgesvA + cgsevA_offset, &Num_Of_Vars, ipiv + ipiv_offset, h_cgesvB + cgesvB_offset, &Num_Of_Vars, &locinfo );
                     CPUHC_get_Runge_Kutta_x_for_k4( h_Intermediate_Sols + hc_track_sol_offset, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_cgesvB + cgesvB_offset, h_Track_Last_Success + hc_track_sol_offset, one_half_delta_t, t0, delta_t );
-                    
-                    std::cout << "Come here?" << std::endl;
 
                     //> (iv) a pair of Jacobian evaluation + linear system solver
                     Eval_dHdX_dHdt_func( s, t0, Num_Of_Vars, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_Start_Params, h_Target_Params + target_param_offset, h_cgesvA + cgsevA_offset, h_cgesvB + cgesvB_offset );
                     lapackf77_cgesv( &Num_Of_Vars, &nrhs, h_cgesvA + cgsevA_offset, &Num_Of_Vars, ipiv + ipiv_offset, h_cgesvB + cgesvB_offset, &Num_Of_Vars, &locinfo );
-                    
+
                     //> make prediction
                     CPUHC_make_Runge_Kutta_prediction( h_Intermediate_Sols + hc_track_sol_offset, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_cgesvB + cgesvB_offset, delta_t );
-
-                    std::cout << "Finish 4-th order Runge-Kutta" << std::endl;
 
                     // ===================================================================
                     // Correction: Newton's method
@@ -127,7 +115,10 @@ real_Double_t CPU_HC_Solver::CPUHC_Generic_Solver(
                     }
 
                     //> break the entire loop if the solution is already infinity failed
-                    if (is_inf_failed) break;
+                    if (is_inf_failed) {
+                        h_is_Track_Inf_Failed[s + ri*Num_Of_Tracks] = true;
+                        break;
+                    }
 
                     // ===================================================================
                     // Decide Homotopy Path Changes
@@ -155,16 +146,12 @@ real_Double_t CPU_HC_Solver::CPUHC_Generic_Solver(
                     }
                 }
                 else {
-                    h_is_Track_Successes[s + ri*Num_Of_Tracks] = true;
+                    h_is_Track_Converged[s + ri*Num_Of_Tracks] = true;
                     break;
                 }
             }   //> loop over HC steps
         }   //> loop over all homotopy paths
     }   //> loop over RANSAC iterations
-    #if !defined (BATCHED_DISABLE_PARCPU) && defined(_OPENMP)
-        // openblas_set_num_threads(nthreads);
-        openblas_set_num_threads(num_of_cores);
-    #endif
     
     //> return CPU-HC timing
     return magma_wtime() - CPU_HC_time;
@@ -180,7 +167,7 @@ void CPU_HC_Solver::CPUHC_get_Runge_Kutta_x_for_k2(
         (h_cgesvB)[i]            *= one_half_delta_t;                   //> k1 * (\Delta t)/2
         (h_CPU_HC_Track_Sols)[i] += (h_cgesvB)[i];                      //> x = x + k1 * (\Delta t)/2
     }
-    t0 += one_half_delta_t;                                                                                                     //> t = t + (\Delta t)/2 
+    t0 += one_half_delta_t;                                             //> t = t + (\Delta t)/2 
 }
 
 void CPU_HC_Solver::CPUHC_get_Runge_Kutta_x_for_k3(

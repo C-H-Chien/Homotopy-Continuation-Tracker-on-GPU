@@ -149,7 +149,8 @@ GPU_HC_Solver::GPU_HC_Solver(YAML::Node Problem_Settings_File)
     Write_Files_Path = std::string("../../") + WRITE_FILES_FOLDER;
 
     //> Evaluations
-    Evaluate_GPUHC_Sols = std::shared_ptr<Evaluations>(new Evaluations(Write_Files_Path, Num_Of_Tracks, Num_Of_Vars));
+    // std::string 
+    Evaluate_GPUHC_Sols = std::shared_ptr<Evaluations>(new Evaluations(Write_Files_Path, "GPU-HC", Num_Of_Tracks, Num_Of_Vars));
 }
 
 void GPU_HC_Solver::Allocate_Arrays() {
@@ -593,7 +594,7 @@ void GPU_HC_Solver::Solve_by_GPU_HC() {
 #if WRITE_GPUHC_CONVERGED_SOLS
     Evaluate_GPUHC_Sols->Write_Converged_Sols( h_GPU_HC_Track_Sols[0], h_is_GPU_HC_Sol_Converge[0] );
 #endif
-    Evaluate_GPUHC_Sols->Evaluate_RANSAC_GPUHC_Sols( h_GPU_HC_Track_Sols_Stack, h_is_GPU_HC_Sol_Converge_Stack, h_is_GPU_HC_Sol_Infinity_Stack );
+    Evaluate_GPUHC_Sols->Evaluate_RANSAC_HC_Sols( h_GPU_HC_Track_Sols_Stack, h_is_GPU_HC_Sol_Converge_Stack, h_is_GPU_HC_Sol_Infinity_Stack );
     // Evaluate_GPUHC_Sols->Find_Unique_Sols( h_GPU_HC_Track_Sols, h_is_GPU_HC_Sol_Converge );
 
     //> Print out evaluation results

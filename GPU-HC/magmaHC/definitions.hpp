@@ -9,7 +9,7 @@
 #define SET_GPU_DEVICE_ID                       (0) //> GPU device ID when only one GPU is used
 
 //> RANSAC Settings
-#define NUM_OF_RANSAC_ITERATIONS                (100)
+#define NUM_OF_RANSAC_ITERATIONS                (1)
 #define IMAG_PART_TOL                           (1e-5)  //(1e-5)
 #define ROT_RESIDUAL_TOL                        (1e-1)
 #define TRANSL_RESIDUAL_TOL                     (1e-1)
@@ -20,6 +20,7 @@
 
 //> Evaluation macros
 #define WRITE_GPUHC_CONVERGED_SOLS              (false)
+#define WRITE_CPUHC_CONVERGED_SOLS              (true)
 #define DUPLICATE_SOL_DIFF_TOL                  (1e-4)
 #define ZERO_IMAG_PART_TOL_FOR_SP               (1e-4)  //(1e-4)
 #define DEBUG_EVALUATOR                         (false)

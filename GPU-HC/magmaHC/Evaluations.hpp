@@ -33,17 +33,17 @@ class Evaluations {
     
 public:
     //> Constructor
-    Evaluations( std::string, int, int );
+    Evaluations( std::string, std::string, int, int );
 
     //> Destructor
     ~Evaluations();
 
     //> Write data to files
-    void Write_Converged_Sols( magmaFloatComplex *h_GPU_HC_Track_Sols, bool *h_is_GPU_HC_Sol_Converge );
+    void Write_Converged_Sols( magmaFloatComplex *h_HC_Track_Sols, bool *h_is_HC_Sol_Converge );
 
     //> Evaluate GPU-HC Solutions
-    void Evaluate_GPUHC_Sols( magmaFloatComplex *h_GPU_HC_Track_Sols, bool *h_is_GPU_HC_Sol_Converge, bool *h_is_GPU_HC_Sol_Infinity, int ransac_sample_offset );
-    void Evaluate_RANSAC_GPUHC_Sols( magmaFloatComplex *h_GPU_HC_Track_Sols, bool *h_is_GPU_HC_Sol_Converge, bool *h_is_GPU_HC_Sol_Infinity );
+    void Evaluate_HC_Sols( magmaFloatComplex *h_HC_Track_Sols, bool *h_is_HC_Sol_Converge, bool *h_is_HC_Sol_Infinity, int ransac_sample_offset );
+    void Evaluate_RANSAC_HC_Sols( magmaFloatComplex *h_HC_Track_Sols, bool *h_is_HC_Sol_Converge, bool *h_is_HC_Sol_Infinity );
     void Find_Unique_Sols( magmaFloatComplex *h_GPU_HC_Track_Sols, bool *h_is_GPU_HC_Sol_Converge );
 
     //> Processing rotations and translations from the GPU-HC solutions of trifocal pose estimation problem (30x30)
@@ -65,7 +65,7 @@ public:
     void Flush_Out_Data();
     void Write_HC_Steps_of_Actual_Solutions( std::vector<int> GPUHC_Actual_Sols_Steps_Collections ) {
         for (int i = 0; i < GPUHC_Actual_Sols_Steps_Collections.size(); i++) 
-            GPUHC_Actual_Sols_Steps_File << GPUHC_Actual_Sols_Steps_Collections[i] << "\n";
+            HC_Actual_Sols_Steps_File << GPUHC_Actual_Sols_Steps_Collections[i] << "\n";
     };
     
     //> Some evaluation data
@@ -98,9 +98,11 @@ private:
     //> util
     std::shared_ptr<util> MVG_Utility = nullptr;
 
+    std::string evaluate_GPUHC_or_CPUHC;
+
     //> output streams for files to be written
-    std::ofstream GPUHC_Track_Sols_File;
-    std::ofstream GPUHC_Actual_Sols_Steps_File;
+    std::ofstream HC_Track_Sols_File;
+    std::ofstream HC_Actual_Sols_Steps_File;
 
     float Var_Diff_In_Real_Part( magmaFloatComplex *Sol1, magmaFloatComplex *Sol2, int sol1_offset, int sol2_offset, int var_index ) {
         return std::fabs(MAGMA_C_REAL((Sol1 + sol1_offset*(num_of_variables+1))[var_index]) - MAGMA_C_REAL((Sol2 + sol2_offset*(num_of_variables+1))[var_index]));

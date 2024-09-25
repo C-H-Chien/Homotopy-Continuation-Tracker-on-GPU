@@ -52,37 +52,43 @@ write_yaml() {
     echo  "#RANSAC_Dataset: Synthetic / ICL-NUIM" >> $fname
     echo  "RANSAC_Dataset: ICL-NUIM"              >> $fname
     echo  "#5117"                                 >> $fname
+    echo  ""                                      >> $fname
+
+    echo  "#> CPU-HC Settings"                    >> $fname
+    echo  "Num_Of_Cores: " $6                     >> $fname
 }
 
 
 write_yaml_version() {
     version=$1
     ngpus=$2
+    ncpus=$3
     if [ $version -eq 1 ]; then
-        write_yaml $2 "P2C" "false" "false" "false"
+        write_yaml $2 "P2C" "false" "false" "false" $3
     fi
 
     if [ $version -eq 2 ]; then
-        write_yaml $2 "PH" "false" "false" "false"
+        write_yaml $2 "PH" "false" "false" "false" $3
     fi
 
     if [ $version -eq 3 ]; then
-        write_yaml $2 "PH" "true" "false" "false"
+        write_yaml $2 "PH" "true" "false" "false" $3
     fi
 
     if [ $version -eq 4 ]; then
-        write_yaml $2 "PH" "true" "true" "false"
+        write_yaml $2 "PH" "true" "true" "false" $3
     fi
 
     if [ $version -eq 5 ]; then
-        write_yaml $2 "PH" "true" "true" "true"
+        write_yaml $2 "PH" "true" "true" "true" $3
     fi
 }
 
 # 1st argument ($1) is the version number according to the spreadsheet
 # 2nd argument ($2) is the number of GPUs
-write_yaml_version $1 $2
-echo "executing version" $1 "on " $2 " GPUs"
+# 3rd argument ($3) is the number of CPUs
+write_yaml_version $1 $2 $3
+echo "executing version" $1 "on " $2 " GPUs" " and " $3 " CPUs"
 cd $solver_path
 ./$solver -p trifocal_2op1p_30x30
 cd -

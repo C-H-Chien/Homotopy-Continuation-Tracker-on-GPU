@@ -20,6 +20,7 @@
 #include <memory>
 
 #include "magma_v2.h"
+#include "magma_lapack.h"
 #include "Data_Reader.hpp"
 #include "Evaluations.hpp"
 #include <yaml-cpp/yaml.h>
@@ -51,7 +52,7 @@ class CPU_HC_Solver {
     magmaFloatComplex       *h_cgesvA;  //> Matrix A in a linear system Ax=b
     magmaFloatComplex       *h_cgesvB;  //> Vector b in a linear system Ax=b
     magma_int_t             *ipiv;
-    bool                    *h_is_Track_Successes;
+    bool                    *h_is_Track_Converged;
     bool                    *h_is_Track_Inf_Failed;
 
     float                   *h_Triplet_Edge_Locations;      //> in metrics

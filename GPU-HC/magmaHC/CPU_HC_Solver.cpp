@@ -56,7 +56,7 @@ CPU_HC_Solver::CPU_HC_Solver(YAML::Node Problem_Settings_File)
     Write_Files_Path = std::string("../../") + WRITE_FILES_FOLDER;
 
     //> Evaluations
-    Evaluate_CPUHC_Sols = std::shared_ptr<Evaluations>(new Evaluations(Write_Files_Path, Num_Of_Tracks, Num_Of_Vars));
+    Evaluate_CPUHC_Sols = std::shared_ptr<Evaluations>(new Evaluations(Write_Files_Path, "CPU-HC", Num_Of_Tracks, Num_Of_Vars));
 
     //> Initialization
     magma_init();
@@ -84,7 +84,7 @@ void CPU_HC_Solver::Allocate_Arrays() {
     magma_cmalloc_cpu( &h_cgesvB,               Num_Of_Vars*Num_Of_Tracks*NUM_OF_RANSAC_ITERATIONS );
     magma_imalloc_cpu( &ipiv,                   Num_Of_Vars*Num_Of_Tracks*NUM_OF_RANSAC_ITERATIONS );
 
-    h_is_Track_Successes    = new bool[ Num_Of_Tracks*NUM_OF_RANSAC_ITERATIONS ];
+    h_is_Track_Converged    = new bool[ Num_Of_Tracks*NUM_OF_RANSAC_ITERATIONS ];
     h_is_Track_Inf_Failed   = new bool[ Num_Of_Tracks*NUM_OF_RANSAC_ITERATIONS ];
 }
 
@@ -178,27 +178,32 @@ void CPU_HC_Solver::Prepare_Target_Params( unsigned rand_seed_ ) {
         for (int i = 0; i < 3; i++) {
             int ei = Edgel_Indx[i];
             for (int j = 0; j < 6; j++) {
-                (h_Target_Params + ti*(Num_Of_Params+1))[i*6 + j] = MAGMA_C_MAKE(h_Triplet_Edge_Locations(ei, j), 0.0);
+                (h_Target_Params + ti*(Num_Of_Params))[i*6 + j] = MAGMA_C_MAKE(h_Triplet_Edge_Locations(ei, j), 0.0);
             }
         }
         //> Tangents of the edgels
         for (int i = 0; i < 2; i++) {
             int ei = Edgel_Indx[i];
             for (int j = 0; j < 6; j++) {
-                (h_Target_Params + ti*(Num_Of_Params+1))[i*6 + j + offset_for_tangents] = MAGMA_C_MAKE(h_Triplet_Edge_Tangents(ei, j), 0.0);
+                (h_Target_Params + ti*(Num_Of_Params))[i*6 + j + offset_for_tangents] = MAGMA_C_MAKE(h_Triplet_Edge_Tangents(ei, j), 0.0);
             }
         }
-        (h_Target_Params + ti*(Num_Of_Params+1))[30] = MAGMA_C_MAKE(1.0, 0.0);
-        (h_Target_Params + ti*(Num_Of_Params+1))[31] = MAGMA_C_MAKE(0.5, 0.0);
-        (h_Target_Params + ti*(Num_Of_Params+1))[32] = MAGMA_C_MAKE(-1.0, 0.0);
+        (h_Target_Params + ti*(Num_Of_Params))[30] = MAGMA_C_MAKE(1.0, 0.0);
+        (h_Target_Params + ti*(Num_Of_Params))[31] = MAGMA_C_MAKE(0.5, 0.0);
+        (h_Target_Params + ti*(Num_Of_Params))[32] = MAGMA_C_MAKE(-1.0, 0.0);
     }
+    // magma_cprint(pp->numOfVars+1, 1, (h_startSols + print_set_i*(pp->numOfTracks)*(pp->numOfVars+1) + print_sol_i * (pp->numOfVars+1)), (pp->numOfVars+1));
+    // magma_cprint(Num_Of_Params, 1, h_Target_Params, Num_Of_Params);
+    // for (int i = 0; i < Num_Of_Params; i++) {
+    //     std::cout << std::setprecision(16) << MAGMA_C_REAL(h_Target_Params[i]) << "\t" << MAGMA_C_IMAG(h_Target_Params[i]) << std::endl;
+    // }
 }
 
 void CPU_HC_Solver::Set_Initial_Array_Vals() {
 
     //> Set false to the status of all HC solutions
     for (int i = 0; i < Num_Of_Tracks*NUM_OF_RANSAC_ITERATIONS; i++) {
-        h_is_Track_Successes[i]     = false;
+        h_is_Track_Converged[i]     = false;
         h_is_Track_Inf_Failed[i]    = false;
     }
 }
@@ -220,18 +225,22 @@ void CPU_HC_Solver::Solve_by_CPU_HC() {
     printf(" - CPU Computation Time = %7.2f (ms)\n", (CPU_HC_time)*1000);
 
     //> Object for the Evaluations class
-#if WRITE_GPUHC_CONVERGED_SOLS
-    Evaluate_CPUHC_Sols->Write_Converged_Sols( h_CPU_HC_Track_Sols );
+#if WRITE_CPUHC_CONVERGED_SOLS
+    Evaluate_CPUHC_Sols->Write_Converged_Sols( h_CPU_HC_Track_Sols, h_is_Track_Converged );
 #endif
-    // Evaluate_CPUHC_Sols->Flush_Out_Data();
-    // Evaluate_CPUHC_Sols->Evaluate_RANSAC_GPUHC_Sols( h_CPU_HC_Track_Sols, h_is_GPU_HC_Sol_Converge_Stack, h_is_GPU_HC_Sol_Infinity_Stack );
-    // Evaluate_CPUHC_Sols->Find_Unique_Sols( h_GPU_HC_Track_Sols, h_is_GPU_HC_Sol_Converge );
+    Evaluate_CPUHC_Sols->Evaluate_RANSAC_HC_Sols( h_CPU_HC_Track_Sols, h_is_Track_Converged, h_is_Track_Inf_Failed );
 
     //> Print out evaluation results
-    std::cout << "\n## Evaluation of *CPU-HC* Solutions: "  << std::endl;
+    std::cout << "\n## Evaluation of GPU-HC Solutions: "      << std::endl;
     std::cout << " - Number of Converged Solutions:       " << Evaluate_CPUHC_Sols->Num_Of_Coverged_Sols << std::endl;
     std::cout << " - Number of Real Solutions:            " << Evaluate_CPUHC_Sols->Num_Of_Real_Sols << std::endl;
     std::cout << " - Number of Infinity Failed Solutions: " << Evaluate_CPUHC_Sols->Num_Of_Inf_Sols << std::endl;
+    
+    Evaluate_CPUHC_Sols->Transform_GPUHC_Sols_to_Trifocal_Relative_Pose( h_CPU_HC_Track_Sols, h_is_Track_Converged, h_Camera_Intrinsic_Matrix );
+    bool find_good_sol = Evaluate_CPUHC_Sols->get_Solution_with_Maximal_Support( Num_Of_Triplet_Edgels, h_Triplet_Edge_Locations, h_Triplet_Edge_Tangents, h_Camera_Intrinsic_Matrix );
+
+    //> Reset the number of solutions
+    Evaluate_CPUHC_Sols->Flush_Out_Data();
 }
 
 void CPU_HC_Solver::Free_Triplet_Edgels_Mem() {
@@ -252,7 +261,7 @@ CPU_HC_Solver::~CPU_HC_Solver() {
     magma_free_cpu( h_cgesvB );
     magma_free_cpu( ipiv );
 
-    delete [] h_is_Track_Successes;
+    delete [] h_is_Track_Converged;
     delete [] h_is_Track_Inf_Failed;
 
     fflush( stdout );
