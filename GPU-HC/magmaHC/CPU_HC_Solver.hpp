@@ -44,7 +44,6 @@ class CPU_HC_Solver {
     //> Variables and arrays
     magmaFloatComplex       *h_Target_Params;
     magmaFloatComplex       *h_CPU_HC_Track_Sols;
-    magmaFloatComplex       *h_Track_Sols;
     magmaFloatComplex       *h_Track_Last_Success;
     magmaFloatComplex       *h_Intermediate_Sols;
     magmaFloatComplex       *h_Start_Sols;

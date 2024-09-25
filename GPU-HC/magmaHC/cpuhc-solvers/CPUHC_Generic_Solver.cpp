@@ -26,8 +26,10 @@ real_Double_t CPU_HC_Solver::CPUHC_Generic_Solver(
 {
     CPU_HC_time = magma_wtime();
 
-    magma_int_t nthreads = num_of_cores;
-    omp_set_num_threads(nthreads);    
+    // magma_int_t nthreads = num_of_cores;
+    // omp_set_num_threads(nthreads);    
+    magma_set_lapack_numthreads(1);
+    magma_set_omp_numthreads(num_of_cores);
     for (magma_int_t ri = 0; ri < NUM_OF_RANSAC_ITERATIONS; ri++) {
 
         //> Loop over all homotopy paths
