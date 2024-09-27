@@ -231,10 +231,14 @@ void CPU_HC_Solver::Solve_by_CPU_HC() {
     Evaluate_CPUHC_Sols->Evaluate_RANSAC_HC_Sols( h_CPU_HC_Track_Sols, h_is_Track_Converged, h_is_Track_Inf_Failed );
 
     //> Print out evaluation results
-    // std::cout << "\n## Evaluation of GPU-HC Solutions: "      << std::endl;
-    // std::cout << " - Number of Converged Solutions:       " << Evaluate_CPUHC_Sols->Num_Of_Coverged_Sols << std::endl;
-    // std::cout << " - Number of Real Solutions:            " << Evaluate_CPUHC_Sols->Num_Of_Real_Sols << std::endl;
-    // std::cout << " - Number of Infinity Failed Solutions: " << Evaluate_CPUHC_Sols->Num_Of_Inf_Sols << std::endl;
+    std::cout << "\n## Evaluation of GPU-HC Solutions: "      << std::endl;
+    std::cout << " - Number of Converged Solutions:       " << Evaluate_CPUHC_Sols->Num_Of_Coverged_Sols << std::endl;
+    std::cout << " - Number of Real Solutions:            " << Evaluate_CPUHC_Sols->Num_Of_Real_Sols << std::endl;
+    std::cout << " - Number of Infinity Failed Solutions: " << Evaluate_CPUHC_Sols->Num_Of_Inf_Sols << std::endl;
+
+    Collect_Num_Of_Coverged_Sols.push_back( Evaluate_CPUHC_Sols->Num_Of_Coverged_Sols );
+    Collect_Num_Of_Inf_Sols.push_back( Evaluate_CPUHC_Sols->Num_Of_Real_Sols );
+    Collect_Num_Of_Real_Sols.push_back( Evaluate_CPUHC_Sols->Num_Of_Inf_Sols );
     
     Evaluate_CPUHC_Sols->Transform_GPUHC_Sols_to_Trifocal_Relative_Pose( h_CPU_HC_Track_Sols, h_is_Track_Converged, h_Camera_Intrinsic_Matrix );
     bool find_good_sol = Evaluate_CPUHC_Sols->get_Solution_with_Maximal_Support( Num_Of_Triplet_Edgels, h_Triplet_Edge_Locations, h_Triplet_Edge_Tangents, h_Camera_Intrinsic_Matrix );

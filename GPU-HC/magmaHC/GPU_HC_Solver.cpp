@@ -604,6 +604,10 @@ void GPU_HC_Solver::Solve_by_GPU_HC() {
     std::cout << " - Number of Infinity Failed Solutions: " << Evaluate_GPUHC_Sols->Num_Of_Inf_Sols << std::endl;
     // std::cout << " - Number of Unique Solutions:          " << Evaluate_GPUHC_Sols->Num_Of_Unique_Sols << std::endl;
 
+    Collect_Num_Of_Coverged_Sols.push_back( Evaluate_GPUHC_Sols->Num_Of_Coverged_Sols );
+    Collect_Num_Of_Inf_Sols.push_back( Evaluate_GPUHC_Sols->Num_Of_Real_Sols );
+    Collect_Num_Of_Real_Sols.push_back( Evaluate_GPUHC_Sols->Num_Of_Inf_Sols );
+
     Evaluate_GPUHC_Sols->Transform_GPUHC_Sols_to_Trifocal_Relative_Pose( h_GPU_HC_Track_Sols_Stack, h_is_GPU_HC_Sol_Converge_Stack, h_Camera_Intrinsic_Matrix );
     bool find_good_sol = Evaluate_GPUHC_Sols->get_Solution_with_Maximal_Support( Num_Of_Triplet_Edgels, h_Triplet_Edge_Locations, h_Triplet_Edge_Tangents, h_Camera_Intrinsic_Matrix );
 

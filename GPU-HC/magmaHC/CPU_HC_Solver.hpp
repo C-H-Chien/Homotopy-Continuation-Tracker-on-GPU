@@ -84,6 +84,10 @@ public:
     void CPUHC_make_Runge_Kutta_prediction(magmaFloatComplex *h_Sols_cpu, magmaFloatComplex *h_Track_cpu, magmaFloatComplex *h_cgesvB, float delta_t );
     void CPUHC_make_correction( magmaFloatComplex *h_CPU_HC_Track_Sols, magmaFloatComplex *h_cgesvB, bool &is_successful, bool &is_inf_failed );
 
+    std::vector<unsigned>   Collect_Num_Of_Coverged_Sols;
+    std::vector<unsigned>   Collect_Num_Of_Inf_Sols;
+    std::vector<unsigned>   Collect_Num_Of_Real_Sols;
+
     //> Destructor
     ~CPU_HC_Solver();
 

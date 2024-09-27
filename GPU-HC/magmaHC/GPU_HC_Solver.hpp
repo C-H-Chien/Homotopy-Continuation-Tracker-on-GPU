@@ -120,6 +120,10 @@ public:
     void Free_Triplet_Edgels_Mem();
     void Free_Arrays_for_Aborting_RANSAC();
 
+    std::vector<unsigned>   Collect_Num_Of_Coverged_Sols;
+    std::vector<unsigned>   Collect_Num_Of_Inf_Sols;
+    std::vector<unsigned>   Collect_Num_Of_Real_Sols;
+
     //> Destructor
     ~GPU_HC_Solver();
 

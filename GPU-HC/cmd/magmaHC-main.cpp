@@ -101,7 +101,9 @@ bool run_GPU_HC_Solver( YAML::Node Problem_Settings_Map) {
 
   //> Export all data (HC steps for now) to files
   // GPU_HC_.Export_Data();
-  std::string write_timings_file_dir = std::string("../../GPU_Timings.txt");
+  
+  //> Write GPU-HC Timings
+  std::string write_timings_file_dir = WRITE_FILES_FOLDER + std::string("GPU_Timings.txt");
   std::ofstream GPUHC_Timings_File;
   GPUHC_Timings_File.open(write_timings_file_dir);
   if ( !GPUHC_Timings_File.is_open() ) LOG_FILE_ERROR(write_timings_file_dir);
@@ -109,6 +111,18 @@ bool run_GPU_HC_Solver( YAML::Node Problem_Settings_Map) {
     GPUHC_Timings_File << all_gpu_runtime[i] << "\n";
   }
   GPUHC_Timings_File.close();
+
+  //> Write GPU-HC number of converged solutions, real solutions, and infinity-failed solutions
+  std::string write_solution_statistics_dir = std::string("../../") + WRITE_FILES_FOLDER + std::string("GPU_Sols_Statistics.txt");
+  std::ofstream GPUHC_Sols_Statistics_File;
+  GPUHC_Sols_Statistics_File.open(write_solution_statistics_dir);
+  if ( !GPUHC_Sols_Statistics_File.is_open() ) LOG_FILE_ERROR(write_solution_statistics_dir);
+  for (int i = 0; i < TEST_RANSAC_TIMES; i++) {
+    GPUHC_Sols_Statistics_File << GPU_HC_.Collect_Num_Of_Coverged_Sols[i] << "\t" \
+                               << GPU_HC_.Collect_Num_Of_Inf_Sols[i]      << "\t" \
+                               << GPU_HC_.Collect_Num_Of_Real_Sols[i]     << "\n";
+  }
+  GPUHC_Sols_Statistics_File.close();
 
   return true;
 }
@@ -174,14 +188,17 @@ bool run_CPU_HC_Solver( YAML::Node Problem_Settings_Map) {
   sigma = sqrt(sigma);
   printf(" - [Std dev CPU Computation Time] %7.2f (ms)\n", sigma);
 
-  // std::string write_timings_file_dir = std::string("../../CPU_Timings.txt");
-  // std::ofstream GPUHC_Timings_File;
-  // GPUHC_Timings_File.open(write_timings_file_dir);
-  // if ( !GPUHC_Timings_File.is_open() ) LOG_FILE_ERROR(write_timings_file_dir);
-  // for (int i = 0; i < TEST_RANSAC_TIMES; i++) {
-  //   GPUHC_Timings_File << all_gpu_runtime[i] << "\n";
-  // }
-  // GPUHC_Timings_File.close();
+  //> Write CPU-HC number of converged solutions, real solutions, and infinity-failed solutions
+  std::string write_solution_statistics_dir = std::string("../../") + WRITE_FILES_FOLDER + std::string("CPU_Sols_Statistics.txt");
+  std::ofstream CPUHC_Sols_Statistics_File;
+  CPUHC_Sols_Statistics_File.open(write_solution_statistics_dir);
+  if ( !CPUHC_Sols_Statistics_File.is_open() ) LOG_FILE_ERROR(write_solution_statistics_dir);
+  for (int i = 0; i < TEST_RANSAC_TIMES; i++) {
+    CPUHC_Sols_Statistics_File << CPU_HC_.Collect_Num_Of_Coverged_Sols[i] << "\t" \
+                               << CPU_HC_.Collect_Num_Of_Inf_Sols[i]      << "\t" \
+                               << CPU_HC_.Collect_Num_Of_Real_Sols[i]     << "\n";
+  }
+  CPUHC_Sols_Statistics_File.close();
 
   return true;
 }
