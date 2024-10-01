@@ -6,7 +6,7 @@
 
 //> GPU Settings
 #define MAX_NUM_OF_GPUS                         (8)
-#define SET_GPU_DEVICE_ID                       (0) //> GPU device ID when only one GPU is used
+#define SET_GPU_DEVICE_ID                       (1) //> GPU device ID when only one GPU is used
 
 //> RANSAC Settings
 #define NUM_OF_RANSAC_ITERATIONS                (1)
@@ -20,7 +20,7 @@
 
 //> Evaluation macros
 #define WRITE_GPUHC_CONVERGED_SOLS              (false)
-#define WRITE_CPUHC_CONVERGED_SOLS              (true)
+#define WRITE_CPUHC_CONVERGED_SOLS              (false)
 #define DUPLICATE_SOL_DIFF_TOL                  (1e-4)
 #define ZERO_IMAG_PART_TOL_FOR_SP               (1e-4)  //(1e-4)
 #define DEBUG_EVALUATOR                         (false)

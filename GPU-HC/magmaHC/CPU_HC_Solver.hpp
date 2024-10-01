@@ -29,6 +29,8 @@
 #include "./cpu-jacobian-evals/cpu-eval-dHdX_dHdt_trifocal_2op1p_30x30.hpp"
 #include "./cpu-jacobian-evals/cpu-eval-dHdX_H_trifocal_2op1p_30x30.hpp"
 
+#include "./cpu-jacobian-evals/cpu-eval-indx_trifocal_2op1p_30x30.hpp"
+
 #define h_Triplet_Edge_Locations(i,j)    h_Triplet_Edge_Locations[(i) * 6 + (j)]
 #define h_Triplet_Edge_Tangents(i,j)     h_Triplet_Edge_Tangents[(i) * 6 + (j)]
 
@@ -36,10 +38,19 @@
 using Eval_dHdX_dHdt = std::function<void(int s, float t, int N, magmaFloatComplex* track, magmaFloatComplex* start_params, magmaFloatComplex* target_params, magmaFloatComplex* cgesvA, magmaFloatComplex* cgesvB)>;
 using Eval_dHdX_H    = std::function<void(int s, float t, int N, magmaFloatComplex* track, magmaFloatComplex* start_params, magmaFloatComplex* target_params, magmaFloatComplex* cgesvA, magmaFloatComplex* cgesvB)>;
 
+//> Evaluation method consistent with GPU-HC
+using Eval_dHdX = std::function<void(const int Num_Of_Vars, const int dHdx_Max_Terms, const int dHdx_Entry_Offset, const int dHdx_Max_Parts, const int* dHdx_Index, magmaFloatComplex* variable, magmaFloatComplex* param_homotopy, magmaFloatComplex* cgesvA)>;
+using Eval_dHdt = std::function<void(const int Num_Of_Vars, const int dHdt_Max_Terms, const int dHdt_Max_Parts,    const int* h_dHdt_Index,  magmaFloatComplex* variable, magmaFloatComplex* param_homotopy,  magmaFloatComplex* cgesvB,   magmaFloatComplex* diff_params)>;
+using Eval_H    = std::function<void(const int Num_Of_Vars, const int dHdt_Max_Terms, const int dHdt_Max_Parts,    const int* h_dHdt_Index,  magmaFloatComplex* variable, magmaFloatComplex* param_homotopy,  magmaFloatComplex* cgesvB)>;
+
 class Data_Reader;
 class Evaluations;
 
 class CPU_HC_Solver {
+
+    //> Variable as sizes of arrays
+    magma_int_t             dHdx_Index_Size;
+    magma_int_t             dHdt_Index_Size;
     
     //> Variables and arrays
     magmaFloatComplex       *h_Target_Params;
@@ -48,9 +59,13 @@ class CPU_HC_Solver {
     magmaFloatComplex       *h_Intermediate_Sols;
     magmaFloatComplex       *h_Start_Sols;
     magmaFloatComplex       *h_Start_Params;
+    magmaFloatComplex       *h_param_homotopy;
     magmaFloatComplex       *h_cgesvA;  //> Matrix A in a linear system Ax=b
     magmaFloatComplex       *h_cgesvB;  //> Vector b in a linear system Ax=b
+    magmaFloatComplex       *h_diff_params;
     magma_int_t             *ipiv;
+    int                     *h_dHdx_Index;
+    int                     *h_dHdt_Index;
     bool                    *h_is_Track_Converged;
     bool                    *h_is_Track_Inf_Failed;
 
@@ -78,11 +93,23 @@ public:
     void Solve_by_CPU_HC();
     void Free_Triplet_Edgels_Mem();
     real_Double_t CPUHC_Generic_Solver(const int num_of_cores, const Eval_dHdX_dHdt& Eval_dHdX_dHdt_func, const Eval_dHdX_H& Eval_dHdX_H_func );
+    real_Double_t CPUHC_Generic_Solver_Eval_by_Indx( const int num_of_cores, const Eval_dHdX& Eval_dHdX_func, const Eval_dHdt& Eval_dHdt_func, const Eval_H& Eval_H_func );
     void CPUHC_get_Runge_Kutta_x_for_k2(magmaFloatComplex *h_Sols_cpu, magmaFloatComplex *h_Track_cpu, magmaFloatComplex *h_cgesvB, float one_half_delta_t, float delta_t, float &t0 );
     void CPUHC_get_Runge_Kutta_x_for_k3(magmaFloatComplex *h_Sols_cpu, magmaFloatComplex *h_Track_cpu, magmaFloatComplex *h_cgesvB, magmaFloatComplex *h_Track_last_success, float one_half_delta_t, float delta_t );
     void CPUHC_get_Runge_Kutta_x_for_k4(magmaFloatComplex *h_Sols_cpu, magmaFloatComplex *h_Track_cpu, magmaFloatComplex *h_cgesvB, magmaFloatComplex *h_Track_last_success, float one_half_delta_t, float &t0, float delta_t );
     void CPUHC_make_Runge_Kutta_prediction(magmaFloatComplex *h_Sols_cpu, magmaFloatComplex *h_Track_cpu, magmaFloatComplex *h_cgesvB, float delta_t );
     void CPUHC_make_correction( magmaFloatComplex *h_CPU_HC_Track_Sols, magmaFloatComplex *h_cgesvB, bool &is_successful, bool &is_inf_failed );
+
+    void cpu_eval_compute_param_homotopy( float t, magmaFloatComplex* h_param_homotopy, magmaFloatComplex* start_params, magmaFloatComplex* target_params ) {
+        for (int i = 0; i <= Num_Of_Params; i++) {
+            h_param_homotopy[ i ] = target_params[ i ] * t + start_params[ i ] * (1.0 - t);
+        }
+    }
+
+    //> Evaluations
+    // void cpu_eval_indx_dHdX_trifocal_2op1p_30( magmaFloatComplex* variable, magmaFloatComplex* param_homotopy, magmaFloatComplex* cgesvA, const int* dHdx_indices );
+    // void cpu_eval_indx_dHdt_trifocal_2op1p_30( magmaFloatComplex* variable, magmaFloatComplex* param_homotopy, magmaFloatComplex* cgesvB, magmaFloatComplex* diff_params, const int* dHdt_indices );
+    // void cpu_eval_indx_H_trifocal_2op1p_30( magmaFloatComplex* variables, magmaFloatComplex* dHdt_indices, magmaFloatComplex* param_homotopy, magmaFloatComplex* cgesvB );
 
     std::vector<unsigned>   Collect_Num_Of_Coverged_Sols;
     std::vector<unsigned>   Collect_Num_Of_Inf_Sols;
@@ -113,6 +140,11 @@ private:
     int Num_Of_Tracks;
     int Num_Of_CPU_Cores;
     int RANSAC_Sol_Offset;
+    int dHdx_Max_Terms;
+    int dHdx_Max_Parts;
+    int dHdt_Max_Terms;
+    int dHdt_Max_Parts;
+    int dHdx_Entry_Offset;
 
     int Num_Of_Inf_Failed_Sols;
     int Num_Of_Successful_Sols;

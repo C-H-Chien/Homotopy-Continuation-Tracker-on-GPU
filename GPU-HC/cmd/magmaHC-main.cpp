@@ -103,7 +103,7 @@ bool run_GPU_HC_Solver( YAML::Node Problem_Settings_Map) {
   // GPU_HC_.Export_Data();
   
   //> Write GPU-HC Timings
-  std::string write_timings_file_dir = WRITE_FILES_FOLDER + std::string("GPU_Timings.txt");
+  std::string write_timings_file_dir = std::string("../../") + WRITE_FILES_FOLDER + std::string("GPU_Timings.txt");
   std::ofstream GPUHC_Timings_File;
   GPUHC_Timings_File.open(write_timings_file_dir);
   if ( !GPUHC_Timings_File.is_open() ) LOG_FILE_ERROR(write_timings_file_dir);

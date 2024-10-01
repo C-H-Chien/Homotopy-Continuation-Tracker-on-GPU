@@ -45,10 +45,21 @@ CPU_HC_Solver::CPU_HC_Solver(YAML::Node Problem_Settings_File)
     Num_Of_Vars                     = Problem_Setting_YAML_File["Num_Of_Vars"].as<int>();
     Num_Of_Params                   = Problem_Setting_YAML_File["Num_Of_Params"].as<int>();
     Num_Of_Tracks                   = Problem_Setting_YAML_File["Num_Of_Tracks"].as<int>();
+    dHdx_Max_Terms                  = Problem_Setting_YAML_File["dHdx_Max_Terms"].as<int>();
+    dHdx_Max_Parts                  = Problem_Setting_YAML_File["dHdx_Max_Parts"].as<int>();
+    dHdt_Max_Terms                  = Problem_Setting_YAML_File["dHdt_Max_Terms"].as<int>();
+    dHdt_Max_Parts                  = Problem_Setting_YAML_File["dHdt_Max_Parts"].as<int>();
     //> (4) RANSAC data
     RANSAC_Dataset_Name             = Problem_Setting_YAML_File["RANSAC_Dataset"].as<std::string>();
     //> (5) CPU-HC Settings
     Num_Of_CPU_Cores                = Problem_Setting_YAML_File["Num_Of_Cores"].as<int>();
+
+    //> Index array sizes
+    dHdx_Index_Size                 = Num_Of_Vars*Num_Of_Vars*dHdx_Max_Terms*dHdx_Max_Parts;
+    dHdt_Index_Size                 = Num_Of_Vars*dHdt_Max_Terms*dHdt_Max_Parts;
+
+    //> Offsets for Jacobian and homotopy evaluations
+    dHdx_Entry_Offset               = dHdx_Max_Terms*dHdx_Max_Parts;
 
     //> Define problem file path for problem data reader and output file path for results evaluations
     Problem_File_Path = std::string("../../problems/") + HC_problem;
@@ -68,15 +79,16 @@ CPU_HC_Solver::CPU_HC_Solver(YAML::Node Problem_Settings_File)
 void CPU_HC_Solver::Allocate_Arrays() {
 
     //> CPU Allocations
-    magma_cmalloc_cpu( &h_Start_Sols,               Num_Of_Tracks*(Num_Of_Vars+1) );
-    
-    magma_cmalloc_cpu( &h_Start_Params,             (Num_Of_Params+1) );
+    magma_cmalloc_cpu( &h_Start_Sols,           Num_Of_Tracks*(Num_Of_Vars+1) );
+    magma_cmalloc_cpu( &h_Start_Params,         (Num_Of_Params+1) );
     
     //> Allocate sizes according to RANSAC iterations
     magma_cmalloc_cpu( &h_Intermediate_Sols,    Num_Of_Tracks*(Num_Of_Vars+1)*NUM_OF_RANSAC_ITERATIONS );
     magma_cmalloc_cpu( &h_CPU_HC_Track_Sols,    Num_Of_Tracks*(Num_Of_Vars+1)*NUM_OF_RANSAC_ITERATIONS );
     magma_cmalloc_cpu( &h_Track_Last_Success,   Num_Of_Tracks*(Num_Of_Vars+1)*NUM_OF_RANSAC_ITERATIONS );
-    magma_cmalloc_cpu( &h_Target_Params,        Num_Of_Params*NUM_OF_RANSAC_ITERATIONS );
+    magma_cmalloc_cpu( &h_Target_Params,        (Num_Of_Params+1)*NUM_OF_RANSAC_ITERATIONS );
+    magma_cmalloc_cpu( &h_param_homotopy,       (Num_Of_Params+1)*NUM_OF_RANSAC_ITERATIONS );
+    magma_cmalloc_cpu( &h_diff_params,          (Num_Of_Params+1)*NUM_OF_RANSAC_ITERATIONS );
 
     //> The following arrays do not neccessary to be allocated with the scale of number of tracks and number of RANSAC iterations,
     //  but for the purpose of OpenMP parallelism where each thread occupies individual values, these arrays need enough space to avoid race condition
@@ -86,6 +98,9 @@ void CPU_HC_Solver::Allocate_Arrays() {
 
     h_is_Track_Converged    = new bool[ Num_Of_Tracks*NUM_OF_RANSAC_ITERATIONS ];
     h_is_Track_Inf_Failed   = new bool[ Num_Of_Tracks*NUM_OF_RANSAC_ITERATIONS ];
+
+    h_dHdx_Index = new int[ dHdx_Index_Size ];
+    h_dHdt_Index = new int[ dHdt_Index_Size ];
 }
 
 bool CPU_HC_Solver::Read_Problem_Data() {
@@ -119,6 +134,12 @@ bool CPU_HC_Solver::Read_Problem_Data() {
     //> (6) This is the same for h_Track_Last_Success
     is_Data_Read_Successfully = Load_Problem_Data->Feed_Start_Sols_for_Intermediate_Homotopy(h_Start_Sols, h_Track_Last_Success, NUM_OF_RANSAC_ITERATIONS);
     if (!is_Data_Read_Successfully) { LOG_DATA_LOAD_ERROR("Start solutions fed to h_Track_Last_Success"); return false; }
+
+    //> (7) dH/dx and dH/dt evaluation indices
+    is_Data_Read_Successfully = Load_Problem_Data->Read_dHdx_Indices<int>( h_dHdx_Index );
+    if (!is_Data_Read_Successfully) { LOG_DATA_LOAD_ERROR("dH/dx Evaluation Indices"); return false; }
+    is_Data_Read_Successfully = Load_Problem_Data->Read_dHdt_Indices<int>( h_dHdt_Index );
+    if (!is_Data_Read_Successfully) { LOG_DATA_LOAD_ERROR("dH/dt Evaluation Indices"); return false; }
 
     return true;
 }
@@ -178,25 +199,25 @@ void CPU_HC_Solver::Prepare_Target_Params( unsigned rand_seed_ ) {
         for (int i = 0; i < 3; i++) {
             int ei = Edgel_Indx[i];
             for (int j = 0; j < 6; j++) {
-                (h_Target_Params + ti*(Num_Of_Params))[i*6 + j] = MAGMA_C_MAKE(h_Triplet_Edge_Locations(ei, j), 0.0);
+                (h_Target_Params + ti*(Num_Of_Params+1))[i*6 + j] = MAGMA_C_MAKE(h_Triplet_Edge_Locations(ei, j), 0.0);
             }
         }
         //> Tangents of the edgels
         for (int i = 0; i < 2; i++) {
             int ei = Edgel_Indx[i];
             for (int j = 0; j < 6; j++) {
-                (h_Target_Params + ti*(Num_Of_Params))[i*6 + j + offset_for_tangents] = MAGMA_C_MAKE(h_Triplet_Edge_Tangents(ei, j), 0.0);
+                (h_Target_Params + ti*(Num_Of_Params+1))[i*6 + j + offset_for_tangents] = MAGMA_C_MAKE(h_Triplet_Edge_Tangents(ei, j), 0.0);
             }
         }
-        (h_Target_Params + ti*(Num_Of_Params))[30] = MAGMA_C_MAKE(1.0, 0.0);
-        (h_Target_Params + ti*(Num_Of_Params))[31] = MAGMA_C_MAKE(0.5, 0.0);
-        (h_Target_Params + ti*(Num_Of_Params))[32] = MAGMA_C_MAKE(-1.0, 0.0);
+        (h_Target_Params + ti*(Num_Of_Params+1))[30] = MAGMA_C_MAKE(1.0, 0.0);
+        (h_Target_Params + ti*(Num_Of_Params+1))[31] = MAGMA_C_MAKE(0.5, 0.0);
+        (h_Target_Params + ti*(Num_Of_Params+1))[32] = MAGMA_C_MAKE(1.0, 0.0);
+        (h_Target_Params + ti*(Num_Of_Params+1))[33] = MAGMA_C_ONE;
+
+        for (int i = 0; i <= Num_Of_Params; i++) 
+            (h_diff_params + ti*(Num_Of_Params+1))[i] = (h_Target_Params + ti*(Num_Of_Params+1))[i] - (h_Start_Params)[i];
     }
-    // magma_cprint(pp->numOfVars+1, 1, (h_startSols + print_set_i*(pp->numOfTracks)*(pp->numOfVars+1) + print_sol_i * (pp->numOfVars+1)), (pp->numOfVars+1));
-    // magma_cprint(Num_Of_Params, 1, h_Target_Params, Num_Of_Params);
-    // for (int i = 0; i < Num_Of_Params; i++) {
-    //     std::cout << std::setprecision(16) << MAGMA_C_REAL(h_Target_Params[i]) << "\t" << MAGMA_C_IMAG(h_Target_Params[i]) << std::endl;
-    // }
+    // magma_cprint(Num_Of_Params, 1, h_diff_params, Num_Of_Params);
 }
 
 void CPU_HC_Solver::Set_Initial_Array_Vals() {
@@ -212,9 +233,13 @@ void CPU_HC_Solver::Solve_by_CPU_HC() {
     std::cout << "CPU-HC computing ..." << std::endl << std::endl;
 
     if (HC_problem == "trifocal_2op1p_30x30") {
-        CPU_HC_time = CPUHC_Generic_Solver( Num_Of_CPU_Cores, 
-                                            &cpu_eval_dHdX_dHdt_trifocal_2op1p_30, 
-                                            &cpu_eval_dHdX_H_trifocal_2op1p_30 );
+        CPU_HC_time = CPUHC_Generic_Solver_Eval_by_Indx( Num_Of_CPU_Cores, 
+                                                         cpu_eval_indx_dHdX_trifocal_2op1p_30, 
+                                                         cpu_eval_indx_dHdt_trifocal_2op1p_30,
+                                                         cpu_eval_indx_H_trifocal_2op1p_30 );
+        // CPU_HC_time = CPUHC_Generic_Solver( Num_Of_CPU_Cores, 
+        //                                     &cpu_eval_dHdX_dHdt_trifocal_2op1p_30, 
+        //                                     &cpu_eval_dHdX_H_trifocal_2op1p_30 );
     }
 
     std::cout << "---------------------------------------------------------------------------------" << std::endl;
@@ -231,10 +256,10 @@ void CPU_HC_Solver::Solve_by_CPU_HC() {
     Evaluate_CPUHC_Sols->Evaluate_RANSAC_HC_Sols( h_CPU_HC_Track_Sols, h_is_Track_Converged, h_is_Track_Inf_Failed );
 
     //> Print out evaluation results
-    std::cout << "\n## Evaluation of GPU-HC Solutions: "      << std::endl;
-    std::cout << " - Number of Converged Solutions:       " << Evaluate_CPUHC_Sols->Num_Of_Coverged_Sols << std::endl;
-    std::cout << " - Number of Real Solutions:            " << Evaluate_CPUHC_Sols->Num_Of_Real_Sols << std::endl;
-    std::cout << " - Number of Infinity Failed Solutions: " << Evaluate_CPUHC_Sols->Num_Of_Inf_Sols << std::endl;
+    // std::cout << "\n## Evaluation of GPU-HC Solutions: "      << std::endl;
+    // std::cout << " - Number of Converged Solutions:       " << Evaluate_CPUHC_Sols->Num_Of_Coverged_Sols << std::endl;
+    // std::cout << " - Number of Real Solutions:            " << Evaluate_CPUHC_Sols->Num_Of_Real_Sols << std::endl;
+    // std::cout << " - Number of Infinity Failed Solutions: " << Evaluate_CPUHC_Sols->Num_Of_Inf_Sols << std::endl;
 
     Collect_Num_Of_Coverged_Sols.push_back( Evaluate_CPUHC_Sols->Num_Of_Coverged_Sols );
     Collect_Num_Of_Inf_Sols.push_back( Evaluate_CPUHC_Sols->Num_Of_Real_Sols );
@@ -260,6 +285,8 @@ CPU_HC_Solver::~CPU_HC_Solver() {
     magma_free_cpu( h_Intermediate_Sols );
     magma_free_cpu( h_Start_Sols );
     magma_free_cpu( h_Start_Params );
+    magma_free_cpu( h_param_homotopy );
+    magma_free_cpu( h_diff_params );
 
     magma_free_cpu( h_cgesvA );
     magma_free_cpu( h_cgesvB );
@@ -267,6 +294,9 @@ CPU_HC_Solver::~CPU_HC_Solver() {
 
     delete [] h_is_Track_Converged;
     delete [] h_is_Track_Inf_Failed;
+
+    delete [] h_dHdx_Index;
+    delete [] h_dHdt_Index;
 
     fflush( stdout );
     printf( "\n" );
