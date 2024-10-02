@@ -6,10 +6,10 @@
 
 //> GPU Settings
 #define MAX_NUM_OF_GPUS                         (8)
-#define SET_GPU_DEVICE_ID                       (1) //> GPU device ID when only one GPU is used
+#define SET_GPU_DEVICE_ID                       (0) //> GPU device ID when only one GPU is used
 
 //> RANSAC Settings
-#define NUM_OF_RANSAC_ITERATIONS                (1)
+#define NUM_OF_RANSAC_ITERATIONS                (100)
 #define IMAG_PART_TOL                           (1e-5)  //(1e-5)
 #define ROT_RESIDUAL_TOL                        (1e-1)
 #define TRANSL_RESIDUAL_TOL                     (1e-1)

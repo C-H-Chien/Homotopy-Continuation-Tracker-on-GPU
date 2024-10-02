@@ -52,20 +52,24 @@ set (control_sources
   util.hpp
 )
 
-set_source_files_properties(Data_Reader.cpp PROPERTIES LANGUAGE CUDA)
-set_source_files_properties(GPU_HC_Solver.cpp PROPERTIES LANGUAGE CUDA)
-set_source_files_properties(CPU_HC_Solver.cpp PROPERTIES LANGUAGE CUDA)
-set_source_files_properties(cpuhc-solvers/CPUHC_Generic_Solver.cpp PROPERTIES LANGUAGE CUDA)
-set_source_files_properties(cpuhc-solvers/CPUHC_Generic_Solver_Eval_by_Indx.cpp PROPERTIES LANGUAGE CUDA)
-set_source_files_properties(Evaluations.cpp PROPERTIES LANGUAGE CUDA)
-
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 add_library( magmaHC ${control_sources} )
+target_compile_options(magmaHC PUBLIC -Wall ${OpenMP_CXX_FLAGS})
+
+target_include_directories( magmaHC 
+    PRIVATE 
+    ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+)
+
 target_link_libraries(magmaHC
+  PUBLIC OpenMP::OpenMP_CXX
+  ${CUDART_LIBRARY}
   -L/apps/spacks/2023-08-14/opt/spack/linux-ubuntu23.04-x86_64/gcc-9.5.0/magma-2.7.1-5hrvjybyve3kqfgx7uv5nxxz7mktnqqw/lib magma
   -L/apps/spacks/2023-08-14/opt/spack/linux-ubuntu23.04-x86_64/gcc-9.5.0/openblas-0.3.23-2tips3wywhkieahh6udqmjfke4flqm3l/lib openblas
   -L/home/chchien/thirdParty/yaml-cpp/yaml-cpp-bin/lib64 yaml-cpp
 )
 #set_target_properties(magmaHC PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+
+
 

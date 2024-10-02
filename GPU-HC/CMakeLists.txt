@@ -10,6 +10,9 @@ set(MAGMADIR    "/home/ahmad/magma-openblas")
 set(OPENBLASDIR "/home/ahmad/openblas")
 set(YAMLCPP_DIR "/home/ahmad/yaml-cpp")
 
+set(CH_MAGMADIR    "/home/chchien/magma-openblas")
+set(CH_YAMLCPP_DIR "/home/chchien/thirdParty/yaml-cpp")
+
 # this is for custom options on ICL machines
 set(ICL_BUILD 1)
 
@@ -21,6 +24,8 @@ project(TrifocalRelativePose)
 # -- enable the use of cuda --
 option(USE_CUDA "Use CUDA" ON)
 enable_language("CUDA")
+find_library(CUDART_LIBRARY cudart ${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES})
+
 include(${CMAKE_CURRENT_SOURCE_DIR}/config/cmake/InitializeBuildType.cmake)
 
 # -- Crucial flags for performance --
@@ -47,22 +52,22 @@ if(DEFINED ICL_BUILD)
     # set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --maxrregcount 128")
 
 else()
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native" CACHE STRING "" FORCE)
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -DADD_ -march=native" CACHE STRING "" FORCE)
 
     # build for volta arch. (compute capability 70)
-    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode arch=compute_70,code=sm_70")
+    #set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode arch=compute_70,code=sm_70")
 
     # build for ampere arch. (compute capability 80)
-    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode arch=compute_80,code=sm_80")
+    #set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode arch=compute_80,code=sm_80")
 
     # build for ampere arch. (compute capability 90)
-    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode arch=compute_90,code=sm_90")
+    #set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode arch=compute_90,code=sm_90")
 
     # add the DADD_ option to nvcc
     set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -DADD_")
 
     # this option lets nvcc give some info about register usage/spills
-    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xptxas -v")
+    #set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xptxas -v")
 
 endif()
 
@@ -118,11 +123,11 @@ set( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${MINUS_EXTRA_CMAKE
 # -- import openmp to the compiler --
 find_package(OpenMP REQUIRED)
 #find_package(OpenMP)
-#if (OPENMP_FOUND)
-#    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-#    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-#    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
-#endif()
+if (OPENMP_FOUND)
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+endif()
 
 #-------------------------------------------------------------------
 #-- BUILD CONFIG OPTIONS AND WARNINGS --
@@ -175,12 +180,14 @@ if(DEFINED ICL_BUILD)
   link_directories(${OPENBLASDIR})
   link_directories(${YAMLCPP_DIR}/build)
 else()
-  include_directories( "/users/cchien3/data/cchien3/magma-2.5.4/include" )
-  include_directories( "/users/cchien3/data/cchien3/magma-2.5.4/testing" )
-  include_directories( "/users/cchien3/data/cchien3/magma/control" )
-  include_directories( "/users/cchien3/data/cchien3/magma/magmablas" )
-  include_directories( "/gpfs/data/bkimia/cchien3/yaml-cpp/bin/include" )
-  link_directories(/gpfs/data/bkimia/cchien3/yaml-cpp/bin/lib64)
+  include_directories( ${CH_MAGMADIR}/include )
+  include_directories( ${CH_MAGMADIR}/testing )
+  include_directories( ${CH_MAGMADIR}/control )
+  include_directories( ${CH_MAGMADIR}/magmablas )
+  include_directories( ${CH_YAMLCPP_DIR}/include )
+  link_directories( ${CH_YAMLCPP_DIR}/yaml-cpp-bin/lib64 )
+  link_directories( ${CH_MAGMADIR}/bin/lib )
+  link_directories("/apps/spacks/2023-11-15/opt/spack/linux-rocky9-x86_64/gcc-11.3.1/gcc-7.5.0-aembyabek5wcmaengfp7yn6c22xe6bq7/lib64/")
 endif()
 
 if(DEFINED ICL_BUILD)

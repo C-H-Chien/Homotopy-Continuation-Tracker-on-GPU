@@ -31,6 +31,8 @@ real_Double_t CPU_HC_Solver::CPUHC_Generic_Solver_Eval_by_Indx(
     // omp_set_num_threads(nthreads);    
     magma_set_lapack_numthreads(1);
     magma_set_omp_numthreads(num_of_cores);
+
+    // #pragma omp parallel for schedule(dynamic) collapse(2)
     for (magma_int_t ri = 0; ri < NUM_OF_RANSAC_ITERATIONS; ri++) {
 
         //> Loop over all homotopy paths

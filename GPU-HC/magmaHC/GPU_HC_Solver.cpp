@@ -112,8 +112,6 @@ GPU_HC_Solver::GPU_HC_Solver(YAML::Node Problem_Settings_File)
         printf("dHdt_PHC_Coeffs_Size = %5.2f KB\n", (double)(dHdt_PHC_Coeffs_Size*sizeof(magmaFloatComplex)) / 1024.);
     }
 #endif
-    magmaFloatComplex **d_Start_Sols_array      = NULL;
-    magmaFloatComplex **d_Homotopy_Sols_array   = NULL;
 
     //> (1) First check GPU is Ampere or higher
     magma_int_t arch = magma_getdevice_arch();

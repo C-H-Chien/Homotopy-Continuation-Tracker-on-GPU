@@ -135,7 +135,7 @@ bool run_CPU_HC_Solver( YAML::Node Problem_Settings_Map) {
   double CPUHC_time_ms = 0.0;
   double avg_cpu_runtime = 0.0;
   double max_cpu_runtime = 0.0;
-  double min_cpu_runtime = 10000.0;
+  double min_cpu_runtime = 100000000000000.0;
   double all_cpu_runtime[TEST_RANSAC_TIMES];
 
   CPU_HC_Solver CPU_HC_( Problem_Settings_Map );
