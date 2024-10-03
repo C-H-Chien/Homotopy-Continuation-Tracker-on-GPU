@@ -33,11 +33,16 @@ real_Double_t CPU_HC_Solver::CPUHC_Generic_Solver_Eval_by_Indx(
     magma_set_omp_numthreads(num_of_cores);
 
     // #pragma omp parallel for schedule(dynamic) collapse(2)
-    for (magma_int_t ri = 0; ri < NUM_OF_RANSAC_ITERATIONS; ri++) {
+    #pragma omp parallel for schedule(dynamic) shared(h_Start_Params, h_diff_params, h_dHdx_Index, h_dHdt_Index)
+    for (magma_int_t ix = 0; ix < NUM_OF_RANSAC_ITERATIONS * Num_Of_Tracks; ix++) {
+    // for (magma_int_t ri = 0; ri < NUM_OF_RANSAC_ITERATIONS; ri++) {
+
+        magma_int_t ri = ix / Num_Of_Tracks;
+        magma_int_t s  = ix % Num_Of_Tracks;
 
         //> Loop over all homotopy paths
-        #pragma omp parallel for schedule(dynamic) //reduction(+:Num_Of_Inf_Failed_Sols, Num_Of_Successful_Sols)
-        for (magma_int_t s = 0; s < Num_Of_Tracks; s++) {
+        // #pragma omp parallel for schedule(dynamic) shared(h_Start_Params, h_diff_params, h_dHdx_Index, h_dHdt_Index)
+        // for (magma_int_t s = 0; s < Num_Of_Tracks; s++) {
             //> Local declarations for openmp parallelization to avoid race condition
             int pred_success_count = 0;
             float t0 = 0.0;
@@ -49,10 +54,11 @@ real_Double_t CPU_HC_Solver::CPUHC_Generic_Solver_Eval_by_Indx(
             bool end_zone = false;
             magma_int_t locinfo;
             magma_int_t nrhs = 1;
+            magmaFloatComplex h_param_homotopy[Num_Of_Params+1] = {MAGMA_C_ZERO};
 
             //> Pre-compute some offsets
-            int hc_track_sol_offset = s*(Num_Of_Vars+1) + ri*RANSAC_Sol_Offset;
-            int cgsevA_offset       = s*(Num_Of_Vars*Num_Of_Vars) + ri*RANSAC_Sol_Offset;
+            int hc_track_sol_offset = s*(Num_Of_Vars+1) + ri*RANSAC_Sol_Offset_with_Dummy_Variable;
+            int cgsevA_offset       = s*(Num_Of_Vars*Num_Of_Vars) + ri*RANSAC_Sol_Offset*Num_Of_Vars;
             int cgesvB_offset       = s*(Num_Of_Vars) + ri*RANSAC_Sol_Offset;
             int ipiv_offset         = cgesvB_offset;
             int param_offset        = ri*(Num_Of_Params+1);
@@ -81,51 +87,43 @@ real_Double_t CPU_HC_Solver::CPUHC_Generic_Solver_Eval_by_Indx(
                     // Prediction: 4-th order Runge-Kutta
                     // ===================================================================
                     //> (i) a pair of Jacobian evaluation + linear system solver
-                    cpu_eval_compute_param_homotopy( t0, h_param_homotopy + param_offset, h_Start_Params, h_Target_Params + param_offset );
-                    Eval_dHdX_func( Num_Of_Vars, dHdx_Max_Terms, dHdx_Entry_Offset, dHdx_Max_Parts, h_dHdx_Index, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_param_homotopy + param_offset, h_cgesvA + cgsevA_offset );
-                    Eval_dHdt_func( Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, h_dHdt_Index, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_param_homotopy + param_offset, h_cgesvB + cgesvB_offset, h_diff_params + param_offset );
-                    // Eval_dHdX_dHdt_func( s, t0, Num_Of_Vars, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_Start_Params, h_Target_Params + param_offset, h_cgesvA + cgsevA_offset, h_cgesvB + cgesvB_offset );
+                    cpu_eval_compute_param_homotopy( t0, h_param_homotopy, h_Start_Params, h_Target_Params + param_offset );
+                    Eval_dHdX_func( Num_Of_Vars, dHdx_Max_Terms, dHdx_Entry_Offset, dHdx_Max_Parts, h_dHdx_Index, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_param_homotopy, h_cgesvA + cgsevA_offset );
+                    Eval_dHdt_func( Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, h_dHdt_Index, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_param_homotopy, h_cgesvB + cgesvB_offset, h_diff_params + param_offset );
                     lapackf77_cgesv( &Num_Of_Vars, &nrhs, h_cgesvA + cgsevA_offset, &Num_Of_Vars, ipiv + ipiv_offset, h_cgesvB + cgesvB_offset, &Num_Of_Vars, &locinfo );
                     CPUHC_get_Runge_Kutta_x_for_k2( h_Intermediate_Sols + hc_track_sol_offset, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_cgesvB + cgesvB_offset, one_half_delta_t, delta_t, t0 );
 
                     //> (ii) a pair of Jacobian evaluation + linear system solver
-                    cpu_eval_compute_param_homotopy( t0, h_param_homotopy + param_offset, h_Start_Params, h_Target_Params + param_offset );
-                    Eval_dHdX_func( Num_Of_Vars, dHdx_Max_Terms, dHdx_Entry_Offset, dHdx_Max_Parts, h_dHdx_Index, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_param_homotopy + param_offset, h_cgesvA + cgsevA_offset );                    
-                    Eval_dHdt_func( Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, h_dHdt_Index, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_param_homotopy + param_offset, h_cgesvB + cgesvB_offset, h_diff_params + param_offset );
-                    // Eval_dHdX_dHdt_func( s, t0, Num_Of_Vars, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_Start_Params, h_Target_Params + param_offset, h_cgesvA + cgsevA_offset, h_cgesvB + cgesvB_offset );
+                    cpu_eval_compute_param_homotopy( t0, h_param_homotopy, h_Start_Params, h_Target_Params + param_offset );
+                    Eval_dHdX_func( Num_Of_Vars, dHdx_Max_Terms, dHdx_Entry_Offset, dHdx_Max_Parts, h_dHdx_Index, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_param_homotopy, h_cgesvA + cgsevA_offset );                    
+                    Eval_dHdt_func( Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, h_dHdt_Index, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_param_homotopy, h_cgesvB + cgesvB_offset, h_diff_params + param_offset );
                     lapackf77_cgesv( &Num_Of_Vars, &nrhs, h_cgesvA + cgsevA_offset, &Num_Of_Vars, ipiv + ipiv_offset, h_cgesvB + cgesvB_offset, &Num_Of_Vars, &locinfo );
                     CPUHC_get_Runge_Kutta_x_for_k3( h_Intermediate_Sols + hc_track_sol_offset, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_cgesvB + cgesvB_offset, h_Track_Last_Success + hc_track_sol_offset, one_half_delta_t, delta_t );
 
                     //> (iii) linear system solver (Jacobian evaluation is unnecessary)
-                    cpu_eval_compute_param_homotopy( t0, h_param_homotopy + param_offset, h_Start_Params, h_Target_Params + param_offset );
-                    Eval_dHdX_func( Num_Of_Vars, dHdx_Max_Terms, dHdx_Entry_Offset, dHdx_Max_Parts, h_dHdx_Index, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_param_homotopy + param_offset, h_cgesvA + cgsevA_offset );                    
-                    Eval_dHdt_func( Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, h_dHdt_Index, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_param_homotopy + param_offset, h_cgesvB + cgesvB_offset, h_diff_params + param_offset );
-                    // Eval_dHdX_dHdt_func( s, t0, Num_Of_Vars, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_Start_Params, h_Target_Params + param_offset, h_cgesvA + cgsevA_offset, h_cgesvB + cgesvB_offset );
+                    cpu_eval_compute_param_homotopy( t0, h_param_homotopy, h_Start_Params, h_Target_Params + param_offset );
+                    Eval_dHdX_func( Num_Of_Vars, dHdx_Max_Terms, dHdx_Entry_Offset, dHdx_Max_Parts, h_dHdx_Index, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_param_homotopy, h_cgesvA + cgsevA_offset );                    
+                    Eval_dHdt_func( Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, h_dHdt_Index, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_param_homotopy, h_cgesvB + cgesvB_offset, h_diff_params + param_offset );
                     lapackf77_cgesv( &Num_Of_Vars, &nrhs, h_cgesvA + cgsevA_offset, &Num_Of_Vars, ipiv + ipiv_offset, h_cgesvB + cgesvB_offset, &Num_Of_Vars, &locinfo );
                     CPUHC_get_Runge_Kutta_x_for_k4( h_Intermediate_Sols + hc_track_sol_offset, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_cgesvB + cgesvB_offset, h_Track_Last_Success + hc_track_sol_offset, one_half_delta_t, t0, delta_t );
 
                     //> (iv) a pair of Jacobian evaluation + linear system solver
-                    cpu_eval_compute_param_homotopy( t0, h_param_homotopy + param_offset, h_Start_Params, h_Target_Params + param_offset );
-                    Eval_dHdX_func( Num_Of_Vars, dHdx_Max_Terms, dHdx_Entry_Offset, dHdx_Max_Parts, h_dHdx_Index, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_param_homotopy + param_offset, h_cgesvA + cgsevA_offset );                    
-                    Eval_dHdt_func( Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, h_dHdt_Index, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_param_homotopy + param_offset, h_cgesvB + cgesvB_offset, h_diff_params + param_offset );
-                    // Eval_dHdX_dHdt_func( s, t0, Num_Of_Vars, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_Start_Params, h_Target_Params + param_offset, h_cgesvA + cgsevA_offset, h_cgesvB + cgesvB_offset );
+                    cpu_eval_compute_param_homotopy( t0, h_param_homotopy, h_Start_Params, h_Target_Params + param_offset );
+                    Eval_dHdX_func( Num_Of_Vars, dHdx_Max_Terms, dHdx_Entry_Offset, dHdx_Max_Parts, h_dHdx_Index, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_param_homotopy, h_cgesvA + cgsevA_offset );                    
+                    Eval_dHdt_func( Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, h_dHdt_Index, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_param_homotopy, h_cgesvB + cgesvB_offset, h_diff_params + param_offset );
                     lapackf77_cgesv( &Num_Of_Vars, &nrhs, h_cgesvA + cgsevA_offset, &Num_Of_Vars, ipiv + ipiv_offset, h_cgesvB + cgesvB_offset, &Num_Of_Vars, &locinfo );
 
                     //> make prediction
                     CPUHC_make_Runge_Kutta_prediction( h_Intermediate_Sols + hc_track_sol_offset, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_cgesvB + cgesvB_offset, delta_t );
 
-                    // if (s == 2 && step == 0) {
-                    //     magma_cprint(Num_Of_Vars, 1, h_CPU_HC_Track_Sols + hc_track_sol_offset, Num_Of_Vars);
-                    // }
                     // ===================================================================
                     // Correction: Newton's method
                     // ===================================================================
                     for(int c = 0; c < CPUHC_Max_Correction_Steps; c++) {
                         
                         //> evaluate dH/dX and H for solving the corrected step in the linear system
-                        // Eval_dHdX_H_func( s, t0, Num_Of_Vars, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_Start_Params, h_Target_Params + param_offset, h_cgesvA + cgsevA_offset, h_cgesvB + cgesvB_offset );
-                        Eval_dHdX_func( Num_Of_Vars, dHdx_Max_Terms, dHdx_Entry_Offset, dHdx_Max_Parts, h_dHdx_Index, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_param_homotopy + param_offset, h_cgesvA + cgsevA_offset );
-                        Eval_H_func( Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, h_dHdt_Index, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_param_homotopy + param_offset, h_cgesvB + cgesvB_offset );
+                        Eval_dHdX_func( Num_Of_Vars, dHdx_Max_Terms, dHdx_Entry_Offset, dHdx_Max_Parts, h_dHdx_Index, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_param_homotopy, h_cgesvA + cgsevA_offset );
+                        Eval_H_func( Num_Of_Vars, dHdt_Max_Terms, dHdt_Max_Parts, h_dHdt_Index, h_CPU_HC_Track_Sols + hc_track_sol_offset, h_param_homotopy, h_cgesvB + cgesvB_offset );
                         lapackf77_cgesv( &Num_Of_Vars, &nrhs, h_cgesvA + cgsevA_offset, &Num_Of_Vars, ipiv + ipiv_offset, h_cgesvB + cgesvB_offset, &Num_Of_Vars, &locinfo );
                         
                         //> make correction; see if the corrected solution is successful
@@ -172,7 +170,7 @@ real_Double_t CPU_HC_Solver::CPUHC_Generic_Solver_Eval_by_Indx(
                 }
             }   //> loop over HC steps
             h_is_Track_Converged[s + ri*Num_Of_Tracks] = (t0 >= 1.0 || (1.0-t0 <= 0.0000001)) ? true : false;
-        }   //> loop over all homotopy paths
+        // }   //> loop over all homotopy paths
     }   //> loop over RANSAC iterations
     
     //> return CPU-HC timing

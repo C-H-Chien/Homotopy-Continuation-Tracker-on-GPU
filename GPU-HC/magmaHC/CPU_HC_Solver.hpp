@@ -59,7 +59,6 @@ class CPU_HC_Solver {
     magmaFloatComplex       *h_Intermediate_Sols;
     magmaFloatComplex       *h_Start_Sols;
     magmaFloatComplex       *h_Start_Params;
-    magmaFloatComplex       *h_param_homotopy;
     magmaFloatComplex       *h_cgesvA;  //> Matrix A in a linear system Ax=b
     magmaFloatComplex       *h_cgesvB;  //> Vector b in a linear system Ax=b
     magmaFloatComplex       *h_diff_params;
@@ -140,6 +139,7 @@ private:
     int Num_Of_Tracks;
     int Num_Of_CPU_Cores;
     int RANSAC_Sol_Offset;
+    int RANSAC_Sol_Offset_with_Dummy_Variable;
     int dHdx_Max_Terms;
     int dHdx_Max_Parts;
     int dHdt_Max_Terms;

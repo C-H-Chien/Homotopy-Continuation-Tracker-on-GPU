@@ -74,6 +74,7 @@ CPU_HC_Solver::CPU_HC_Solver(YAML::Node Problem_Settings_File)
     Num_Of_Inf_Failed_Sols = 0;
     Num_Of_Successful_Sols = 0;
     RANSAC_Sol_Offset = Num_Of_Vars * Num_Of_Tracks;
+    RANSAC_Sol_Offset_with_Dummy_Variable = (Num_Of_Vars+1) * Num_Of_Tracks;
 }
 
 void CPU_HC_Solver::Allocate_Arrays() {
@@ -87,7 +88,6 @@ void CPU_HC_Solver::Allocate_Arrays() {
     magma_cmalloc_cpu( &h_CPU_HC_Track_Sols,    Num_Of_Tracks*(Num_Of_Vars+1)*NUM_OF_RANSAC_ITERATIONS );
     magma_cmalloc_cpu( &h_Track_Last_Success,   Num_Of_Tracks*(Num_Of_Vars+1)*NUM_OF_RANSAC_ITERATIONS );
     magma_cmalloc_cpu( &h_Target_Params,        (Num_Of_Params+1)*NUM_OF_RANSAC_ITERATIONS );
-    magma_cmalloc_cpu( &h_param_homotopy,       (Num_Of_Params+1)*NUM_OF_RANSAC_ITERATIONS );
     magma_cmalloc_cpu( &h_diff_params,          (Num_Of_Params+1)*NUM_OF_RANSAC_ITERATIONS );
 
     //> The following arrays do not neccessary to be allocated with the scale of number of tracks and number of RANSAC iterations,
@@ -285,7 +285,6 @@ CPU_HC_Solver::~CPU_HC_Solver() {
     magma_free_cpu( h_Intermediate_Sols );
     magma_free_cpu( h_Start_Sols );
     magma_free_cpu( h_Start_Params );
-    magma_free_cpu( h_param_homotopy );
     magma_free_cpu( h_diff_params );
 
     magma_free_cpu( h_cgesvA );

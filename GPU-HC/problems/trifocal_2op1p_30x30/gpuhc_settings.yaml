@@ -34,7 +34,8 @@ Abort_RANSAC_by_Good_Sol:  false
 
 #> RANSAC data
 #RANSAC_Dataset: Synthetic / ICL-NUIM
-RANSAC_Dataset: Synthetic
+RANSAC_Dataset: ICL-NUIM
+#5117
 
 #> CPU-HC Settings
-Num_Of_Cores: 1
+Num_Of_Cores:  32
