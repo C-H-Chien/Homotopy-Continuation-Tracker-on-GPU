@@ -99,17 +99,6 @@ public:
     void CPUHC_make_Runge_Kutta_prediction(magmaFloatComplex *h_Sols_cpu, magmaFloatComplex *h_Track_cpu, magmaFloatComplex *h_cgesvB, float delta_t );
     void CPUHC_make_correction( magmaFloatComplex *h_CPU_HC_Track_Sols, magmaFloatComplex *h_cgesvB, bool &is_successful, bool &is_inf_failed );
 
-    void cpu_eval_compute_param_homotopy( float t, magmaFloatComplex* h_param_homotopy, magmaFloatComplex* start_params, magmaFloatComplex* target_params ) {
-        for (int i = 0; i <= Num_Of_Params; i++) {
-            h_param_homotopy[ i ] = target_params[ i ] * t + start_params[ i ] * (1.0 - t);
-        }
-    }
-
-    //> Evaluations
-    // void cpu_eval_indx_dHdX_trifocal_2op1p_30( magmaFloatComplex* variable, magmaFloatComplex* param_homotopy, magmaFloatComplex* cgesvA, const int* dHdx_indices );
-    // void cpu_eval_indx_dHdt_trifocal_2op1p_30( magmaFloatComplex* variable, magmaFloatComplex* param_homotopy, magmaFloatComplex* cgesvB, magmaFloatComplex* diff_params, const int* dHdt_indices );
-    // void cpu_eval_indx_H_trifocal_2op1p_30( magmaFloatComplex* variables, magmaFloatComplex* dHdt_indices, magmaFloatComplex* param_homotopy, magmaFloatComplex* cgesvB );
-
     std::vector<unsigned>   Collect_Num_Of_Coverged_Sols;
     std::vector<unsigned>   Collect_Num_Of_Inf_Sols;
     std::vector<unsigned>   Collect_Num_Of_Real_Sols;

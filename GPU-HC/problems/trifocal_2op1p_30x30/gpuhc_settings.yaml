@@ -38,4 +38,4 @@ RANSAC_Dataset: ICL-NUIM
 #5117
 
 #> CPU-HC Settings
-Num_Of_Cores:  32
+Num_Of_Cores: 1
