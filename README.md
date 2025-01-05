@@ -2,13 +2,7 @@
 ### Research @ LEMS, Brown University (CVPR 2022)
 ## Introduction
 GPU-HC, as its name suggests, is a GPU implementation of Homotopy Continuation Solver. It is a general tool for finding roots of a polynomial systems (check our papers for more details). Our research aims at applying GPU-HC for computer vision problems, especially multiview geometry problems, where timings are crucial as the computation is typically performed under a RANSAC loop. Please refer and cite the reference papers if you intend to use them in your work. Also, please do not hesitate to contact chiang-heng_chien@brown.edu if you have any questions on using GPU-HC. <br />
-
-## :arrow_heading_up: New Updates
-1. 2023.05.14 GPU-HC has a new release! <br />
-2. 2023.03.12 GPU-HC has now been used in solving generalized three-view relative pose problem. Checkout this [ICCV paper](https://openaccess.thecvf.com/content/ICCV2023/papers/Ding_Minimal_Solutions_to_Generalized_Three-View_Relative_Pose_Problem_ICCV_2023_paper.pdf) and [GitHub page](https://github.com/C-H-Chien/Three_View_Generalized_Camera). <br />
-3. 2024.05.29 Major change in the structure of GPU-HC. The GPU code is also optimized, which provides 1.3-6.0x speedup over the older version. This optimized version will become the second release. Refer to the speed in [the table](https://github.com/C-H-Chien/Homotopy-Continuation-Tracker-on-GPU/tree/main?tab=readme-ov-file#timer_clock-speed-in-milliseconds-for-selected-minimal-problems) which is much faster than what was reported in the papers. <br />
-4. 2024.06.14 GPU-HC has a second release! Faster in speed and more friendly to new users who aim to build their own GPU-HC solver. <br />
-5. 2024.08.30 GPU-HC is used to recover SLAM tracking failure described by a paper published in BMVC 2024!
+**New!!** The performance of the GPU-HC solver has now improved to gain around 1.2x-7.3x speedup over the old version. Interested in what improvements have been made? Check our IPDPS 2025 paper for more information! (Link of the paper will be given shortly)
 
 ## :floppy_disk: What do we have in this repo?
 This repository primarily contains three folders: <br />
@@ -67,6 +61,9 @@ E.T. means Elimination Template which has an out of memory issue ("X" in the tab
 | relative pose using quiver, unknown focal length         |  4 |   20 |   1.08 |  2.97 | **0.75** |
 | P3P, absolute pose                                       |  3 |    8 |   **0.06** |  1.18 | 0.15 |
 | 5-point relative pose (right null-space)                 |  3 |    8 |   **0.04** | 25.76 | 0.61 |
+
+## :arrow_heading_up: New Updates
+Changlogs and new updates now reside in changelogs.md.
 
 ## Limitations
 Several limitations of the GPU-HC solver: <br />
