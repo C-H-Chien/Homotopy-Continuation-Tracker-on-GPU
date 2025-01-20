@@ -51,7 +51,12 @@ function create_dev_eval_indxing_CUH_code(problemName, max_order_of_func_t, max_
         end
     end
 
-    fprintf(outputFileWr_dev_eval_indxing_script, '\t   s_phc_coeffs_Ht[ tx + i*Num_Of_Vars ] = d_phc_coeffs_Ht[ tx*Max_Order_of_t + i*Num_Of_Vars*Max_Order_of_t ]\n');
+    fprintf(outputFileWr_dev_eval_indxing_script, '\t   s_phc_coeffs_Ht[ tx + i*Num_Of_Vars ] = d_phc_coeffs_Ht[ tx*Max_Order_of_t + i*Num_Of_Vars*Max_Order_of_t ]');
+    if max_order_of_func_t == 1
+        fprintf(outputFileWr_dev_eval_indxing_script, ";\n");
+    else
+        fprintf(outputFileWr_dev_eval_indxing_script, "\n");
+    end
     for i = 1:max_order_of_func_t-1
         
         fprintf(outputFileWr_dev_eval_indxing_script, strcat('\t\t + d_phc_coeffs_Ht[ tx*Max_Order_of_t + ', string(i),' + i*Num_Of_Vars*Max_Order_of_t ]'));
@@ -77,7 +82,12 @@ function create_dev_eval_indxing_CUH_code(problemName, max_order_of_func_t, max_
             fprintf(outputFileWr_dev_eval_indxing_script, ';\n');
         end
     end
-    fprintf(outputFileWr_dev_eval_indxing_script, '\t   s_phc_coeffs_Ht[ tx + Partial_Parallel_Index_Offset ] = d_phc_coeffs_Ht[ tx*Max_Order_of_t + Partial_Parallel_Index_Offset_Ht ]\n');
+    fprintf(outputFileWr_dev_eval_indxing_script, '\t   s_phc_coeffs_Ht[ tx + Partial_Parallel_Index_Offset ] = d_phc_coeffs_Ht[ tx*Max_Order_of_t + Partial_Parallel_Index_Offset_Ht ]');
+    if max_order_of_func_t == 1
+        fprintf(outputFileWr_dev_eval_indxing_script, ";\n");
+    else
+        fprintf(outputFileWr_dev_eval_indxing_script, "\n");
+    end
     for i = 1:max_order_of_func_t-1
         fprintf(outputFileWr_dev_eval_indxing_script, strcat('\t\t + d_phc_coeffs_Ht[ tx*Max_Order_of_t + Partial_Parallel_Index_Offset_Ht + ', string(i), ' ] '));
         for j = 1:i
