@@ -44,7 +44,7 @@ eval_parameter_homotopy(
 {
   // =============================================================================
   //> parameter homotopy for evaluating ∂H/∂x and ∂H/∂t
-  #pragma unroll
+  #pragma unroll 2
   for (int i = 0; i < Full_Parallel_Offset; i++) {
     s_phc_coeffs_Hx[ tx + i*Num_Of_Vars ] = d_phc_coeffs_Hx[ tx*Max_Order_of_t_Plus_One + i*Num_Of_Vars*Max_Order_of_t_Plus_One ] 
                                           + d_phc_coeffs_Hx[ tx*Max_Order_of_t_Plus_One + 1 + i*Num_Of_Vars*Max_Order_of_t_Plus_One ] * t
@@ -75,11 +75,10 @@ eval_Jacobian_Hx(
     const int tx, magmaFloatComplex *s_track, magmaFloatComplex r_cgesvA[Num_Of_Vars],
     const int* __restrict__ d_Hx_idx, magmaFloatComplex *s_phc_coeffs )
 {
-  #pragma unroll
   for(int i = 0; i < Num_Of_Vars; i++) {
     r_cgesvA[i] = MAGMA_C_ZERO;
 
-    #pragma unroll
+    #pragma unroll 2
     for(int j = 0; j < dHdx_Max_Terms; j++) {
       r_cgesvA[i] += d_Hx_idx[j*dHdx_Max_Parts + i*dHdx_Entry_Offset + tx*dHdx_Row_Offset] 
                     * s_phc_coeffs[ d_Hx_idx[j*dHdx_Max_Parts + 1 + i*dHdx_Entry_Offset + tx*dHdx_Row_Offset] ]
@@ -98,7 +97,7 @@ eval_Jacobian_Ht(
     const int* __restrict__ d_Ht_idx, magmaFloatComplex *s_phc_coeffs)
 {
   r_cgesvB = MAGMA_C_ZERO;
-  #pragma unroll
+  #pragma unroll 2
   for (int i = 0; i < dHdt_Max_Terms; i++) {
     r_cgesvB -= d_Ht_idx[i*dHdt_Max_Parts + tx*dHdt_Row_Offset] 
               * s_phc_coeffs[ d_Ht_idx[i*dHdt_Max_Parts + 1 + tx*dHdt_Row_Offset] ]
@@ -117,7 +116,7 @@ eval_Homotopy(
     const int* __restrict__ d_Ht_idx, magmaFloatComplex *s_phc_coeffs)
 {
   r_cgesvB = MAGMA_C_ZERO;
-  #pragma unroll
+  #pragma unroll 2
   for (int i = 0; i < dHdt_Max_Terms; i++) {
     r_cgesvB += d_Ht_idx[i*dHdt_Max_Parts + tx*dHdt_Row_Offset] 
               * s_phc_coeffs[ d_Ht_idx[i*dHdt_Max_Parts + 1 + tx*dHdt_Row_Offset] ]
