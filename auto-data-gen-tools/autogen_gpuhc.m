@@ -37,7 +37,8 @@ fileFolder = '/path/to/your/minimal-problems/';
 % problem = "P3P/";
 % problem = "trifocal_2op1p_30x30/";
 % problem = "3view_triangulation/";
-problem = "4view_triangulation/";
+% problem = "4view_triangulation/";
+problem = "P3P_10x10/";
 problemName = extractBefore(problem, "/");
 
 % -- define systems --
@@ -83,6 +84,8 @@ elseif strcmp(problem, 'rel_pos_quiver/')
     [f, numOfVars, numOfParams] = sys_rel_pos_quiver();
 elseif strcmp(problem, 'P3P/')
     [f, numOfVars, numOfParams] = sys_P3P();
+elseif strcmp(problem, 'P3P_10x10/')
+    [f, numOfVars, numOfParams] = sys_P3P_10x10();
 end
 
 params.make_coefficientHC = 0;

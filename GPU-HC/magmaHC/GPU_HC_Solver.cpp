@@ -340,6 +340,13 @@ void GPU_HC_Solver::Solve_by_GPU_HC() {
                     d_dHdx_Index, d_dHdt_Index, d_dHdx_PHC_Coeffs, d_dHdt_PHC_Coeffs, \
                     d_is_GPU_HC_Sol_Converge, d_is_GPU_HC_Sol_Infinity, d_Debug_Purpose);
     }
+    else if (HC_problem == "P3P_10x10") {
+        gpu_time = kernel_HC_Solver_P3P_10x10
+                   (my_queue, GPUHC_Max_Steps, GPUHC_Max_Correction_Steps, GPUHC_delta_t_incremental_steps, \
+                    d_Start_Sols_array, d_Homotopy_Sols_array, \
+                    d_dHdx_Index, d_dHdt_Index, d_dHdx_PHC_Coeffs, d_dHdt_PHC_Coeffs, \
+                    d_is_GPU_HC_Sol_Converge, d_is_GPU_HC_Sol_Infinity, d_Debug_Purpose);
+    }
 
     //> Check returns from the GPU kernel
     transfer_d2h_time = magma_sync_wtime( my_queue );

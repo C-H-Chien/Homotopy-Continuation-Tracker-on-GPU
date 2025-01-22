@@ -1,0 +1,29 @@
+%YAML:1.0
+
+#> Problem Name (must be the same as the problem folder name)
+problem_name: P3P_10x10
+problem_print_out_name: Perspective 3-Point Absolute Pose Estimation Problem (10x10 formulation)
+
+#> Reference: no reference. Just the native form of \Gamma_i = \rho_i * R * \gamma_i + T, i=1,2,3
+
+#> GPU-HC Settings
+GPUHC_Type: P2C
+GPUHC_Max_Steps: 50
+GPUHC_Max_Correction_Steps: 30
+GPUHC_Num_Of_Steps_to_Increase_Delta_t: 3
+
+#> Problem spec
+Num_Of_Vars: 10
+Num_Of_Params: 15
+Num_Of_Tracks: 16
+dHdx_Max_Terms: 7
+dHdx_Max_Parts: 4
+dHdt_Max_Terms: 9
+dHdt_Max_Parts: 5
+Max_Order_Of_T: 1
+Num_Of_Coeffs_From_Params: 15
+
+#> RANSAC data
+#RANSAC_Dataset: Synthetic / ICL-NUIM
+# RANSAC_Dataset: ICL-NUIM
+RANSAC_Dataset: None
